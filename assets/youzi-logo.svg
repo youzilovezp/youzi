@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="youzi logo">
+  <defs>
+    <radialGradient id="rind" cx="36%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="55%" stop-color="#FFC93C"/>
+      <stop offset="100%" stop-color="#F79F1F"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 果身 -->
+  <circle cx="120" cy="142" r="84" fill="url(#rind)"/>
+
+  <!-- 果蒂 -->
+  <path d="M118 54c-3-9-1-17 5-24" fill="none" stroke="#8D6E63" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- 叶子 -->
+  <path d="M120 48C112 22 86 8 62 12c3 24 30 40 58 36z" fill="#8BC34A"/>
+  <path d="M114 42C104 30 92 22 78 17" fill="none" stroke="#689F38" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- 顶部柚子褶 -->
+  <path d="M74 96q46-22 92 0" fill="none" stroke="#F2A413" stroke-width="4" stroke-linecap="round" opacity=".45"/>
+
+  <!-- 高光 -->
+  <ellipse cx="84" cy="98" rx="19" ry="11" transform="rotate(-27 84 98)" fill="#FFF9C4" opacity=".9"/>
+
+  <!-- 油胞点点 -->
+  <g fill="#F2A413" opacity=".5">
+    <circle cx="66" cy="128" r="3.5"/>
+    <circle cx="176" cy="122" r="3"/>
+    <circle cx="190" cy="160" r="3.5"/>
+    <circle cx="52" cy="166" r="3"/>
+    <circle cx="96" cy="202" r="3"/>
+    <circle cx="150" cy="206" r="3.5"/>
+    <circle cx="122" cy="100" r="3"/>
+  </g>
+
+  <!-- 表情 -->
+  <circle cx="97" cy="148" r="8.5" fill="#4E342E"/>
+  <circle cx="143" cy="148" r="8.5" fill="#4E342E"/>
+  <circle cx="100" cy="145" r="3" fill="#fff"/>
+  <circle cx="146" cy="145" r="3" fill="#fff"/>
+  <path d="M107 164c6.5 7 18.5 7 25 0" fill="none" stroke="#4E342E" stroke-width="4.5" stroke-linecap="round"/>
+  <ellipse cx="75" cy="163" rx="10" ry="6" fill="#FF8A80" opacity=".6"/>
+  <ellipse cx="165" cy="163" rx="10" ry="6" fill="#FF8A80" opacity=".6"/>
+</svg>
