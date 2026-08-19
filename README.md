@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/youzi-logo.svg" width="110" alt="youzi logo"/>
+<img src="assets/youzi-logo.svg?v=3" width="110" alt="youzi logo"/>
 
 # 🍊 youzi · 竞品颠覆性分析
 
