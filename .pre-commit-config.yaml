@@ -1,0 +1,66 @@
+fail_fast: false
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit, manual]
+# Adopted from innies-biz (2026-06-30). ruff-check/format + mypy stay on manual
+# stage until the legacy error backlog is paid down; see git log for details.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: fix-byte-order-marker
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+      - id: check-toml
+      - id: check-yaml
+        args: ['--unsafe']
+        exclude: ^charts/templates/
+      - id: check-json
+        exclude: ^(\.vscode/|\.devcontainer/)
+      - id: debug-statements
+        exclude: ^scripts/
+  - repo: local
+    hooks:
+      - id: typos
+        name: typos
+        description: Check typos.
+        entry: bash -c 'typos'
+        language: system
+        files: \.*$
+        pass_filenames: false
+        stages: [manual]
+        # ponytail: manual stage — 364 错误多数是 Word/PDF 格式术语(PlcfEdn/FKP/sprm/pn 等),
+        # 实际非 typo 大量存在,待 .typos.toml 拓展 + 真实 typo triage 后再拉到 pre-commit.
+      - id: ruff-format
+        name: ruff format
+        description: Auto-format Python sources with Ruff.
+        entry: .venv/bin/python -m ruff format app tests
+        language: system
+        files: \.py$
+        pass_filenames: false
+        stages: [manual]
+      - id: ruff-check
+        name: ruff check
+        description: Lint Python sources with Ruff.
+        entry: .venv/bin/python -m ruff check app tests
+        language: system
+        files: \.py$
+        pass_filenames: false
+        stages: [manual]
+      - id: mypy
+        name: mypy
+        description: Static type-check Python sources under app/.
+        entry: .venv/bin/python -m mypy --python-version 3.11 --no-incremental app
+        language: system
+        files: ^app/.*\.py$
+        pass_filenames: false
+        stages: [manual]
+      # ponytail: cython-rebuild-check 已移除 (R81-G-2). 原因: hook 只挡 commit
+      # 不自动 rebuild, 每次都得 --no-verify 绕开 = 纯噪音. 真防"提交 .py 但运行时
+      # 加载旧 .so"靠 setup.py 的增量 rebuild wrapper 或 CI 在 merge 前 smoke test,
+      # 不是 pre-commit 静态 mtime 检查. 加 wrapper script 时再议.

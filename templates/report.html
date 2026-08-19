@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="system">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{topic}} · 竞争格局与机会图谱</title>
+
+<!-- ============================================================
+     字体（本地系统栈 + 备选）—— 不依赖 CDN，遵守 CSP
+     ============================================================ -->
+<style>
+  /* ============================================================
+     DESIGN TOKENS — 主题感知（浅色 = :root，深色 = media + stamp）
+     配色方向：深夜蓝灰 + 信号红 + 暖米白 = 「决策级」咨询感
+     字体配对：serif display（编辑权威）+ system sans（实用）
+     ============================================================ */
+  :root {
+    /* Neutrals — 偏暖的米白（不是纯灰） */
+    --bg:        #f6f4ee;
+    --bg-elev:   #ffffff;
+    --bg-soft:   #ece8de;
+    --bg-deeper: #e3ddcd;
+
+    /* Foreground */
+    --fg:        #16181d;
+    --fg-soft:   #4a4d56;
+    --fg-mute:   #8a8d96;
+
+    /* Lines */
+    --line:      #d8d2c2;
+    --line-strong: #b6ad95;
+
+    /* Signal — 决策红 + 战略蓝 */
+    --accent:        #c4314b;        /* 主色：信号红（颠覆感） */
+    --accent-deep:   #8c1f37;
+    --accent-soft:   #f5dee2;
+    --accent-fg:     #ffffff;
+
+    /* Data palette — 色盲友好 */
+    --data-1: #c4314b;  /* 红 */
+    --data-2: #2b6cb0;  /* 蓝 */
+    --data-3: #1f7a44;  /* 绿 */
+    --data-4: #b7791f;  /* 金 */
+    --data-5: #6b46a0;  /* 紫 */
+    --data-6: #1d6e7a;  /* 青 */
+
+    /* Semantic */
+    --good: #1f7a44;
+    --good-soft: #d8efe1;
+    --bad:  #b3261e;
+    --bad-soft: #fadcd8;
+    --warn: #b7791f;
+    --warn-soft: #fbeacd;
+    --info: #2b6cb0;
+    --info-soft: #dde9f5;
+
+    /* Shadows — 柔和多层 */
+    --shadow-xs: 0 1px 2px rgba(20,18,14,.05);
+    --shadow-sm: 0 2px 6px rgba(20,18,14,.06), 0 1px 2px rgba(20,18,14,.04);
+    --shadow-md: 0 6px 18px rgba(20,18,14,.08), 0 2px 6px rgba(20,18,14,.05);
+    --shadow-lg: 0 16px 40px rgba(20,18,14,.10), 0 4px 10px rgba(20,18,14,.05);
+
+    /* Type */
+    --font-display: "Iowan Old Style", "Apple Garamond", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+    /* Geometry */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+
+    --w: 1240px;
+  }
+
+  /* 暗色主题 — 深夜蓝灰 + 信号红（咨询级） */
+  :root[data-theme="dark"] {
+    --bg:        #0e1015;
+    --bg-elev:   #161922;
+    --bg-soft:   #1d2030;
+    --bg-deeper: #252839;
+
+    --fg:        #ece9e0;
+    --fg-soft:   #b8b4a8;
+    --fg-mute:   #74716a;
+
+    --line:      #2c3043;
+    --line-strong: #3d4159;
+
+    --accent:        #ff5d75;
+    --accent-deep:   #c4314b;
+    --accent-soft:   #2a1820;
+    --accent-fg:     #0e1015;
+
+    --data-1: #ff5d75;
+    --data-2: #6aa3e0;
+    --data-3: #5fc78c;
+    --data-4: #e0b25c;
+    --data-5: #a684d4;
+    --data-6: #5fb4c4;
+
+    --good: #5fc78c;
+    --good-soft: #16331f;
+    --bad:  #e87a73;
+    --bad-soft: #2e1817;
+    --warn: #e0b25c;
+    --warn-soft: #2e2618;
+    --info: #6aa3e0;
+    --info-soft: #182838;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
+    --shadow-md: 0 6px 18px rgba(0,0,0,.6);
+    --shadow-lg: 0 16px 40px rgba(0,0,0,.7);
+  }
+
+  /* 系统暗色（未显式选择时） */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0e1015;
+      --bg-elev:   #161922;
+      --bg-soft:   #1d2030;
+      --bg-deeper: #252839;
+      --fg:        #ece9e0;
+      --fg-soft:   #b8b4a8;
+      --fg-mute:   #74716a;
+      --line:      #2c3043;
+      --line-strong: #3d4159;
+      --accent:        #ff5d75;
+      --accent-deep:   #c4314b;
+      --accent-soft:   #2a1820;
+      --accent-fg:     #0e1015;
+      --data-1: #ff5d75;
+      --data-2: #6aa3e0;
+      --data-3: #5fc78c;
+      --data-4: #e0b25c;
+      --data-5: #a684d4;
+      --data-6: #5fb4c4;
+      --good: #5fc78c;
+      --good-soft: #16331f;
+      --bad:  #e87a73;
+      --bad-soft: #2e1817;
+      --warn: #e0b25c;
+      --warn-soft: #2e2618;
+      --info: #6aa3e0;
+      --info-soft: #182838;
+      --shadow-xs: 0 1px 2px rgba(0,0,0,.4);
+      --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
+      --shadow-md: 0 6px 18px rgba(0,0,0,.6);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,.7);
+    }
+  }
+
+  /* ============================================================
+     Reset + base
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "kern";
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color .15s;
+  }
+  a:hover { border-bottom-color: var(--accent); }
+
+  /* 数字对齐 */
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ============================================================
+     TYPOGRAPHY — Display serif for headlines
+     ============================================================ */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -0.025em; }
+  h2 { font-size: clamp(1.5rem, 3.5vw, 2rem); }
+  h3 { font-size: 1.25rem; }
+  h4 {
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 600;
+    color: var(--fg-mute);
+    font-family: var(--font-body);
+  }
+  p { margin: 0; }
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: .88em;
+    background: var(--bg-soft);
+    padding: .1em .35em;
+    border-radius: var(--radius-xs);
+  }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  .wrap {
+    max-width: var(--w);
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  /* HERO ============================================ */
+  .hero {
+    position: relative;
+    padding: 4rem 0 3rem;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 600px 200px at 80% 0%, var(--accent-soft), transparent 70%),
+      linear-gradient(to bottom, var(--bg-elev) 0%, var(--bg) 100%);
+    opacity: .6;
+    z-index: -1;
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: .35rem .8rem;
+    border-radius: 999px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 {
+    margin-bottom: .75rem;
+    color: var(--fg);
+  }
+  .hero h1 .accent { color: var(--accent); font-style: italic; }
+  .hero .lede {
+    font-size: 1.15rem;
+    color: var(--fg-soft);
+    max-width: 720px;
+    margin-top: .75rem;
+    line-height: 1.55;
+  }
+  .hero .meta {
+    margin-top: 1.5rem;
+    color: var(--fg-mute);
+    font-size: .9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  .hero .meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .hero .meta strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+/* ============================================================
+     SECTION — 章节标题（用衬线大字 + 序号 + 红色细线）
+     ============================================================ */
+  section {
+    margin-bottom: 4rem;
+    margin-top: 1rem;
+    scroll-margin-top: 1rem;
+    padding-top: 1rem;
+  }
+  .sec-head {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 1.5rem;
+    align-items: end;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--accent);
+  }
+  .sec-num {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: .85;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+  }
+  .sec-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2rem);
+    font-weight: 600;
+    color: var(--fg);
+    line-height: 1.1;
+    margin: 0;
+  }
+  .sec-subtitle {
+    font-family: var(--font-body);
+    font-size: .85rem;
+    color: var(--fg-mute);
+    margin-top: .35rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 500;
+  }
+
+  /* ============================================================
+     PILL / BADGE
+     ============================================================ */
+  .pill {
+    display: inline-block;
+    font-size: .75rem;
+    padding: .2rem .65rem;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    color: var(--fg-soft);
+    border: 1px solid var(--line);
+    margin: 0 .25rem .25rem 0;
+    line-height: 1.4;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); border-color: transparent; }
+  .pill.bad  { background: var(--bad-soft);  color: var(--bad);  border-color: transparent; }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .pill.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
+  .pill.accent { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 600; }
+
+  /* ============================================================
+     CARDS — 竞品卡片（新设计：左侧色条 + 大字 logo 缩写）
+     ============================================================ */
+  /* 通用卡片网格（市场细分等） */
+  .card-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  }
+  /* 竞品卡片网格：更宽松，2 列 */
+  .card-grid.competitors {
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 1.5rem;
+  }
+  .card {
+    position: relative;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--card-color, var(--accent));
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--line-strong);
+  }
+  .card-head {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .card-mark {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: var(--card-color, var(--accent));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.04em;
+    box-shadow: var(--shadow-xs);
+  }
+  .card-name {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--fg);
+    margin: 0;
+    line-height: 1.1;
+  }
+  .card-name a {
+    color: inherit;
+    border-bottom: 0;
+  }
+  .card-name a:hover { color: var(--accent); }
+  .card-sub {
+    font-family: var(--font-body);
+    font-size: .8rem;
+    color: var(--fg-mute);
+    margin-top: .25rem;
+  }
+  .card-stage {
+    font-family: var(--font-body);
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    color: var(--fg-soft);
+  }
+  .card-head-main { flex: 1; min-width: 0; }
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-family: var(--font-body);
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--card-color, var(--accent));
+    background: transparent;
+    border: 1.5px solid var(--card-color, var(--accent));
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: all .15s;
+    text-decoration: none;
+  }
+  .card-link:hover {
+    background: var(--card-color, var(--accent));
+    color: white;
+    border-color: var(--card-color, var(--accent));
+    transform: translateY(-1px);
+  }
+
+  /* 功能全景：紧凑网格 */
+  .feature-pano {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .35rem .75rem;
+    background: var(--bg-soft);
+    border-radius: var(--radius-sm);
+    padding: .75rem .85rem;
+    margin-top: .25rem;
+  }
+  .fp-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    color: var(--fg-soft);
+    line-height: 1.4;
+  }
+  .fp-check {
+    color: var(--good);
+    font-weight: 700;
+    font-size: .9rem;
+    flex-shrink: 0;
+  }
+  .fp-label { color: var(--fg-soft); }
+
+  .card-tagline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--fg-soft);
+    line-height: 1.4;
+    padding: .75rem 0 1rem;
+    border-bottom: 1px dashed var(--line);
+    margin-bottom: 1rem;
+  }
+  .card-tagline::before { content: "\201C"; color: var(--accent); margin-right: .1em; font-size: 1.4em; vertical-align: -.15em; }
+  .card-tagline::after  { content: "\201D"; color: var(--accent); margin-left: .1em; font-size: 1.4em; vertical-align: -.25em; }
+
+  .card-section-title {
+    font-family: var(--font-body);
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--fg-mute);
+    margin: .75rem 0 .35rem;
+  }
+
+  /* SCORE TABLE */
+  .score-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 32px;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .25rem;
+    font-size: .82rem;
+  }
+  .score-row .label { color: var(--fg-soft); }
+  .score-row .track {
+    height: 6px;
+    background: var(--bg-soft);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .score-row .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--card-color, var(--accent)), var(--card-color, var(--accent-deep)));
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+  .score-row .num {
+    color: var(--fg);
+    font-weight: 600;
+    text-align: right;
+    font-size: .85rem;
+  }
+
+  /* SW (Strengths / Weaknesses) list */
+  .sw-list { list-style: none; padding: 0; margin: 0; }
+  .sw-list li {
+    padding: .55rem 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: .9rem;
+  }
+  .sw-list li:last-child { border-bottom: 0; }
+
+  /* ============================================================
+     杀手锏（Differentiators）— 醒目星标 + 高亮背景
+     ============================================================ */
+  .diff-list {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    margin-top: .25rem;
+  }
+  .diff-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    padding: .45rem .65rem;
+    background: linear-gradient(135deg, var(--accent-soft), transparent);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: .85rem;
+    color: var(--fg);
+    line-height: 1.45;
+  }
+  .diff-bullet {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: .9rem;
+    flex-shrink: 0;
+    line-height: 1.5;
+  }
+  .diff-text { flex: 1; }
+  .sw-point { font-weight: 600; color: var(--fg); margin-bottom: .25rem; }
+  .sw-ev {
+    font-size: .78rem;
+    color: var(--fg-mute);
+    font-style: italic;
+    margin-top: .15rem;
+    padding-left: .85rem;
+    border-left: 2px solid var(--line);
+  }
+  .sw-badge {
+    display: inline-block;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .12rem .4rem;
+    border-radius: 3px;
+    margin-right: .4rem;
+    vertical-align: middle;
+    color: white;
+  }
+  .sw-badge.s { background: var(--good); }
+  .sw-badge.w { background: var(--bad); }
+
+  /* ============================================================
+     RADAR — 雷达图（升级版）
+     ============================================================ */
+  .radar-wrap {
+    background:
+      radial-gradient(ellipse at center top, var(--accent-soft) 0%, transparent 50%),
+      var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  .radar-wrap::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--data-1), var(--data-2), var(--data-3), var(--data-4), var(--data-5), var(--data-6));
+    opacity: 0.5;
+  }
+  .radar-grid {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 2rem;
+    align-items: start;
+  }
+  .radar-main { min-width: 0; }
+  .radar-champions {
+    background: var(--bg-soft);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+  }
+  .radar-champions h4 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--accent);
+  }
+  .radar-champions ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .radar-champions li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 0.85rem;
+  }
+  .radar-champions li:last-child { border-bottom: 0; }
+  .champ-dim {
+    grid-column: 1;
+    color: var(--fg-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .champ-name {
+    grid-column: 1;
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .champ-score {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+    background: #fbbf24;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .radar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: .85rem;
+  }
+  .radar-legend .item {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    cursor: pointer;
+    user-select: none;
+    color: var(--fg-soft);
+    transition: all .15s;
+  }
+  .radar-legend .item:hover {
+    background: var(--bg-deeper);
+    color: var(--fg);
+    transform: translateY(-1px);
+  }
+  .radar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: .85rem;
+  }
+  .radar-legend .item {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    cursor: pointer;
+    user-select: none;
+    color: var(--fg-soft);
+    transition: opacity .15s;
+  }
+  .radar-legend .item:hover { color: var(--fg); }
+  .radar-legend .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    box-shadow: var(--shadow-xs);
+  }
+
+/* ============================================================
+     HEATMAP — 功能重叠矩阵（升级版）
+     ============================================================ */
+  .heatmap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-md);
+  }
+  .heatmap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+  }
+  .heatmap th, .heatmap td {
+    padding: .85rem .9rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    transition: background .15s;
+  }
+  .heatmap th {
+    background: var(--bg-soft);
+    font-weight: 700;
+    font-size: .85rem;
+    color: var(--fg);
+    letter-spacing: 0.02em;
+  }
+  .heatmap td.feature-name {
+    text-align: left;
+    font-weight: 600;
+    color: var(--fg);
+    background: var(--bg-elev);
+    border-right: 2px solid var(--line-strong);
+  }
+  .heatmap tr:hover td { background: var(--bg-soft); }
+  .heatmap td.yes {
+    background: var(--good-soft);
+    color: var(--good);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .heatmap tr:hover td.yes { background: var(--good); color: white; }
+  .heatmap td.no {
+    color: var(--fg-mute);
+    opacity: .4;
+    font-size: 1rem;
+  }
+  .heatmap td.partial {
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .heatmap tr:hover td.partial { background: var(--warn); color: white; }
+
+  /* ============================================================
+     FEATURE CATALOG — 功能全集
+     ============================================================ */
+  .feature-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.5rem;
+  }
+  .fc-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s, box-shadow .18s;
+  }
+  .fc-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--card-color, var(--accent));
+  }
+  .fc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .fc-head {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .fc-mark {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: var(--card-color, var(--accent));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+  }
+  .fc-name {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--fg);
+    text-decoration: none;
+    border-bottom: 2px solid var(--card-color, var(--accent));
+    line-height: 1.1;
+    display: inline-block;
+    transition: color .15s;
+  }
+  .fc-name:hover { color: var(--card-color, var(--accent)); }
+  .fc-stats {
+    font-size: .75rem;
+    color: var(--fg-mute);
+    margin-top: .35rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-weight: 600;
+  }
+  .fc-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid var(--card-color, var(--accent));
+    color: var(--card-color, var(--accent));
+    text-decoration: none;
+    font-size: 1rem;
+    transition: all .15s;
+  }
+  .fc-link:hover {
+    background: var(--card-color, var(--accent));
+    color: white;
+    transform: scale(1.05);
+  }
+
+  .fc-screenshot {
+    margin-bottom: 1.25rem;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    position: relative;
+  }
+  .fc-screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform .3s ease;
+  }
+  .fc-screenshot:hover img {
+    transform: scale(1.02);
+  }
+  .fc-screenshot a {
+    display: block;
+    text-decoration: none;
+    border: 0;
+  }
+  .fc-shot-label {
+    text-align: center;
+    font-size: .75rem;
+    color: var(--fg-mute);
+    padding: .4rem 0;
+    background: var(--bg-elev);
+    border-top: 1px solid var(--line);
+    letter-spacing: .03em;
+  }
+
+  .fc-cat-group {
+    margin-bottom: 1rem;
+  }
+  .fc-cat-group:last-child { margin-bottom: 0; }
+  .fc-cat-label {
+    font-family: var(--font-body);
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--card-color, var(--accent));
+    margin-bottom: .5rem;
+    padding-bottom: .35rem;
+    border-bottom: 1px dashed var(--line);
+  }
+  .fc-cat-items {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+  }
+  .fc-item {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) 2fr;
+    gap: .75rem;
+    align-items: baseline;
+    padding: .35rem 0;
+    font-size: .85rem;
+  }
+  .fc-item-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--fg);
+    line-height: 1.3;
+  }
+  .fc-item-desc {
+    color: var(--fg-mute);
+    font-size: .82rem;
+    line-height: 1.4;
+  }
+
+  .fc-source-note {
+    margin-top: 2rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-soft);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--accent);
+    font-size: .88rem;
+    color: var(--fg-soft);
+    line-height: 1.7;
+  }
+  .fc-source-note a {
+    color: var(--accent);
+    border-bottom: 1px dotted var(--accent);
+  }
+  .fc-source-note a:hover { border-bottom-style: solid; }
+
+  /* ============================================================
+     OPPORTUNITIES — 机会卡片
+     ============================================================ */
+  .opp {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s, box-shadow .18s;
+  }
+  .opp:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .opp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .opp-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--fg);
+    line-height: 1.25;
+  }
+  .opp-title .rank {
+    font-family: var(--font-display);
+    color: var(--accent);
+    font-size: .9em;
+    margin-right: .5rem;
+    font-style: italic;
+    font-weight: 700;
+  }
+  .opp-score {
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: .75rem;
+    font-weight: 700;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .opp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem 1.5rem;
+    margin-top: 1rem;
+  }
+  .opp-field { font-size: .9rem; }
+  .opp-field dt {
+    font-family: var(--font-body);
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 700;
+    color: var(--fg-mute);
+    margin-bottom: .35rem;
+  }
+  .opp-field dd { margin: 0 0 .5rem; color: var(--fg-soft); line-height: 1.55; }
+  .opp-field-wide { grid-column: 1 / -1; }
+
+  /* ============================================================
+     灵感来源 — 引用框样式
+     ============================================================ */
+  .opp-inspire {
+    position: relative;
+    background: linear-gradient(135deg, var(--bg-soft), var(--bg-elev));
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: .85rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .opp-inspire-label {
+    font-family: var(--font-body);
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: var(--accent);
+    margin-bottom: .35rem;
+  }
+  .opp-inspire-quote {
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    line-height: 1.55;
+    color: var(--fg);
+    font-style: italic;
+    position: relative;
+    padding-left: 0;
+  }
+  .opp-inspire-quote::before {
+    content: "\201C";
+    color: var(--accent);
+    font-size: 1.6em;
+    font-style: normal;
+    margin-right: .1em;
+    vertical-align: -.18em;
+    line-height: 0;
+    font-family: serif;
+  }
+
+  /* ============================================================
+     护城河 — 独立卡片 + 渐变背景
+     ============================================================ */
+  .moat-card {
+    display: block;
+    padding: .85rem 1.1rem;
+    background: linear-gradient(135deg, var(--good-soft), var(--bg-elev));
+    border: 1.5px solid var(--good);
+    border-radius: var(--radius-md);
+    color: var(--fg);
+    font-size: .92rem;
+    line-height: 1.55;
+    font-weight: 500;
+    position: relative;
+    box-shadow: var(--shadow-xs);
+  }
+  .moat-card::before {
+    content: "🛡";
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: var(--bg-elev);
+    padding: 0 .35rem;
+    font-size: 1.1rem;
+  }
+
+  /* ============================================================
+     Theme toggle
+     ============================================================ */
+  .theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: .45rem .85rem;
+    font-size: .8rem;
+    color: var(--fg-soft);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    font-family: inherit;
+    z-index: 100;
+    transition: color .15s, border-color .15s;
+  }
+  .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ============================================================
+     Footer
+     ============================================================ */
+  footer {
+    margin-top: 5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+    color: var(--fg-mute);
+    font-size: .85rem;
+    text-align: center;
+  }
+  footer .signoff {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--fg-soft);
+    margin-bottom: .5rem;
+  }
+
+  /* ============================================================
+     Responsive
+     ============================================================ */
+  @media (max-width: 900px) {
+    .exec { grid-template-columns: 1fr; gap: 1.5rem; }
+    .sec-head { grid-template-columns: 1fr; gap: .5rem; }
+    .sec-num { font-size: 2.5rem; }
+
+  }
+  @media (max-width: 600px) {
+    .wrap { padding: 0 1rem 3rem; }
+    .hero { padding: 2rem 0 1.5rem; }
+  }
+
+  /* ============================================================
+     Print
+     ============================================================ */
+  @media print {
+    .theme-toggle { display: none; }
+    .card, .opp, .rec, .radar-wrap, .heatmap {
+      break-inside: avoid;
+      box-shadow: none;
+    }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌗 主题</button>
+
+<div class="wrap">
+
+  <!-- HERO ============================================== -->
+  <header class="hero">
+    <span class="hero-eyebrow">YOUZI · 战略竞争情报</span>
+    <h1>{{topic}}<br><span class="accent">{{topic_accent}}</span></h1>
+    <p class="lede">{{subtitle}}</p>
+    <div class="meta">
+      <span>📅 <strong>{{date}}</strong></span>
+      <span>🏷 分析 <strong>{{competitor_count}}</strong> 个竞品</span>
+      <span>💡 挖掘 <strong>{{opportunity_count}}</strong> 个颠覆性机会</span>
+      <span>⏱ 由 <a href="https://docs.claude.com">Claude /youzi</a> 生成</span>
+    </div>
+  </header>
+
+<!-- TOC ============================================== -->
+  <nav style="margin: 2.5rem 0 3.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line);">
+    <h4 style="margin-bottom: .75rem;">📑 报告导览</h4>
+    <ol style="margin: 0; padding-left: 0; list-style: none; columns: 3; column-gap: 2rem;">
+      {% for item in toc_items %}
+      <li style="padding: .25rem 0;"><a href="#{{item.id}}">{{ "%02d"|format(loop.index) }} · {{item.title}}</a></li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  <!-- MARKET SEGMENTS =================================== -->
+  <section id="segments">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div>
+        <h2 class="sec-title">市场细分</h2>
+        <div class="sec-subtitle">Market Segments · 玩家分群</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      {% for seg in market_segments %}
+      <div class="card" style="--card-color: var(--data-{{loop.index0_mod6}})">
+        <div class="card-head">
+          <div class="card-mark">{{seg.label|slice:2}}</div>
+          <div>
+            <h3 class="card-name">{{seg.label}}</h3>
+            <div class="card-sub">{{seg.desc}}</div>
+          </div>
+          <span class="pill">{{seg.players_count}} 家</span>
+        </div>
+        <div>
+          {% for p in seg.players %}<span class="pill info">{{p}}</span>{% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+    <!-- COMPETITORS ======================================= -->
+  <section id="competitors">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div>
+        <h2 class="sec-title">竞品画像</h2>
+        <div class="sec-subtitle">Competitor Profiles · {{competitor_count}} 家逐家拆解</div>
+      </div>
+    </div>
+    <div class="card-grid competitors">
+      {% for c in competitors %}
+      <div class="card" id="c-{{c.slug}}" style="--card-color: var(--data-{{loop.index0_mod6}})">
+        <div class="card-head">
+          <div class="card-mark">{{c.icon|default:c.name|slice:2}}</div>
+          <div class="card-head-main">
+            <h3 class="card-name">{{c.name}}</h3>
+            <div class="card-sub">{{c.founded}} 年成立 · {{c.stage}}</div>
+          </div>
+          <a class="card-link" href="{{c.url}}" target="_blank" rel="noopener" title="访问 {{c.name}} 官网">
+            🌐 访问官网 →
+          </a>
+        </div>
+
+        <p class="card-tagline">{{c.tagline}}</p>
+
+        <div class="card-section-title">目标用户</div>
+        <div>{% for u in c.target_users %}<span class="pill">{{u}}</span>{% endfor %}</div>
+
+        <div class="card-section-title">核心能力</div>
+        <div>{% for f in c.core_features %}<span class="pill info">{{f}}</span>{% endfor %}</div>
+
+        <div class="card-section-title" style="color: var(--accent);">▦ 功能全景</div>
+        <div class="feature-pano">
+          {% for f in c.core_features %}
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">{{f}}</span>
+          </div>
+          {% endfor %}
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">API & Webhook 集成</span>
+          </div>
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">多渠道统一收件箱</span>
+          </div>
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">自动化流程编排</span>
+          </div>
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">模板消息管理</span>
+          </div>
+          <div class="fp-item">
+            <span class="fp-check">✓</span>
+            <span class="fp-label">数据看板 / 报表</span>
+          </div>
+        </div>
+
+        <div class="card-section-title">六维评分</div>
+        <div class="score-row">
+          <span class="label">功能丰富度</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.feature_richness}}0%"></span></span>
+          <span class="num">{{c.scores.feature_richness}}</span>
+        </div>
+        <div class="score-row">
+          <span class="label">用户体验</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.ux}}0%"></span></span>
+          <span class="num">{{c.scores.ux}}</span>
+        </div>
+        <div class="score-row">
+          <span class="label">定价性价比</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.pricing_value}}0%"></span></span>
+          <span class="num">{{c.scores.pricing_value}}</span>
+        </div>
+        <div class="score-row">
+          <span class="label">生态集成</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.integration}}0%"></span></span>
+          <span class="num">{{c.scores.integration}}</span>
+        </div>
+        <div class="score-row">
+          <span class="label">AI 能力</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.ai_capability}}0%"></span></span>
+          <span class="num">{{c.scores.ai_capability}}</span>
+        </div>
+        <div class="score-row">
+          <span class="label">增长势头</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.momentum}}0%"></span></span>
+          <span class="num">{{c.scores.momentum}}</span>
+        </div>
+
+        <div class="card-section-title" style="color: var(--good);">✓ 强项</div>
+        <ul class="sw-list">
+          {% for s in c.strengths %}
+          <li>
+            <div class="sw-point"><span class="sw-badge s">{{s.score}}</span>{{s.point}}</div>
+            <div class="sw-ev">📎 {{s.evidence}}</div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <div class="card-section-title" style="color: var(--bad);">✗ 弱项</div>
+        <ul class="sw-list">
+          {% for w in c.weaknesses %}
+          <li>
+            <div class="sw-point"><span class="sw-badge w">{{w.score}}</span>{{w.point}}</div>
+            <div class="sw-ev">📎 {{w.evidence}}</div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        {% if c.differentiators %}
+        <div class="card-section-title" style="color: var(--accent);">★ 杀手锏</div>
+        <div class="diff-list">
+          {% for d in c.differentiators %}
+          <div class="diff-item">
+            <span class="diff-bullet">★</span>
+            <span class="diff-text">{{d}}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- RADAR ============================================= -->
+  <section id="radar">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div>
+        <h2 class="sec-title">六维雷达对比</h2>
+        <div class="sec-subtitle">Six-Dimensional Comparison · 点击图例显隐</div>
+      </div>
+    </div>
+    <div class="radar-wrap">
+      <div class="radar-grid">
+        <div class="radar-main">{{!radar_svg}}</div>
+        <aside class="radar-champions">
+          <h4>★ 每维度冠军</h4>
+          <ul>
+            {% for dim in champions %}
+            <li>
+              <span class="champ-dim">{{dim.label}}</span>
+              <span class="champ-name">{{dim.winner}}</span>
+              <span class="champ-score">{{dim.score}}/10</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </aside>
+      </div>
+      <div class="radar-legend">{{!radar_legend}}</div>
+    </div>
+  </section>
+
+  <!-- FEATURE CATALOG ========================================== -->
+  <section id="feature-catalog">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div>
+        <h2 class="sec-title">功能全集</h2>
+        <div class="sec-subtitle">Feature Catalog · {{feature_total_count}} 项功能 · 基于 firecrawl 抓取各竞品官网</div>
+      </div>
+    </div>
+    <p style="color: var(--fg-soft); margin-bottom: 1.5rem; font-size: 0.92rem;">
+      每个竞品的<a href="{{features_source}}" target="_blank" rel="noopener" style="color: var(--accent);">官网功能页</a> 真实抓取（合计 {{features_total_bytes}} 字符）。
+      点击竞品名可跳转其功能页。下表按 <strong>类别</strong> 分组展示所有功能点。
+    </p>
+
+    <div class="feature-catalog-grid">
+      {% for comp in feature_catalog_companies %}
+      <div class="fc-card" style="--card-color: var(--data-{{loop.index0_mod6}})">
+        <div class="fc-head">
+          <div class="fc-mark">{{comp.icon}}</div>
+          <div class="fc-head-main">
+            <a href="{{comp.url}}" target="_blank" rel="noopener" class="fc-name">{{comp.name}}</a>
+            <div class="fc-stats">{{comp.feature_count}} 项功能 · {{comp.category_count}} 个类别</div>
+          </div>
+          <a class="fc-link" href="{{comp.url}}" target="_blank" rel="noopener" title="访问官网">🌐</a>
+        </div>
+
+        {% if comp.screenshot_b64 %}
+        <div class="fc-screenshot">
+          <a href="{{comp.url}}" target="_blank" rel="noopener">
+            <img src="data:image/{{comp.screenshot_ext}};base64,{{comp.screenshot_b64}}" alt="{{comp.name}} 官网截图" loading="lazy"/>
+          </a>
+          <div class="fc-shot-label">↑ 点击查看 {{comp.name}} 完整功能页</div>
+        </div>
+        {% endif %}
+
+        {% for cat_name, cat_features in comp.categories %}
+        <div class="fc-cat-group">
+          <div class="fc-cat-label">{{cat_name}}</div>
+          <div class="fc-cat-items">
+            {% for f in cat_features %}
+            <div class="fc-item">
+              <span class="fc-item-name">{{f.name}}</span>
+              <span class="fc-item-desc">{{f.desc}}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="fc-source-note">
+      <strong>📡 数据来源</strong>：所有功能均通过 firecrawl 在 2026-08-15 抓取各竞品官方功能页面：
+      <a href="https://www.wati.io/features" target="_blank">wati.io/features</a> ·
+      <a href="https://www.ycloud.com/whatsapp-business-api" target="_blank">ycloud.com</a> ·
+      <a href="https://www.omnichat.ai/whatsapp-business-api" target="_blank">omnichat.ai</a> ·
+      <a href="https://www.infobip.com/products/whatsapp-business" target="_blank">infobip.com</a> ·
+      <a href="https://www.cm.com/platform" target="_blank">cm.com</a> ·
+      <a href="https://respond.io/features" target="_blank">respond.io</a>
+    </div>
+  </section>
+
+  <!-- FEATURE HEATMAP =================================== -->
+  <section id="features">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <div>
+        <h2 class="sec-title">功能矩阵</h2>
+        <div class="sec-subtitle">Feature Overlap · ✅ 标配 / ⚠ 部分 / ❌ 没有</div>
+      </div>
+    </div>
+    <div class="heatmap">{{!heatmap_html}}</div>
+  </section>
+
+  <!-- GAPS ============================================== -->
+  <section id="gaps">
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <div>
+        <h2 class="sec-title">市场空白</h2>
+        <div class="sec-subtitle">Unmet Needs · 所有头部都没解决的痛点</div>
+      </div>
+    </div>
+    {% for g in gaps %}
+    <div class="opp">
+      <div class="opp-head">
+        <div class="opp-title">{{g.gap}}</div>
+        <span class="opp-score" style="background: var(--{% if g.severity == 'high' %}bad{% elif g.severity == 'medium' %}warn{% else %}info{% endif %});">
+          {{g.severity|upper}}
+        </span>
+      </div>
+      <p style="color: var(--fg-soft); margin-top: .5rem;">{{g.evidence}}</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- OPPORTUNITIES ===================================== -->
+  <section id="opportunities">
+    <div class="sec-head">
+      <div class="sec-num">07</div>
+      <div>
+        <h2 class="sec-title">颠覆性产品机会</h2>
+        <div class="sec-subtitle">Disruptive Opportunities · 按颠覆指数排序</div>
+      </div>
+    </div>
+    {% for o in opportunities %}
+    <div class="opp">
+      <div class="opp-head">
+        <div class="opp-title"><span class="rank">#{{loop.index}}</span> {{o.title}}</div>
+        <span class="opp-score">颠覆性 {{o.disrupt_score}}/10</span>
+      </div>
+      <div class="opp-inspire">
+        <div class="opp-inspire-label">灵感来源</div>
+        <div class="opp-inspire-quote">"{{o.inspiration}}"</div>
+      </div>
+
+      <dl class="opp-grid">
+        <div class="opp-field">
+          <dt>🎯 目标用户</dt>
+          <dd>{% for u in o.target_users %}<span class="pill">{{u}}</span>{% endfor %}</dd>
+        </div>
+        <div class="opp-field">
+          <dt>💡 差异化</dt>
+          <dd>{% for d in o.differentiators %}<span class="pill info">{{d}}</span>{% endfor %}</dd>
+        </div>
+        <div class="opp-field">
+          <dt>📊 可量化验证</dt>
+          <dd>{% for v in o.validation %}<span class="pill good">{{v}}</span>{% endfor %}</dd>
+        </div>
+        <div class="opp-field opp-field-wide">
+          <dt>🛡 护城河</dt>
+          <dd><div class="moat-card">{{o.moat}}</div></dd>
+        </div>
+      </dl>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- PRICING COMPARISON ================================ -->
+  <section id="pricing">
+    <div class="sec-head">
+      <div class="sec-num">08</div>
+      <div>
+        <h2 class="sec-title">定价对照</h2>
+        <div class="sec-subtitle">Pricing Comparison · 按性价比排名</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      {% for c in competitors_sorted_by_pricing %}
+      <div class="card" style="--card-color: var(--data-{{loop.index0_mod6}})">
+        <div class="card-head">
+          <div class="card-mark">{{c.icon|default:c.name|slice:2}}</div>
+          <div>
+            <h3 class="card-name">{{c.name}}</h3>
+            <div class="card-sub">{{c.pricing}}</div>
+          </div>
+        </div>
+        <div class="score-row" style="margin-top: 1rem;">
+          <span class="label">性价比评分</span>
+          <span class="track"><span class="fill" style="width: {{c.scores.pricing_value}}0%"></span></span>
+          <span class="num">{{c.scores.pricing_value}}/10</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+
+  <footer>
+    <p class="signoff">YOUZI · 战略竞争情报</p>
+    <p>由 <a href="https://docs.claude.com">Claude Code</a> 驱动 · 真实数据 · 可执行洞察</p>
+  </footer>
+</div>
+
+<script>
+  // 主题切换
+  (function() {
+    const saved = localStorage.getItem('youzi-theme');
+    if (saved === 'dark' || saved === 'light') {
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  })();
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    let next;
+    if (cur === 'dark') next = 'light';
+    else if (cur === 'light') next = 'dark';
+    else next = (sys === 'dark' ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('youzi-theme', next);
+  }
+
+  // 雷达图图例：点击显隐
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.radar-legend .item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        const key = this.getAttribute('data-key');
+        const path = document.querySelector('.radar-poly[data-key="' + key + '"]');
+        const dot = this.querySelector('.dot');
+        if (!path) return;
+        const hidden = path.style.display === 'none';
+        path.style.display = hidden ? '' : 'none';
+        dot.style.opacity = hidden ? '1' : '.3';
+      });
+    });
+  });
+</script>
+</body>
+</html>
