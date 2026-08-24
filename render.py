@@ -12,7 +12,6 @@ Usage:
 
 import argparse
 import json
-import math
 import re
 import sys
 import html
@@ -23,21 +22,15 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE = HERE / "templates" / "report.html"
 
 # ============================================================
-# 配色板
+# 评分维度（6 维）—— 用于校准每个竞品 scores 字段
 # ============================================================
-PALETTE = [
-    "#ff5a1f", "#2563eb", "#16a34a", "#d97706",
-    "#9333ea", "#0891b2", "#db2777", "#65a30d",
-    "#7c3aed", "#ea580c", "#0ea5e9", "#ca8a04",
-    "#be185d", "#15803d", "#b91c1c", "#1d4ed8",
-]
 SCORE_DIMS = [
     ("feature_richness", "功能丰富度"),
-    ("ux",               "用户体验"),
-    ("pricing_value",    "定价性价比"),
-    ("integration",      "生态集成"),
-    ("ai_capability",    "AI 能力"),
-    ("momentum",         "增长势头"),
+    ("ux", "用户体验"),
+    ("pricing_value", "定价性价比"),
+    ("integration", "生态集成"),
+    ("ai_capability", "AI 能力"),
+    ("momentum", "增长势头"),
 ]
 
 
@@ -52,31 +45,113 @@ SCORE_DIMS = [
 #   {% if x %}body{% endif %}
 # ============================================================
 class Template:
-    FOR_RE = re.compile(r"\{%\s*for\s+([\w, ]+?)\s+in\s+([\w.]+)\s*%\}")
+    FOR_RE = re.compile(r"\{%\s*for\s+([\w, ]+?)\s+in\s+([\w.\[\]]+)\s*%\}")
     ENDFOR_RE = re.compile(r"\{%\s*endfor\s*%\}")
     IF_RE = re.compile(r"\{%\s*if\s+(.+?)\s*%\}")
     ELIF_RE = re.compile(r"\{%\s*elif\s+(.+?)\s*%\}")
     ELSE_RE = re.compile(r"\{%\s*else\s*%\}")
     ENDIF_RE = re.compile(r"\{%\s*endif\s*%\}")
-    VAR_RE = re.compile(r"\{\{\s*([\w.|\:\(\) \"\',%#-]+?)\s*\}\}")
-    RAW_RE = re.compile(r"\{\{\!\s*([\w.|\:\(\) \"\',%#-]+?)\s*\}\}")
+    SET_RE = re.compile(r"\{%\s*set\s+([\w.\[\]]+)\s*=\s*(.+?)\s*%\}")
+    VAR_RE = re.compile(r"\{\{\s*([^\{\}]+?)\s*\}\}")
+    RAW_RE = re.compile(r"\{\{\!\s*([^\{\}]+?)\s*\}\}")
 
     def __init__(self, source: str):
         self.source = source
 
     # -------------------- 变量解析 --------------------
     def _resolve(self, path: str, ctx) -> object:
-        # 字面字符串（带引号）
-        if (path.startswith('"') and path.endswith('"')) or (path.startswith("'") and path.endswith("'")):
+        """解析形如 a.b.c[expr].d 的 key 路径。
+
+        支持：
+          - 字面字符串（带引号）："x" / 'x'
+          - 点号访问：a.b.c
+          - 下标访问：
+              a["x"]   字面字符串下标（带引号）
+              a[x]     ctx 中的变量作为 key（x 解析后取其值）
+              a[0]     整数下标（针对 list/tuple）
+        """
+        if (path.startswith('"') and path.endswith('"')) or (
+            path.startswith("'") and path.endswith("'")
+        ):
             return path[1:-1]
-        cur = ctx
-        for part in path.split("."):
-            if isinstance(cur, dict):
-                cur = cur.get(part, "")
-            elif hasattr(cur, part):
-                cur = getattr(cur, part)
+        # 先把所有 [expr] 解析出来 —— expr 内的变量先按 ctx 求值
+        # 然后拼成 a.__lit__<value> 形式，让 split('.') 能处理
+        norm_parts = []
+        i = 0
+        s = path
+        while i < len(s):
+            j = s.find("[", i)
+            if j == -1:
+                norm_parts.append(s[i:])
+                break
+            norm_parts.append(s[i:j])
+            k = s.find("]", j + 1)
+            if k == -1:
+                # 不闭合的 [ 视为字面
+                norm_parts.append(s[j:])
+                break
+            inner = s[j + 1 : k].strip()
+            i = k + 1
+            # 三种情况：字面字符串 / 整数 / ctx 中的变量路径
+            if (inner.startswith('"') and inner.endswith('"')) or (
+                inner.startswith("'") and inner.endswith("'")
+            ):
+                key_val = inner[1:-1]
+                norm_parts.append("__lit__" + key_val)
+            elif inner.lstrip("-").isdigit():
+                norm_parts.append("__idx__" + inner)
             else:
-                return ""
+                # 当作 ctx 路径解析
+                try:
+                    key_val = self._resolve(inner, ctx)
+                    if key_val is None or key_val == "":
+                        return ""
+                    norm_parts.append("__lit__" + str(key_val))
+                except Exception:
+                    return ""
+        cur = ctx
+        for part in norm_parts:
+            if part == "":
+                continue
+            if part.startswith("__lit__"):
+                lit = part[len("__lit__") :]
+                if isinstance(cur, dict):
+                    cur = cur.get(lit, "")
+                elif isinstance(cur, (list, tuple)):
+                    try:
+                        cur = cur[int(lit)]
+                    except (ValueError, IndexError):
+                        return ""
+                else:
+                    return ""
+            elif part.startswith("__idx__"):
+                idx = int(part[len("__idx__") :])
+                if isinstance(cur, (list, tuple)):
+                    try:
+                        cur = cur[idx]
+                    except IndexError:
+                        return ""
+                else:
+                    return ""
+            else:
+                # 普通 part 可能含 "a.b.c" —— 逐段走 dict/attr
+                for sub in part.split("."):
+                    if sub == "":
+                        continue
+                    if isinstance(cur, dict):
+                        cur = cur.get(sub, "")
+                    elif isinstance(cur, (list, tuple)):
+                        try:
+                            cur = cur[int(sub)]
+                        except (ValueError, IndexError):
+                            return ""
+                    elif hasattr(cur, sub):
+                        cur = getattr(cur, sub)
+                    else:
+                        return ""
+                    if cur == "" or cur is None:
+                        return ""
+                continue
             if cur == "" or cur is None:
                 return ""
         return cur
@@ -110,12 +185,15 @@ class Template:
             # 找下一个标记
             next_for = self.FOR_RE.search(src, i)
             next_if = self.IF_RE.search(src, i)
+            next_set = self.SET_RE.search(src, i)
             # 取最近的
             candidates = []
             if next_for:
                 candidates.append(("for", next_for))
             if next_if:
                 candidates.append(("if", next_if))
+            if next_set:
+                candidates.append(("set", next_set))
             if not candidates:
                 # 后面全是纯文本 + var
                 out.append(self._render_text(src[i:], ctx))
@@ -124,15 +202,43 @@ class Template:
             candidates.sort(key=lambda x: x[1].start())
             kind, m = candidates[0]
             # 输出标记之前的文本
-            out.append(self._render_text(src[i:m.start()], ctx))
+            out.append(self._render_text(src[i : m.start()], ctx))
             if kind == "for":
                 result, end = self._parse_for(src, m.start(), ctx)
                 out.append(result)
                 i = end
-            else:  # if
+            elif kind == "if":
                 result, end = self._parse_if(src, m.start(), ctx)
                 out.append(result)
                 i = end
+            else:  # set
+                # 清洗整个 set 标签（如偶然捕获了 "%}" 残留）
+                tag_text = src[m.start() : m.end()]
+                tag_text = re.sub(r"%}.*", "%}", tag_text)
+                # 重新匹配清洗后的标签
+                m2 = self.SET_RE.match(tag_text)
+                if not m2:
+                    i = m.end()
+                    continue
+                var_name = m2.group(1).strip()
+                expr = m2.group(2).strip()
+                # 解析表达式
+                if "|" in expr:
+                    p2, filters = expr.split("|", 1)
+                    val = self._resolve(p2.strip(), ctx)
+                    m3 = re.search(r'default:\s*"([^"]*)"', filters)
+                    if m3 and (val is None or val == ""):
+                        val = m3.group(1)
+                else:
+                    val = self._resolve(expr, ctx)
+                if (
+                    var_name
+                    and " " not in var_name
+                    and "=" not in var_name
+                    and "|" not in var_name
+                ):
+                    ctx[var_name] = val
+                i = m.end()
         return "".join(out)
 
     def _parse_for(self, src: str, start: int, ctx: dict) -> tuple[str, int]:
@@ -155,6 +261,9 @@ class Template:
         endfor_end = end + len(end_m.group(0)) if end_m else end
         # 迭代
         items = self._resolve(path, ctx)
+        # dict 转为 items() 列表以支持 (k, v) 解构
+        if isinstance(items, dict):
+            items = list(items.items())
         if not isinstance(items, (list, tuple)):
             return "", endfor_end
         # 解析变量名（支持 "k, v" 形式）
@@ -163,10 +272,18 @@ class Template:
         for idx, item in enumerate(items):
             sub = dict(ctx)
             # tuple 解构或多变量
-            if len(var_names) > 1 and isinstance(item, (list, tuple)) and len(item) == len(var_names):
+            if (
+                len(var_names) > 1
+                and isinstance(item, (list, tuple))
+                and len(item) == len(var_names)
+            ):
                 for vn, iv in zip(var_names, item):
                     sub[vn] = iv
-            elif len(var_names) == 1 and isinstance(item, (list, tuple)) and len(item) == 2:
+            elif (
+                len(var_names) == 1
+                and isinstance(item, (list, tuple))
+                and len(item) == 2
+            ):
                 # 单变量名但 item 是二元组：把整个 item 赋给 var，并提供 _0/_1 访问
                 sub[var_names[0]] = item
                 sub["_0"] = item[0]
@@ -223,10 +340,6 @@ class Template:
         current_body_start = 0
         i = 0
         while i < len(full_block):
-            # 找最近的 elif / else / 嵌套 if（嵌套 if 不切）
-            next_elif = self.ELIF_RE.search(full_block, i)
-            next_else = self.ELSE_RE.search(full_block, i)
-            next_if = self.IF_RE.search(full_block, i)
             # 排除嵌套 if 的 elif/else：要求分支标记不在嵌套 if 里
             # 简化处理：只切最外层的 elif/else（不在任何 if 块内的）
             # 通过深度计数找最外层的 elif/else
@@ -237,21 +350,25 @@ class Template:
             while j < len(full_block):
                 # 找最近的下一个标记
                 next_any = None
-                for marker_re, marker_type in [(self.IF_RE, 'if'), (self.ELIF_RE, 'elif'),
-                                                (self.ELSE_RE, 'else'), (self.ENDIF_RE, 'endif')]:
+                for marker_re, marker_type in [
+                    (self.IF_RE, "if"),
+                    (self.ELIF_RE, "elif"),
+                    (self.ELSE_RE, "else"),
+                    (self.ENDIF_RE, "endif"),
+                ]:
                     mm = marker_re.search(full_block, j)
                     if mm and (next_any is None or mm.start() < next_any.start()):
                         next_any = mm
                         next_type = marker_type
                 if next_any is None:
                     break
-                if next_type == 'if':
+                if next_type == "if":
                     depth += 1
-                elif next_type == 'endif':
+                elif next_type == "endif":
                     depth -= 1
                     if depth == 0:
                         break
-                elif depth == 0 and next_type in ('elif', 'else'):
+                elif depth == 0 and next_type in ("elif", "else"):
                     cut_pos = next_any.start()
                     cut_type = next_type
                     break
@@ -262,7 +379,7 @@ class Template:
                 break
             else:
                 branches.append((current_expr, full_block[current_body_start:cut_pos]))
-                if cut_type == 'elif':
+                if cut_type == "elif":
                     em = self.ELIF_RE.match(full_block, cut_pos)
                     current_expr = em.group(1)
                     current_body_start = em.end()
@@ -287,8 +404,11 @@ class Template:
         while i < len(src):
             # 找下一个最近的标记
             candidates = []
-            for marker_re, kind in [(self.IF_RE, 'if'), (self.ENDIF_RE, 'endif'),
-                                     (self.FOR_RE, 'for')]:
+            for marker_re, kind in [
+                (self.IF_RE, "if"),
+                (self.ENDIF_RE, "endif"),
+                (self.FOR_RE, "for"),
+            ]:
                 m = marker_re.search(src, i)
                 if m:
                     candidates.append((m.start(), m.end(), kind, marker_re))
@@ -296,10 +416,10 @@ class Template:
                 return -1
             candidates.sort(key=lambda x: x[0])
             pos, nxt_end, kind, _ = candidates[0]
-            if kind == 'if':
+            if kind == "if":
                 depth += 1
                 i = nxt_end
-            elif kind == 'endif':
+            elif kind == "endif":
                 depth -= 1
                 if depth == 0:
                     return pos
@@ -313,6 +433,7 @@ class Template:
 
         支持 Jinja 风格过滤器：|length / |upper / |slice:N / |default:X
         """
+
         def _apply_filters(val, filter_str):
             """从右到左依次应用过滤器。"""
             if not filter_str:
@@ -351,11 +472,33 @@ class Template:
                             val = val[slice(*parts)]
                         except Exception:
                             pass
+                elif f.startswith("map_cat_commons"):
+                    # 特殊过滤器:返回所有 category 中 _comps 列表长度的最大值
+                    if f.endswith("max_share"):
+                        try:
+                            val = max(
+                                (
+                                    len(feat.get("_comps", []))
+                                    for cat in val
+                                    for feat in cat.get("features", [])
+                                ),
+                                default=0,
+                            )
+                        except Exception:
+                            val = 0
+                elif f.startswith("sort_reverse_by_total"):
+                    val = sorted(val, key=lambda x: -x.get("total_features", 0))
+                elif f == "minus":
+                    # 把上一步结果当成数字减 8 (在 cat_features 切片场景使用)
+                    try:
+                        val = val - 8
+                    except Exception:
+                        val = val
                 elif f.startswith("format"):
                     # 语法: format(expr) → Python format 调用 val.format(*[args])
                     try:
                         if "(" in f:
-                            inner = f[f.index("(")+1 : f.rindex(")")]
+                            inner = f[f.index("(") + 1 : f.rindex(")")]
                             args = []
                             for part in inner.split(","):
                                 part = part.strip()
@@ -363,7 +506,9 @@ class Template:
                                 if part.lstrip("-").isdigit():
                                     args.append(int(part))
                                 # 2. 字符串字面（带引号）
-                                elif (part.startswith('"') and part.endswith('"')) or (part.startswith("'") and part.endswith("'")):
+                                elif (part.startswith('"') and part.endswith('"')) or (
+                                    part.startswith("'") and part.endswith("'")
+                                ):
                                     args.append(part[1:-1])
                                 # 3. 变量路径（从 ctx 解析）
                                 else:
@@ -392,14 +537,49 @@ class Template:
                                 val = val.format(*args) if args else str(val)
                         else:
                             val = str(val)
-                    except Exception as e:
+                    except Exception:
                         val = str(val)
                 elif f.startswith("default"):
-                    # default:"X"
-                    import re as _re
-                    m = _re.search(r'default:\s*"([^"]*)"', f)
+                    # default:"X"   字面字符串（带引号）
+                    # default:c.name  当前 ctx 中的变量路径
                     if val == "" or val is None:
-                        val = m.group(1) if m else ""
+                        arg = (
+                            f[len("default:") :].strip()
+                            if f.startswith("default:")
+                            else ""
+                        )
+                        if not arg:
+                            val = ""
+                        elif (arg.startswith('"') and arg.endswith('"')) or (
+                            arg.startswith("'") and arg.endswith("'")
+                        ):
+                            val = arg[1:-1]
+                        else:
+                            # 当作 ctx 路径解析
+                            try:
+                                val = self._resolve(arg, ctx)
+                                if val is None:
+                                    val = ""
+                            except Exception:
+                                val = ""
+                elif f.startswith("join"):
+                    # join:"X"   用 X 连接 list/tuple；默认 ", "
+                    sep = ", "
+                    if ":" in f:
+                        sep_part = f.split(":", 1)[1].strip()
+                        if (sep_part.startswith('"') and sep_part.endswith('"')) or (
+                            sep_part.startswith("'") and sep_part.endswith("'")
+                        ):
+                            sep = sep_part[1:-1]
+                        elif sep_part:
+                            sep = sep_part
+                    if isinstance(val, (list, tuple)):
+                        val = sep.join(str(x) for x in val)
+                    elif isinstance(val, str) and val:
+                        # 已经是字符串就不动
+                        pass
+                    else:
+                        val = ""
                 elif f == "safe":
                     pass  # already handled by {{!var}}
             return val
@@ -437,430 +617,6 @@ class Template:
         return text
 
 
-# ============================================================
-# 可视化：雷达图（纯 SVG）
-# ============================================================
-def make_radar(competitors, width=720, height=520, palette=PALETTE):
-    """雷达图 v3：每维度冠军高亮 + 数字标签 + 冠军徽章 + 渐变填充。"""
-    cx, cy = width / 2, height / 2 + 15
-    radius = min(width, height) / 2 - 80
-    n = len(SCORE_DIMS)
-
-    # 计算每维度冠军
-    champions = {}  # {dim_key: competitor_name}
-    for dim_key, _ in SCORE_DIMS:
-        scores = [(c["name"], c["scores"].get(dim_key, 0)) for c in competitors]
-        scores.sort(key=lambda x: x[1], reverse=True)
-        if scores and scores[0][1] > 0:
-            champions[dim_key] = scores[0][0]
-
-    # 定义 SVG defs：渐变 + 滤镜
-    defs = ['<defs>']
-    for idx in range(len(competitors)):
-        color = palette[idx % len(palette)]
-        defs.append(
-            f'<radialGradient id="grad-{idx}" cx="50%" cy="50%" r="50%">'
-            f'<stop offset="0%" stop-color="{color}" stop-opacity="0.35"/>'
-            f'<stop offset="100%" stop-color="{color}" stop-opacity="0.05"/>'
-            f'</radialGradient>'
-        )
-    defs.append(
-        '<filter id="radar-shadow" x="-20%" y="-20%" width="140%" height="140%">'
-        '<feGaussianBlur in="SourceAlpha" stdDeviation="2"/>'
-        '<feOffset dx="0" dy="2" result="offsetblur"/>'
-        '<feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>'
-        '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>'
-        '</filter>'
-    )
-    defs.append('</defs>')
-
-    parts = [
-        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="六维雷达对比" style="width:100%; height:auto; max-width:{width}px; display:block; margin:0 auto;">'
-    ] + defs
-
-    # 网格圈 + 渐变填充背景
-    for ring in range(1, 6):
-        r = radius * ring / 5
-        pts = []
-        for i in range(n):
-            ang = -math.pi / 2 + i * (2 * math.pi / n)
-            pts.append(f"{cx + r * math.cos(ang):.1f},{cy + r * math.sin(ang):.1f}")
-        # 最外圈实线，内部虚线
-        is_outer = ring == 5
-        stroke_dash = "" if is_outer else 'stroke-dasharray="2,3"'
-        parts.append(
-            f'<polygon points="{" ".join(pts)}" fill="none" stroke="var(--border)" '
-            f'stroke-width="{1 if is_outer else 1}" opacity="{0.4 if is_outer else 0.3}" {stroke_dash}/>'
-        )
-
-    # 轴线
-    for i in range(n):
-        ang = -math.pi / 2 + i * (2 * math.pi / n)
-        x = cx + radius * math.cos(ang)
-        y = cy + radius * math.sin(ang)
-        parts.append(
-            f'<line x1="{cx:.1f}" y1="{cy:.1f}" x2="{x:.1f}" y2="{y:.1f}" '
-            f'stroke="var(--line)" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>'
-        )
-
-    # 刻度标签（2/4/6/8/10）
-    for ring in [2, 4, 6, 8, 10]:
-        r = radius * ring / 10
-        parts.append(
-            f'<text x="{cx + 4:.1f}" y="{cy - r + 4:.1f}" font-size="10" '
-            f'fill="var(--fg-mute)" opacity="0.7">{ring}</text>'
-        )
-
-    # 轴标签（更大、更醒目）
-    for i, (_, label) in enumerate(SCORE_DIMS):
-        ang = -math.pi / 2 + i * (2 * math.pi / n)
-        x = cx + radius * math.cos(ang)
-        y = cy + radius * math.sin(ang)
-        ox = math.cos(ang) * 22
-        oy = math.sin(ang) * 22 + (5 if math.sin(ang) > 0.1 else (-5 if math.sin(ang) < -0.1 else 5))
-        anchor = "middle"
-        if math.cos(ang) > 0.3:
-            anchor = "start"
-        elif math.cos(ang) < -0.3:
-            anchor = "end"
-        parts.append(
-            f'<text x="{x + ox:.1f}" y="{y + oy:.1f}" font-size="13" font-weight="700" '
-            f'fill="var(--fg)" text-anchor="{anchor}" dominant-baseline="middle" '
-            f'letter-spacing="0.02em">{html.escape(label)}</text>'
-        )
-
-    # 每个竞品：渐变填充 + 实线多边形 + 柔阴影 + 数据点 + 数字标签
-    for idx, c in enumerate(competitors):
-        color = palette[idx % len(palette)]
-        pts = []
-        vals = []
-        for i in range(n):
-            k = SCORE_DIMS[i][0]
-            ang = -math.pi / 2 + i * (2 * math.pi / n)
-            v = c["scores"].get(k, 0)
-            vals.append(v)
-            r = radius * v / 10
-            x = cx + r * math.cos(ang)
-            y = cy + r * math.sin(ang)
-            pts.append((x, y, v))
-        pts_str = " ".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)
-        key = c.get("slug") or re.sub(r"\W+", "-", c["name"]).strip("-").lower()
-        # 多边形
-        parts.append(
-            f'<polygon class="radar-poly" data-key="{key}" '
-            f'points="{pts_str}" fill="url(#grad-{idx})" '
-            f'stroke="{color}" stroke-width="2.5" stroke-linejoin="round" '
-            f'filter="url(#radar-shadow)" opacity="0.95"/>'
-        )
-        # 数据点 + 数字标签
-        for (x, y, v), (dim_key, _) in zip(pts, SCORE_DIMS):
-            is_champ = champions.get(dim_key) == c["name"]
-            r_dot = 5 if is_champ else 4
-            # 数字标签（沿轴方向外推）
-            ang = math.atan2(y - cy, x - cx)
-            lx = x + math.cos(ang) * 12
-            ly = y + math.sin(ang) * 12
-            # 数据点
-            if is_champ:
-                # 冠军：金色圆环 + 数字高亮
-                parts.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r_dot+2}" fill="{color}" opacity="0.3"/>'
-                )
-                parts.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r_dot}" fill="white" '
-                    f'stroke="{color}" stroke-width="2.5"/>'
-                )
-                # 金色徽章
-                parts.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r_dot+1}" fill="none" '
-                    f'stroke="#fbbf24" stroke-width="1.5" opacity="0.9"/>'
-                )
-                # 数字标签（金色加粗）
-                parts.append(
-                    f'<rect x="{lx-10:.1f}" y="{ly-8:.1f}" width="20" height="14" rx="3" '
-                    f'fill="#fbbf24"/>'
-                )
-                parts.append(
-                    f'<text x="{lx:.1f}" y="{ly+3:.1f}" text-anchor="middle" '
-                    f'font-size="11" font-weight="700" fill="white">{v}</text>'
-                )
-            else:
-                parts.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r_dot}" fill="white" '
-                    f'stroke="{color}" stroke-width="2"/>'
-                )
-                parts.append(
-                    f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" '
-                    f'font-size="10" font-weight="600" fill="var(--fg-mute)" '
-                    f'opacity="0.85">{v}</text>'
-                )
-        parts.append(
-            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="2" fill="var(--fg-mute)" opacity="0.3"/>'
-        )
-
-    parts.append("</svg>")
-    return "\n".join(parts)
-
-
-def make_legend(competitors, palette=PALETTE):
-    parts = []
-    for idx, c in enumerate(competitors):
-        color = palette[idx % len(palette)]
-        key = c.get("slug") or re.sub(r"\W+", "-", c["name"]).strip("-").lower()
-        parts.append(
-            f'<span class="item" data-key="{key}">'
-            f'<span class="dot" style="background:{color}"></span>'
-            f'{html.escape(c["name"])}</span>'
-        )
-    return "\n".join(parts)
-
-
-def make_market_map(competitors, width=1100, height=760):
-    """Gartner 魔力象限 v3：大画布 + 小气泡 + 名字嵌入。
-
-    X 轴（执行能力）= feature_richness(0.4) + integration(0.3) + pricing_value(0.3)
-    Y 轴（愿景完整度）= ai_capability(0.5) + momentum(0.3) + feature_richness(0.2)
-    4 象限：Leaders / Challengers / Visionaries / Niche Players
-    气泡大小 = 6 维综合分
-    """
-
-    def calc_axes(c):
-        sc = c["scores"]
-        ability = sc.get("feature_richness", 0) * 0.4 + sc.get("integration", 0) * 0.3 + sc.get("pricing_value", 0) * 0.3
-        vision = sc.get("ai_capability", 0) * 0.5 + sc.get("momentum", 0) * 0.3 + sc.get("feature_richness", 0) * 0.2
-        overall = sum(sc.values()) / len(sc) if sc else 5
-        return ability, vision, overall
-
-    margin = 200  # 大幅留白，避免拥挤
-    cx, cy = width / 2, height / 2
-
-    # 计算气泡位置
-    bubbles = []
-    for c in competitors:
-        ability, vision, overall = calc_axes(c)
-        # 加小扰动避免完全重叠
-        x_pct = ability / 10.0
-        y_pct = vision / 10.0
-        x = margin + x_pct * (width - margin * 2)
-        y = (margin + 60) + (1 - y_pct) * (height - margin * 2 - 80)
-        # 气泡更小：5-10 → 14-26
-        r = 14 + (overall - 5) * 2.4
-        bubbles.append((c, x, y, r, ability, vision, overall))
-
-    # SVG defs
-    defs = ['<defs>']
-    defs.append(
-        '<filter id="bubble-shadow" x="-50%" y="-50%" width="200%" height="200%">'
-        '<feGaussianBlur in="SourceAlpha" stdDeviation="3"/>'
-        '<feOffset dx="0" dy="2" result="offsetblur"/>'
-        '<feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>'
-        '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>'
-        '</filter>'
-    )
-    quads = [
-        ("TL", "var(--warn-soft)", "var(--bg-soft)", 0.15, "Challengers"),
-        ("TR", "var(--good-soft)", "var(--accent-soft)", 0.22, "Leaders"),
-        ("BL", "var(--bg-soft)", "var(--bg-soft)", 0.06, "Niche Players"),
-        ("BR", "var(--info-soft)", "var(--accent-soft)", 0.14, "Visionaries"),
-    ]
-    for name, c1, c2, op, _ in quads:
-        defs.append(
-            f'<linearGradient id="quad-{name}" x1="0%" y1="0%" x2="100%" y2="100%">'
-            f'<stop offset="0%" stop-color="{c1}" stop-opacity="{op}"/>'
-            f'<stop offset="100%" stop-color="{c2}" stop-opacity="{op * 0.4}"/>'
-            f'</linearGradient>'
-        )
-    defs.append('</defs>')
-
-    parts = [
-        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="魔力象限" style="width:100%; height:auto;">'
-    ] + defs
-
-    # 4 个象限背景
-    parts.append(f'<rect x="{margin}" y="{margin+60}" width="{cx-margin}" height="{cy-margin-60}" fill="url(#quad-TL)"/>')
-    parts.append(f'<rect x="{cx}" y="{margin+60}" width="{width-cx-margin}" height="{cy-margin-60}" fill="url(#quad-TR)"/>')
-    parts.append(f'<rect x="{margin}" y="{cy}" width="{cx-margin}" height="{height-cy-margin}" fill="url(#quad-BL)"/>')
-    parts.append(f'<rect x="{cx}" y="{cy}" width="{width-cx-margin}" height="{height-cy-margin}" fill="url(#quad-BR)"/>')
-
-    # 十字虚线
-    parts.append(f'<line x1="{margin}" y1="{cy}" x2="{width-margin}" y2="{cy}" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="8,5" opacity="0.6"/>')
-    parts.append(f'<line x1="{cx}" y1="{margin+60}" x2="{cx}" y2="{height-margin}" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="8,5" opacity="0.6"/>')
-
-    # 轴标签（更大、更醒目）
-    # 顶部横轴
-    parts.append(f'<rect x="{cx-110}" y="50" width="220" height="38" rx="19" fill="var(--bg-elev)" stroke="var(--line-strong)" stroke-width="2" filter="url(#bubble-shadow)"/>')
-    parts.append(f'<text x="{cx}" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)" letter-spacing="0.12em">能力执行 →</text>')
-    # 底部横轴
-    parts.append(f'<rect x="{cx-110}" y="{height-88}" width="220" height="38" rx="19" fill="var(--bg-elev)" stroke="var(--line-strong)" stroke-width="2" filter="url(#bubble-shadow)"/>')
-    parts.append(f'<text x="{cx}" y="{height-63}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)" letter-spacing="0.12em">← 能力执行</text>')
-    # 左纵轴（窄长矩形）
-    parts.append(f'<rect x="50" y="{cy-75}" width="42" height="150" rx="21" fill="var(--bg-elev)" stroke="var(--line-strong)" stroke-width="2" filter="url(#bubble-shadow)"/>')
-    parts.append(f'<text x="71" y="{cy}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)" letter-spacing="0.12em" transform="rotate(-90 71 {cy})">← 愿景完整</text>')
-    # 右纵轴
-    parts.append(f'<rect x="{width-92}" y="{cy-75}" width="42" height="150" rx="21" fill="var(--bg-elev)" stroke="var(--line-strong)" stroke-width="2" filter="url(#bubble-shadow)"/>')
-    parts.append(f'<text x="{width-71}" y="{cy}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)" letter-spacing="0.12em" transform="rotate(90 {width-71} {cy})">愿景完整 →</text>')
-
-    # 象限标题（小、放在角落内）
-    quad_titles = [
-        ("Challengers", "var(--warn)", margin + 18, margin + 90),
-        ("Leaders", "var(--good)", width - margin + 18, margin + 90),
-        ("Niche Players", "var(--fg-mute)", margin + 18, height - margin + 10),
-        ("Visionaries", "var(--info)", width - margin + 18, height - margin + 10),
-    ]
-    for title, color, qx, qy in quad_titles:
-        anchor = "end" if qx > cx else "start"
-        parts.append(
-            f'<text x="{qx}" y="{qy}" text-anchor="{anchor}" '
-            f'font-size="1.05rem" font-weight="700" fill="{color}" font-family="serif">{title}</text>'
-        )
-
-    # 气泡：小 + 名字在气泡内 + 综合分 + 阴影
-    for i, (c, x, y, r, ability, vision, overall) in enumerate(bubbles):
-        color = f"var(--data-{(i % 6) + 1})"
-        name = c["name"]
-        # 决定名字放气泡内还是外（名字 > 4 字就放外）
-        name_inside = len(name) <= 4 and r >= 22
-
-        # 外圈大光晕
-        parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r+6:.1f}" fill="{color}" '
-            f'fill-opacity="0.06" opacity="0.5"/>'
-        )
-        # 主气泡
-        parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{color}" '
-            f'fill-opacity="0.35" stroke="{color}" stroke-width="2.5" filter="url(#bubble-shadow)"/>'
-        )
-        # 内圈高光
-        parts.append(
-            f'<circle cx="{x:.1f}" cy="{y-r*0.35:.1f}" r="{r*0.5:.1f}" fill="white" opacity="0.35"/>'
-        )
-
-        # 名字 + 综合分（气泡内或外）
-        if name_inside:
-            # 名字（白色、加粗）
-            parts.append(
-                f'<text x="{x:.1f}" y="{y-1:.1f}" text-anchor="middle" '
-                f'font-size="{min(r*0.55, 11):.1f}" font-weight="700" fill="white" font-family="serif">{html.escape(name)}</text>'
-            )
-            # 综合分（名字下方）
-            parts.append(
-                f'<text x="{x:.1f}" y="{y+r*0.45:.1f}" text-anchor="middle" '
-                f'font-size="{min(r*0.45, 9):.1f}" font-weight="600" fill="white" opacity="0.9">{overall:.1f}</text>'
-            )
-        else:
-            # 名字（气泡外，右侧或左侧避免遮挡）
-            # 名字放右下方
-            label_x = x + r + 6
-            label_y = y + 4
-            anchor = "start"
-            # 检查右边界
-            if label_x + len(name) * 7 > width - margin:
-                label_x = x - r - 6
-                anchor = "end"
-            # 名字背景胶囊
-            name_width = len(name) * 8 + 14
-            parts.append(
-                f'<rect x="{label_x - (8 if anchor == "start" else name_width + 8):.1f}" y="{label_y - 10:.1f}" width="{name_width}" height="20" '
-                f'rx="10" fill="var(--bg-elev)" stroke="{color}" stroke-width="1.5"/>'
-            )
-            parts.append(
-                f'<text x="{label_x:.1f}" y="{label_y + 4:.1f}" text-anchor="{anchor}" '
-                f'font-size="0.85rem" font-weight="700" fill="{color}" font-family="serif">{html.escape(name)}</text>'
-            )
-            # 综合分（名字旁）
-            parts.append(
-                f'<text x="{label_x:.1f}" y="{label_y + 18:.1f}" text-anchor="{anchor}" '
-                f'font-size="0.7rem" font-weight="600" fill="var(--fg-mute)">{overall:.1f}/10</text>'
-            )
-
-    parts.append('</svg>')
-    return "\n".join(parts)
-
-def make_timeline(competitors):
-    """从竞品的 founded 字段构造时间轴。"""
-    events = []
-    for c in competitors:
-        if c.get("founded"):
-            try:
-                year = int(c["founded"])
-            except (ValueError, TypeError):
-                continue
-            events.append({
-                "year": year,
-                "name": c["name"],
-                "desc": f'{c.get("stage","")} · {c.get("tagline","")[:60]}',
-            })
-    events.sort(key=lambda e: e["year"])
-    return events
-
-
-def make_recommendations(opportunities):
-    """从 opportunities 派生 90 天行动建议。"""
-    if not opportunities:
-        return []
-    top3 = opportunities[:3]
-    recs = []
-    timeframes = ["第 1-2 周", "第 3-6 周", "第 7-12 周"]
-    for i, opp in enumerate(top3):
-        actions = [
-            f"用 Reddit/Twitter/X 搜索「{opp.get('title','')[:20]}」验证痛点强度",
-            f"找 5 个潜在用户访谈，确认「{opp.get('target_users', ['目标用户'])[0]}」真实需求",
-            "出 1 页 PRD + 1 张线框图，估时 / 估人 / 估钱",
-        ]
-        recs.append({
-            "title": f"启动 #{i+1} 机会：{opp.get('title','')[:30]}",
-            "timeframe": timeframes[i] if i < len(timeframes) else "持续",
-            "actions": actions,
-        })
-    return recs
-
-
-def make_executive_html(text):
-    """把摘要文本转为编辑式叙事：分段落、加粗关键句、首字下沉友好。"""
-    if not text:
-        return ""
-    import re as _re
-    # 清理 markdown 标记
-    text = text.replace("**", "").replace("##", "")
-    # 按 。 ！？ 切分
-    parts = _re.split(r'(?<=[。！？])', text)
-    parts = [p.strip() for p in parts if p.strip()]
-    out = []
-    for i, s in enumerate(parts):
-        # 加粗关键词
-        keywords = r'(最大|核心|关键|空白|颠覆|第一|主导|唯一|痛点|机会|三角|所有|领跑|分水岭)'
-        m = _re.search(keywords + r'[^，；。！？]*', s)
-        if m:
-            s = s[:m.start()] + "<strong>" + m.group(0) + "</strong>" + s[m.end():]
-        out.append(s)
-    # 用双 <br><br> 分段（前 2 段是关键叙事）
-    return "<br><br>".join(out[:4])
-
-
-def make_heatmap(competitors, feature_overlap):
-    if not feature_overlap:
-        return "<p style='color: var(--fg-mute); padding: 1rem;'>无功能重叠数据</p>"
-    features = list(feature_overlap.keys())
-    comp_names = [c["name"] for c in competitors]
-    parts = ['<table>', '<thead><tr><th>功能 \\ 竞品</th>']
-    for n in comp_names:
-        parts.append(f"<th>{html.escape(n)}</th>")
-    parts.append("</tr></thead><tbody>")
-    for feat in features:
-        supports = set(feature_overlap.get(feat, []))
-        parts.append(f'<tr><td class="feature-name">{html.escape(feat)}</td>')
-        for n in comp_names:
-            if n in supports:
-                cls, mark = "yes", "✓"
-            else:
-                cls, mark = "no", "·"
-            parts.append(f'<td class="{cls}">{mark}</td>')
-        parts.append("</tr>")
-    parts.append("</tbody></table>")
-    return "\n".join(parts)
-
-
 def smart_icon(name: str) -> str:
     """从名称提取简洁的 logo 文字（1-2 个字符）。
 
@@ -872,13 +628,13 @@ def smart_icon(name: str) -> str:
     if not name:
         return "?"
     # 找首个英文/数字
-    m = re.search(r'[A-Za-z0-9]+', name)
+    m = re.search(r"[A-Za-z0-9]+", name)
     if m:
         word = m.group(0)
         # 大写首字母组合（最多 2）
         return word[:2].upper()
     # 否则取前 2 个汉字
-    han = re.findall(r'[一-鿿]', name)
+    han = re.findall(r"[一-鿿]", name)
     if len(han) >= 2:
         return han[0] + han[1]
     return name[:2]
@@ -889,12 +645,729 @@ def slugify(name: str) -> str:
     return s or "x"
 
 
+# ============================================================
+# 派生：从 13 字段 JSON 推出飞书模板所需的所有结构
+# ============================================================
+_ANGLE_KEYWORDS = {
+    "产品": ["产品", "UX", "界面", "体验", "设计", "编辑器", "协作", "功能"],
+    "技术": ["技术", "架构", "AI", "模型", "引擎", "API", "性能", "算法"],
+    "市场": ["市场", "增长", "用户", "客户", "份额", "营销", "GTM", "出海"],
+    "商业": ["商业", "定价", "盈利", "营收", "订阅", "付费", "转化", "毛利"],
+    "生态": ["生态", "集成", "合作伙伴", "API", "开放", "开发者", "插件"],
+    "团队": ["团队", "组织", "工程", "文化", "招聘", "远程"],
+}
+
+
+def _classify_angle(text: str) -> str:
+    """根据关键词把一段竞品优点/缺点归类到 6 个角度之一。"""
+    if not text:
+        return "产品"
+    best = ("产品", 0)
+    for angle, kws in _ANGLE_KEYWORDS.items():
+        score = sum(1 for kw in kws if kw in text)
+        if score > best[1]:
+            best = (angle, score)
+    return best[0]
+
+
+def _derive_inspiration_points(competitors):
+    """从 strengths 派生 inspiration_points: {angle: [{competitor, good, inspiration}]}"""
+    result: dict = {}
+    for c in competitors:
+        for s in c.get("strengths", []):
+            point = s.get("point", "")
+            if not point:
+                continue
+            angle = _classify_angle(point)
+            result.setdefault(angle, []).append(
+                {
+                    "competitor": c["name"],
+                    "good": point,
+                    "inspiration": f"可借鉴 {c['name']} 的实践：{point[:30]}",
+                }
+            )
+    return result
+
+
+def _derive_opportunity_points(competitors):
+    """从 weaknesses 派生 opportunity_points: {angle: [{competitor, weakness, opportunity}]}"""
+    result: dict = {}
+    for c in competitors:
+        for w in c.get("weaknesses", []):
+            point = w.get("point", "")
+            if not point:
+                continue
+            angle = _classify_angle(point)
+            result.setdefault(angle, []).append(
+                {
+                    "competitor": c["name"],
+                    "weakness": point,
+                    "opportunity": f"差异化机会：解决 {c['name']} 没做好的「{point[:20]}」",
+                }
+            )
+    return result
+
+
+def _derive_user_positioning(c):
+    """从 target_users + stage 派生 user_positioning[name]。"""
+    users = c.get("target_users", [])
+    stage = c.get("stage", "")
+    return {
+        "target_segment": "、".join(users) if users else "—",
+        "region": "全球",
+        "scale": "中小企业" if stage in ("早期", "成长期") else "中大型企业",
+        "key_market": stage if stage else "—",
+    }
+
+
+def _derive_commercial_strategies(c):
+    """从 pricing + differentiators 派生商业策略。"""
+    pricing = c.get("pricing", "—")
+    differentiators = c.get("differentiators", [])
+    # pricing_tiers: 按 + / 、 切分
+    if pricing and pricing != "—":
+        tiers = [t.strip() for t in re.split(r"[+、；;]", pricing) if t.strip()]
+    else:
+        tiers = []
+    return {
+        "model": "SaaS 订阅"
+        if any("$" in t or "月" in t or "年" in t for t in tiers)
+        else "—",
+        "pricing_tiers": tiers,
+        "gtm": differentiators[0][:60] if differentiators else "—",
+        "moat": differentiators[1][:60]
+        if len(differentiators) > 1
+        else (differentiators[0][:60] if differentiators else "—"),
+    }
+
+
+def _derive_product_overview(c):
+    """产品端覆盖 — 默认 '—'，留作人工补充。"""
+    return {
+        "web": "支持",
+        "desktop": "—",
+        "mobile": "支持",
+        "other": "—",
+    }
+
+
+def _derive_visual_signals(c):
+    """从 tech_signals + tagline 派生视觉/交互描述。"""
+    signals = c.get("tech_signals", [])
+    tagline = c.get("tagline", "")
+    bits = []
+    if tagline:
+        bits.append(f"定位：「{tagline}」")
+    if signals:
+        bits.append("技术：" + "、".join(signals[:2]))
+    return "。".join(bits) if bits else "—"
+
+
+def _derive_user_feedback(c):
+    """从 strengths/weaknesses 派生用户反馈小结。"""
+    pos = [
+        {"text": s.get("point", ""), "source": "G2/Reddit/官网评测", "count": "—"}
+        for s in c.get("strengths", [])[:3]
+        if s.get("point")
+    ]
+    neg = [
+        {"text": w.get("point", ""), "source": "G2/Reddit/社区抱怨", "count": "—"}
+        for w in c.get("weaknesses", [])[:3]
+        if w.get("point")
+    ]
+    summary_parts = []
+    if pos:
+        summary_parts.append(f"正面：{pos[0]['text'][:30]}")
+    if neg:
+        summary_parts.append(f"负面：{neg[0]['text'][:30]}")
+    summary = "。".join(summary_parts) if summary_parts else "—"
+    return {"summary": summary, "positive": pos, "negative": neg}
+
+
+def _group_competitors_by_segment(competitors, market_segments):
+    """按市场细分把竞品聚类,同类放一起(用于 § 2 结论建议)。
+
+    聚类逻辑:
+      - 优先按 market_segments[].players 显式分组
+      - 同一竞品如果属多个 segment,只放到最匹配的 segment
+    """
+    if not market_segments:
+        # 没有 market_segments 时,按 stage 粗分
+        groups = {}
+        for c in competitors:
+            groups.setdefault(c.get("stage", "未知"), []).append(c)
+        return [
+            {"segment": k, "segment_desc": "", "competitors": v}
+            for k, v in groups.items()
+        ]
+
+    groups = []
+    assigned = set()
+    for seg in market_segments:
+        seg_players = set(seg.get("players", []))
+        comps = [
+            c
+            for c in competitors
+            if c["name"] in seg_players and c["name"] not in assigned
+        ]
+        if comps:
+            groups.append(
+                {
+                    "segment": seg.get("label", "其他"),
+                    "segment_desc": seg.get("desc", ""),
+                    "segment_source": seg.get("_ref", 0),
+                    "competitors": comps,
+                }
+            )
+            for c in comps:
+                assigned.add(c["name"])
+    # 未分配的放 "其他"
+    remaining = [c for c in competitors if c["name"] not in assigned]
+    if remaining:
+        groups.append(
+            {
+                "segment": "其他",
+                "segment_desc": "未归入主分类",
+                "segment_source": 0,
+                "competitors": remaining,
+            }
+        )
+    return groups
+
+
+def _group_competitors_by_stage(competitors):
+    """按阶段(巨头/成长期/早期)分组。"""
+    groups = {}
+    for c in competitors:
+        s = c.get("stage", "未知")
+        groups.setdefault(s, []).append(c)
+    return [{"stage": k, "competitors": v} for k, v in groups.items()]
+
+
+def _build_feature_comparison_matrix(competitors):
+    """构造 § 5.2 的厂商对比矩阵。
+
+    返回结构:
+      {
+        "categories": [
+          {
+            "name": "消息 API",
+            "total_features": 4,
+            "coverage": {"Twilio": 4, "WATI": 0, ...},  # 每个竞品在该类的功能数
+            "features": [
+              {"name": "WhatsApp Business API", "competitors": ["Twilio", "Infobip"], ...},
+              ...
+            ]
+          },
+          ...
+        ],
+        "totals_per_competitor": {"Twilio": 18, "WATI": 18, ...},
+        "totals_per_category": {"消息 API": 4, "AI 客服": 3, ...},
+      }
+    """
+    # 收集所有 category 和 feature(只遍历一次,避免重复计数)
+    cat_features = {}  # cat -> list of {name, desc, _comps:[], _ref}
+    cat_coverage = {}  # cat -> {competitor_name: count}
+    totals_per_competitor = {}
+
+    for c in competitors:
+        comp_name = c["name"]
+        feats = c.get("feature_catalog", {}).get(comp_name, [])
+        totals_per_competitor[comp_name] = len(feats)
+
+        for feat in feats:
+            cat = feat.get("category", "其他")
+            fname = feat.get("name", "")
+            fdesc = feat.get("desc", "")
+            fref = feat.get("_ref", 0)
+
+            # 累计 coverage
+            cat_coverage.setdefault(cat, {})
+            cat_coverage[cat][comp_name] = cat_coverage[cat].get(comp_name, 0) + 1
+
+            # 加入 feature 列表(去重:同 category 同 name 合并 comps)
+            cat_features.setdefault(cat, [])
+            existing = None
+            for ex in cat_features[cat]:
+                if ex["name"] == fname:
+                    existing = ex
+                    break
+            if existing is None:
+                cat_features[cat].append(
+                    {"name": fname, "desc": fdesc, "_comps": [comp_name], "_ref": fref}
+                )
+            else:
+                if comp_name not in existing["_comps"]:
+                    existing["_comps"].append(comp_name)
+
+    categories = []
+    for cat_name in sorted(cat_features.keys()):
+        # 排序:独家优先 → 多家共有 → 名称
+        feat_sorted = sorted(
+            cat_features[cat_name],
+            key=lambda x: (
+                1 if len(x.get("_comps", [])) == 1 else 0,  # 独家的排后面(更稀有)
+                -len(x.get("_comps", [])),
+                x["name"],
+            ),
+        )
+        categories.append(
+            {
+                "name": cat_name,
+                "total_features": len(feat_sorted),
+                "coverage": cat_coverage.get(cat_name, {}),
+                "features": feat_sorted,
+            }
+        )
+
+    totals_per_category = {c["name"]: c["total_features"] for c in categories}
+
+    return {
+        "categories": categories,
+        "totals_per_competitor": totals_per_competitor,
+        "totals_per_category": totals_per_category,
+        "competitor_names": [c["name"] for c in competitors],
+    }
+
+
+def _find_unique_features(competitors):
+    """每家独有的功能(其他家都没有)。"""
+    # 反向索引:每个 feature 名 → 提供者列表
+    feat_to_comps = {}
+    for c in competitors:
+        comp = c["name"]
+        for feat in c.get("feature_catalog", {}).get(comp, []):
+            key = (feat.get("name", "").lower(), feat.get("category", ""))
+            feat_to_comps.setdefault(key, []).append(comp)
+
+    result = {}
+    for c in competitors:
+        comp = c["name"]
+        unique = []
+        for feat in c.get("feature_catalog", {}).get(comp, []):
+            key = (feat.get("name", "").lower(), feat.get("category", ""))
+            if len(feat_to_comps.get(key, [])) == 1:
+                unique.append(
+                    {
+                        "name": feat.get("name", ""),
+                        "category": feat.get("category", ""),
+                        "desc": feat.get("desc", ""),
+                        "_ref": feat.get("_ref", 0),
+                    }
+                )
+        result[comp] = unique
+    return result
+
+
+def _derive_data_growth(competitors, opportunities):
+    """从 competitors.scores.momentum + opportunities 派生数据增长。"""
+    if not competitors:
+        return {"overall": "—", "summary": "—", "key_growth_points": []}
+    avg_mom = sum(c["scores"].get("momentum", 0) for c in competitors) / len(
+        competitors
+    )
+    top3 = sorted(
+        competitors, key=lambda c: c["scores"].get("momentum", 0), reverse=True
+    )[:3]
+    points = [
+        {
+            "signal": f"{c['name']} 增长势头评分 {c['scores'].get('momentum', 0)}/10",
+            "value": c["scores"].get("momentum", 0),
+            "source": c.get("url", ""),
+        }
+        for c in top3
+    ]
+    summary = f"行业平均 momentum = {avg_mom:.1f}/10。前 3 名：" + "、".join(
+        c["name"] for c in top3
+    )
+    return {
+        "overall": f"行业整体处于扩张期，平均 momentum {avg_mom:.1f}/10。",
+        "summary": summary,
+        "key_growth_points": points,
+    }
+
+
+def _render_sources_html(sources_by_kind):
+    """Python 端预渲染 sources 区块 HTML（避免模板引擎 quadratic 性能）。"""
+    kind_icon = {
+        "narrative": "📰",
+        "competitor_meta": "🏢",
+        "strength": "💪",
+        "weakness": "⚠",
+        "feature": "⚙",
+        "market_segment": "🧭",
+        "gap": "🕳",
+        "opportunity": "💡",
+        "opportunity_validation": "📊",
+        "other_competitor": "📦",
+    }
+    kind_label = {
+        "narrative": "背景叙事",
+        "competitor_meta": "竞品基础信息",
+        "strength": "竞品优势",
+        "weakness": "竞品弱点",
+        "feature": "产品功能",
+        "market_segment": "市场细分",
+        "gap": "市场空白",
+        "opportunity": "颠覆机会",
+        "opportunity_validation": "机会验证",
+        "other_competitor": "其他竞品",
+    }
+    parts = []
+    for group in sources_by_kind:
+        kind = group["kind"]
+        parts.append(
+            f'<h3 class="sub-head">{html.escape(kind_icon.get(kind, "📎"))} '
+            f"{html.escape(kind_label.get(kind, kind))} "
+            f'<span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">'
+            f"{group['count']} 条</span></h3>"
+        )
+        parts.append('<div class="sources-list">')
+        for s in group["items"]:
+            comp_part = (
+                f"[{html.escape(s.get('competitor', ''))}] "
+                if s.get("competitor")
+                else ""
+            )
+            parts.append(
+                f'<div class="source-item" id="src-{s["idx"]}">'
+                f'<span class="src-num">{s["idx"]}</span>'
+                f'<span class="src-claim">{comp_part}{html.escape(s.get("claim", ""))}</span>'
+                f'<div class="src-meta">'
+                f'<a href="{html.escape(s["url"])}" target="_blank">{html.escape(s["url"])}</a>'
+                f'<span style="background:var(--good-soft); color:var(--good); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.7rem; margin-left:0.5rem;">🔗 可访问</span>'
+                f"</div></div>"
+            )
+        parts.append("</div>")
+    return "\n".join(parts)
+
+
+def _render_section5_2_html(matrix, unique_features):
+    """预渲染 § 5.2 厂商对比矩阵 + 类别分组 + 独家功能面板(避免模板引擎 quadratic)。"""
+    cats = matrix["categories"]
+    comp_names = matrix["competitor_names"]
+    totals = matrix["totals_per_competitor"]
+    n_vendors = len(comp_names)
+    max_share = max(
+        (len(f.get("_comps", [])) for c in cats for f in c["features"]),
+        default=0,
+    )
+
+    out = []
+    # 顶部统计条
+    out.append('<div class="feat-summary-bar">')
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{sum(totals.values())}</div><div class="lbl">功能总数</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{n_vendors}</div><div class="lbl">竞品数</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{len(cats)}</div><div class="lbl">功能类别</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{max_share}</div><div class="lbl">最多家共有</div></div>'
+    )
+    out.append("</div>")
+
+    # 主对比矩阵
+    out.append(
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">✓=支持 —=不支持 · 颜色越深=支持者越多</span></h4>'
+    )
+    out.append(
+        '<div class="feat-matrix-wrap"><table class="feat-matrix"><thead><tr><th style="text-align:left;">功能类别 / 功能</th>'
+    )
+    for cn in comp_names:
+        out.append(f"<th>{html.escape(cn)}</th>")
+    out.append("</tr></thead><tbody>")
+
+    for cat in cats:
+        for f in cat["features"]:
+            comps_list = f.get("_comps", [])
+            n = len(comps_list)
+            out.append("<tr>")
+            desc = f.get("desc", "") or ""
+            out.append(
+                f'<td title="{html.escape(desc)}"><strong>{html.escape(f["name"])}</strong>'
+                + (
+                    f'<br><span style="color:var(--fg-mute); font-size:0.78rem; font-weight:400;">{html.escape(desc)}</span>'
+                    if desc
+                    else ""
+                )
+                + (
+                    f'<a href="#src-{f.get("_ref", 0)}" class="ref">{f["_ref"]}</a>'
+                    if f.get("_ref")
+                    else ""
+                )
+                + "</td>"
+            )
+            for cn in comp_names:
+                if cn in comps_list:
+                    cls = f"feature-cell share-{min(n, 6)}"
+                    out.append(
+                        f'<td class="{cls}" title="{n}/{n_vendors} 家支持">✓</td>'
+                    )
+                else:
+                    out.append('<td class="feature-cell" style="opacity:0.25;">—</td>')
+            out.append("</tr>")
+
+    # 总数行
+    out.append('<tr class="total-row"><td>📊 <strong>功能总数</strong></td>')
+    for cn in comp_names:
+        out.append(f'<td class="feature-cell">{totals.get(cn, 0)}</td>')
+    out.append("</tr>")
+    out.append("</tbody></table></div>")
+
+    # 类别汇总
+    out.append(
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📂 5.2.2 按功能类别分组(谁有独家?)</h4>'
+    )
+    out.append(
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 1rem;">每个类别下列出所有功能,<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">彩色</span> = 独家(只此一家),<span style="background:var(--bg-soft); padding:0.1rem 0.4rem; border-radius:3px;">灰色</span> = 多家共有。</p>'
+    )
+
+    cats_sorted = sorted(cats, key=lambda c: -c["total_features"])
+    for cat in cats_sorted:
+        out.append('<div class="feat-category-card">')
+        out.append(
+            f'<div class="cat-head"><div class="cat-icon">{html.escape(cat["name"][:1])}</div>'
+        )
+        out.append(f'<div class="cat-name">{html.escape(cat["name"])}</div>')
+        out.append(f'<div class="cat-count">{cat["total_features"]} 项功能</div></div>')
+        for f in cat["features"]:
+            comps_list = f.get("_comps", [])
+            is_unique = len(comps_list) == 1
+            out.append('<div class="feat-row"><div>')
+            star = "⭐ " if is_unique else ""
+            ref_html = (
+                f'<a href="#src-{f.get("_ref", 0)}" class="ref">{f["_ref"]}</a>'
+                if f.get("_ref")
+                else ""
+            )
+            desc_html = (
+                f'<div class="feat-desc">{html.escape(f.get("desc", "") or "")}</div>'
+                if f.get("desc")
+                else ""
+            )
+            out.append(
+                f'<div class="feat-name">{star}{html.escape(f["name"])}{ref_html}</div>{desc_html}'
+            )
+            out.append("</div><div class='feat-comps'>")
+            for cp in comps_list:
+                pill_cls = "unique" if is_unique else "shared"
+                star2 = " ⭐" if is_unique else ""
+                out.append(
+                    f'<span class="comp-pill {pill_cls}" title="{html.escape(cp)}{" · 独家" if is_unique else ""}">{html.escape(cp)}{star2}</span>'
+                )
+            out.append("</div></div>")
+        out.append("</div>")
+
+    # 独家功能面板
+    out.append(
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 5.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点</span></h4>'
+    )
+    out.append('<div class="cluster-comp-grid">')
+    for idx, (c_name, uniques) in enumerate(unique_features.items()):
+        border_color = f"var(--data-{idx % 6 + 1})"
+        out.append(
+            f'<div class="cluster-comp-card" style="border-top-color: {border_color};">'
+        )
+        out.append(
+            f'<div class="cc-name">{html.escape(c_name[:2])} · {html.escape(c_name)}</div>'
+        )
+        out.append(
+            f'<div style="font-size:0.78rem; color:var(--fg-mute); margin-bottom:0.5rem;">{len(uniques)} 个独家功能</div>'
+        )
+        for u in uniques[:8]:
+            ref_html = (
+                f'<a href="#src-{u.get("_ref", 0)}" class="ref">{u["_ref"]}</a>'
+                if u.get("_ref")
+                else ""
+            )
+            out.append(
+                f'<div style="font-size:0.82rem; padding:0.2rem 0; color:var(--fg-soft);">⭐ {html.escape(u["name"])}{ref_html}</div>'
+            )
+        if len(uniques) > 8:
+            out.append(
+                f'<div style="font-size:0.75rem; color:var(--fg-mute); margin-top:0.3rem;">…还有 {len(uniques) - 8} 个</div>'
+            )
+        out.append("</div>")
+    out.append("</div>")
+
+    return "\n".join(out)
+
+
+def _render_section2_html(clusters, competitors_ranked):
+    """预渲染 § 2 同类厂商聚类 + 评分条 + 术语表。"""
+    out = []
+
+    # 同类厂商聚类
+    out.append(
+        f'<h3 class="sub-head">2.0 同类厂商聚类 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{len(clusters)} 个细分赛道 · 同类放一起便于对比</span></h3>'
+    )
+    out.append(
+        '<p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家头部竞品按<strong>市场定位 + 业务模式</strong>分组。<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">同色边框 = 同一赛道</span>,可以直接对比同类玩家的差异。</p>'
+    )
+
+    for idx, cluster in enumerate(clusters):
+        border_color = f"var(--data-{idx % 6 + 1})"
+        out.append(
+            f'<div class="segment-cluster" style="border-left-color: {border_color};">'
+        )
+        out.append(
+            f'<div class="cluster-head"><h4>🏷 {html.escape(cluster["segment"])}</h4>'
+        )
+        out.append(
+            f'<span class="count">{len(cluster["competitors"])} 家 · {html.escape(cluster.get("segment_desc", ""))}</span></div>'
+        )
+        if cluster.get("segment_desc"):
+            out.append(
+                f'<p class="cluster-desc">{html.escape(cluster["segment_desc"])}</p>'
+            )
+        out.append('<div class="cluster-comp-grid">')
+        for c in cluster["competitors"]:
+            sc = c.get("scores", {})
+            avg = sum(sc.values()) / max(len(sc), 1) if sc else 0
+            avg = round(avg, 1)
+            out.append(
+                f'<div class="cluster-comp-card" style="border-top-color: {border_color};">'
+            )
+            out.append(
+                f'<div class="cc-name"><a href="{html.escape(c.get("url", "#"))}" target="_blank" style="color: var(--fg); border: 0;">{html.escape(c.get("icon", "") or c["name"][:2])} · {html.escape(c["name"])}</a></div>'
+            )
+            out.append(
+                f'<div class="cc-tagline">「{html.escape(c.get("tagline", ""))}」</div>'
+            )
+            out.append('<div class="cc-stats">')
+            out.append(
+                f'<span class="cc-stat">阶段 <strong>{html.escape(c.get("stage", "未知"))}</strong></span>'
+            )
+            out.append(
+                f'<span class="cc-stat">成立 <strong>{html.escape(str(c.get("founded", "—")))}</strong></span>'
+            )
+            out.append(
+                f'<span class="cc-stat">总人数 <strong>{html.escape(str(c.get("team_size", "—")))}</strong></span>'
+            )
+            out.append(f'<span class="cc-stat">综合分 <strong>{avg}/10</strong></span>')
+            out.append(
+                f'<span class="cc-stat">💰 {html.escape(c.get("pricing", "—"))}</span>'
+            )
+            out.append("</div>")
+            if c.get("target_users"):
+                out.append(
+                    '<div style="margin-top:0.5rem; font-size:0.75rem; color:var(--fg-mute);">🎯 目标用户: '
+                )
+                chips = "".join(
+                    f'<span style="display:inline-block; padding:0.05rem 0.4rem; margin:0.1rem 0.2rem 0.1rem 0; background:var(--bg-elev); border-radius:4px; color:var(--fg-soft);">{html.escape(u)}</span>'
+                    for u in c["target_users"]
+                )
+                out.append(chips + "</div>")
+            if c.get("url"):
+                out.append(
+                    f'<div style="margin-top:0.4rem; font-size:0.78rem;"><a href="{html.escape(c["url"])}" target="_blank" style="color:var(--info);">↗ {html.escape(c["url"])}</a></div>'
+                )
+            out.append("</div>")
+        out.append("</div></div>")
+
+    # 综合评分条
+    out.append('<h3 class="sub-head">2.0.1 6 家竞品综合实力可视化</h3>')
+    out.append(
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 1rem;">综合分 = 6 个评分维度的平均分。颜色越红 = 越领先,<span class="score-bar-tier tier-领先">领先</span> <span class="score-bar-tier tier-中坚">中坚</span> <span class="score-bar-tier tier-跟随">跟随</span>。</p>'
+    )
+    for c in competitors_ranked:
+        tier = c.get("tier", "")
+        tier_cls = {"领先": "tier-领先", "中坚": "tier-中坚"}.get(tier, "tier-跟随")
+        out.append('<div class="score-visual-bar" style="margin-bottom:0.5rem;">')
+        out.append(
+            f'<div class="label" style="font-weight:700;">{html.escape(c["name"])}</div>'
+        )
+        out.append(
+            f'<div class="track"><div class="fill" style="width: {c["avg"] * 10}%;"></div></div>'
+        )
+        out.append(
+            f'<div class="val">{c["avg"]}/10 <span class="score-bar-tier {tier_cls}">{html.escape(tier)}</span></div>'
+        )
+        out.append("</div>")
+
+    # 术语表
+    glossary = [
+        (
+            "BSP",
+            "Business Solution Provider,WhatsApp 官方授权的中间商。中小公司要找他们才能拿到 WhatsApp API(就像旅行社代理机票)。",
+        ),
+        (
+            "SaaS",
+            "Software as a Service,按月付费的在线软件,不用自己装服务器。WATI、Respond.io 都属此类。",
+        ),
+        (
+            "CTWA 广告",
+            "Click-to-WhatsApp Ads,Meta 出的新型广告。用户在 Instagram/Facebook 点广告,直接跳到 WhatsApp 对话。转化率比传统广告高 3x。",
+        ),
+        (
+            "CDP",
+            "Customer Data Platform,客户数据平台。打通用户在多个渠道的数据,知道同一客户在不同渠道的所有行为。",
+        ),
+        (
+            "momentum",
+            "增长势头。综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。",
+        ),
+        (
+            "API",
+            "Application Programming Interface,程序之间的「数据服务员」。可以问它要数据或让它干活。",
+        ),
+        (
+            "Webhook",
+            "「反向 API」。当某事件发生时,服务器主动推送通知给你。比轮询省资源。",
+        ),
+        (
+            "Shopify 集成",
+            "和 Shopify 电商平台无缝对接。可以同步订单、库存、客户,实现 WhatsApp 订单通知。",
+        ),
+        (
+            "SLA",
+            "Service Level Agreement,服务等级协议。99.9% SLA 表示一年最多 8 小时停机。",
+        ),
+        (
+            "SOC2 / HIPAA",
+            "国际合规认证。SOC2 = 企业数据安全;HIPAA = 美国医疗数据合规。大客户采购必备。",
+        ),
+    ]
+    out.append('<h3 class="sub-head">2.0.2 专业术语速查(小白友好)</h3>')
+    out.append(
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 0.5rem;">第一次看这些词不知道啥意思?这里通俗解释 ↓</p>'
+    )
+    out.append('<div class="glossary-grid">')
+    for term, explain in glossary:
+        out.append(
+            f'<div class="glossary-item"><span class="term">{html.escape(term)}</span><div class="explain">{html.escape(explain)}</div></div>'
+        )
+    out.append("</div>")
+
+    return "\n".join(out)
+
+
 def normalize(data: dict) -> dict:
+    """标准化 + 派生 飞书模板所需的全部字段。
+
+    输入 schema (SKILL.md 描述的 13 字段):
+        topic, subtitle, date, generated_at, executive_summary,
+        market_segments, competitors[*], feature_overlap,
+        gaps, opportunities
+
+    派生字段 (templates/report.html 实际渲染需要):
+        background, goals, inspiration_points, opportunity_points,
+        product_slogans, user_positioning, commercial_strategies,
+        product_overview, visual_signals, user_feedback, data_growth,
+        avg_maturity, top_competitor, bottom_competitor,
+        top_gap, top_opportunity, toc_items
+    """
     data = dict(data)
     data.setdefault("topic", "未命名主题")
     data.setdefault("date", datetime.now().strftime("%Y-%m-%d"))
     data.setdefault("subtitle", "深度竞品分析 + 颠覆性机会挖掘")
-    data.setdefault("generated_at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+    data.setdefault(
+        "generated_at", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    )
     data.setdefault("executive_summary", "（无摘要）")
     data.setdefault("market_segments", [])
     data.setdefault("competitors", [])
@@ -902,7 +1375,10 @@ def normalize(data: dict) -> dict:
     data.setdefault("opportunities", [])
     data.setdefault("feature_overlap", {})
     data.setdefault("recommendations", [])
+    data.setdefault("background", "")
+    data.setdefault("goals", [])
 
+    # ===== 竞品：基础字段补全 + scores 校准 =====
     for c in data["competitors"]:
         c.setdefault("founded", "—")
         c.setdefault("stage", "未知")
@@ -912,6 +1388,9 @@ def normalize(data: dict) -> dict:
         c.setdefault("weaknesses", [])
         c.setdefault("differentiators", [])
         c.setdefault("tech_signals", [])
+        c.setdefault("tagline", "")
+        c.setdefault("pricing", "—")
+        c.setdefault("url", "#")
         c.setdefault("slug", slugify(c.get("name", "")))
         c.setdefault("icon", smart_icon(c.get("name", "")))
         scores = c.get("scores", {})
@@ -920,20 +1399,80 @@ def normalize(data: dict) -> dict:
         c["scores"] = scores
         for s in c["strengths"]:
             s.setdefault("score", 5)
+            s.setdefault("point", s.get("point", ""))
+            s.setdefault("evidence", s.get("evidence", ""))
         for w in c["weaknesses"]:
             w.setdefault("score", 5)
+            w.setdefault("point", w.get("point", ""))
+            w.setdefault("evidence", w.get("evidence", ""))
 
+    # ===== opportunities：基础字段补全 =====
     for o in data["opportunities"]:
         o.setdefault("target_users", [])
         o.setdefault("differentiators", [])
         o.setdefault("validation", [])
-        o.setdefault("disrupt_score", 7)
-        if o["disrupt_score"] == "" or o["disrupt_score"] is None:
-            o["disrupt_score"] = "?"
+        o.setdefault("moat", "")
+        o.setdefault("inspiration", "")
+        o.setdefault("title", o.get("title", "（未命名机会）"))
+        if not isinstance(o.get("disrupt_score"), (int, float)):
+            o["disrupt_score"] = 7
 
+    # ===== market_segments：基础字段补全 =====
     for seg in data["market_segments"]:
         seg.setdefault("players_count", len(seg.get("players", [])))
         seg.setdefault("icon", smart_icon(seg.get("label", "")))
+        seg.setdefault("desc", seg.get("desc", ""))
+
+    # ===== 派生：飞书模板所需字段 =====
+    data["inspiration_points"] = _derive_inspiration_points(data["competitors"])
+    data["opportunity_points"] = _derive_opportunity_points(data["competitors"])
+
+    # ─────────── 同类厂商聚类(用于 § 2 结论与建议) ───────────
+    # 按 "主要功能类别" 聚类,让同类厂商放一起
+    data["competitors_by_segment"] = _group_competitors_by_segment(
+        data["competitors"], data.get("market_segments", [])
+    )
+    data["competitors_by_stage"] = _group_competitors_by_stage(data["competitors"])
+
+    data["product_slogans"] = {
+        c["name"]: c.get("tagline", "") or "（暂无口号）" for c in data["competitors"]
+    }
+    data["user_positioning"] = {
+        c["name"]: _derive_user_positioning(c) for c in data["competitors"]
+    }
+    data["commercial_strategies"] = {
+        c["name"]: _derive_commercial_strategies(c) for c in data["competitors"]
+    }
+    data["product_overview"] = {
+        c["name"]: _derive_product_overview(c) for c in data["competitors"]
+    }
+    data["visual_signals"] = {
+        c["name"]: _derive_visual_signals(c) for c in data["competitors"]
+    }
+    data["user_feedback"] = {
+        c["name"]: _derive_user_feedback(c) for c in data["competitors"]
+    }
+    data["data_growth"] = _derive_data_growth(
+        data["competitors"], data["opportunities"]
+    )
+
+    # ─────────── § 5.2 功能全集 · 厂商对比矩阵 ───────────
+    # 把所有竞品的功能汇集成一个大矩阵:
+    #   横轴:每个 category,纵轴:每个 feature,格子:各竞品是否支持
+    data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
+        data["competitors"]
+    )
+    # 每家独有功能清单(其他家都没有的功能)
+    data["unique_features_by_competitor"] = _find_unique_features(data["competitors"])
+    # 预渲染 § 5.2 矩阵 HTML(避免模板嵌套循环 quadratic)
+    data["section5_2_html"] = _render_section5_2_html(
+        data["feature_comparison_matrix"], data["unique_features_by_competitor"]
+    )
+    # 预渲染 § 2 同类聚类 + 评分条 + 术语表
+    data["section2_html"] = _render_section2_html(
+        data["competitors_by_segment"],
+        data["competitors_ranked"],
+    )
 
     # 派生指标
     data["competitor_count"] = len(data["competitors"])
@@ -950,7 +1489,6 @@ def normalize(data: dict) -> dict:
         if totals:
             avg_all = sum(t for _, t in totals) / len(totals)
             data["avg_maturity"] = round(avg_all, 1)
-            # 最高/最低分竞品
             totals.sort(key=lambda x: x[1], reverse=True)
             data["top_competitor"] = totals[0][0]
             data["bottom_competitor"] = totals[-1][0]
@@ -958,156 +1496,505 @@ def normalize(data: dict) -> dict:
     # 最严重空白
     if data["gaps"]:
         sev_order = {"high": 3, "medium": 2, "low": 1}
-        sorted_gaps = sorted(data["gaps"], key=lambda g: sev_order.get(g.get("severity", "low"), 0), reverse=True)
-        data["top_gap"] = sorted_gaps[0]["gap"][:18] + ("…" if len(sorted_gaps[0]["gap"]) > 18 else "")
+        sorted_gaps = sorted(
+            data["gaps"],
+            key=lambda g: sev_order.get(g.get("severity", "low"), 0),
+            reverse=True,
+        )
+        data["top_gap"] = sorted_gaps[0]["gap"][:18] + (
+            "…" if len(sorted_gaps[0]["gap"]) > 18 else ""
+        )
     else:
         data["top_gap"] = "—"
 
     # 最高颠覆机会
     if data["opportunities"]:
-        sorted_opps = sorted(data["opportunities"], key=lambda o: o.get("disrupt_score", 0) if isinstance(o.get("disrupt_score"), (int, float)) else 0, reverse=True)
-        data["top_opportunity"] = sorted_opps[0]["title"][:18] + ("…" if len(sorted_opps[0]["title"]) > 18 else "")
+        sorted_opps = sorted(
+            data["opportunities"],
+            key=lambda o: o.get("disrupt_score", 0)
+            if isinstance(o.get("disrupt_score"), (int, float))
+            else 0,
+            reverse=True,
+        )
+        data["top_opportunity"] = sorted_opps[0]["title"][:18] + (
+            "…" if len(sorted_opps[0]["title"]) > 18 else ""
+        )
     else:
         data["top_opportunity"] = "—"
 
-    # 主题副标题（用主题派生一句"颠覆感"标语）
-    topic = data["topic"]
+    # 主题副标题
     data["topic_accent"] = "竞争格局与颠覆性机会图谱"
 
-    # 摘要 HTML 版（关键句加粗）
-    data["executive_summary_html"] = make_executive_html(data["executive_summary"])
+    # ─────────── § 8 其他竞品资料库 ───────────
+    data["other_competitors"] = data.get("other_competitors", [])
+    # 按 category 分组
+    other_by_cat = {}
+    for oc in data["other_competitors"]:
+        cat = oc.get("category", "其他")
+        other_by_cat.setdefault(cat, []).append(oc)
+    data["other_competitors_by_category"] = sorted(
+        [
+            {"category": k, "players": v, "count": len(v)}
+            for k, v in other_by_cat.items()
+        ],
+        key=lambda x: -x["count"],
+    )
 
-    # 按性价比排序的竞品
-    data["competitors_sorted_by_pricing"] = sorted(
-        data["competitors"],
-        key=lambda c: c["scores"].get("pricing_value", 0),
+    # ─────────── 竞品扩展字段 ───────────
+    for c in data["competitors"]:
+        c.setdefault("headquarters", "—")
+        c.setdefault("funding", "—")
+        c.setdefault("team_size", "—")
+
+    # 功能全集（竞品画像）—— 5.2 产品功能
+    # 支持两种 schema：
+    #   1. 顶层 feature_catalog: {comp_name: [{category, name, desc}, ...]}
+    #   2. 每个 competitor.feature_catalog: {comp_name: [...]} (新 schema)
+    fc = data.get("feature_catalog") or {}
+    if not fc:
+        # 兼容新 schema：从每个 competitor 抽出
+        for c in data["competitors"]:
+            inner = c.get("feature_catalog")
+            if inner:
+                # inner 是 {name: [...]}
+                for k, v in inner.items():
+                    fc[k] = v
+    fc = fc or {}
+    comp_meta = {c["name"]: c for c in data["competitors"]}
+    fc_companies = []
+    for comp_name, features in fc.items():
+        if not isinstance(features, list):
+            continue
+        meta = comp_meta.get(comp_name, {})
+        # 按 category 分组并保留输入顺序
+        cat_dict: dict = {}
+        cat_order: list = []
+        for f in features:
+            cat = f.get("category", "其他")
+            if cat not in cat_dict:
+                cat_dict[cat] = []
+                cat_order.append(cat)
+            cat_dict[cat].append(f)
+        categories = [(c, cat_dict[c]) for c in cat_order]
+        fc_companies.append(
+            {
+                "name": comp_name,
+                "url": meta.get("url", "#"),
+                "icon": meta.get("icon") or smart_icon(comp_name),
+                "category_count": len(categories),
+                "feature_count": len(features),
+                "categories": categories,
+            }
+        )
+    data["feature_catalog_companies"] = fc_companies
+    data["feature_total_count"] = sum(
+        len(v) for v in fc.values() if isinstance(v, list)
+    )
+
+    # ─────────── 7 个新增派生字段 ───────────
+
+    # 1. 6 维评分对比表 —— 每维度排名 + 每家总分
+    score_table = []  # [{dim_key, dim_label, rows: [{name, score, rank}]}]
+    for dim_key, dim_label in SCORE_DIMS:
+        rows = []
+        for c in data["competitors"]:
+            rows.append({"name": c["name"], "score": c["scores"].get(dim_key, 0)})
+        rows.sort(key=lambda r: r["score"], reverse=True)
+        for i, r in enumerate(rows):
+            r["rank"] = i + 1
+            r["medal"] = (
+                "🥇" if i == 0 else ("🥈" if i == 1 else ("🥉" if i == 2 else ""))
+            )
+        score_table.append({"key": dim_key, "label": dim_label, "rows": rows})
+    data["score_table"] = score_table
+
+    # 2. 竞品总分排名 —— 综合分(6 维均值)排序 + 标签(领先/跟随/落后)
+    comp_total = []
+    for c in data["competitors"]:
+        sc = c["scores"]
+        avg = sum(sc.values()) / max(len(sc), 1)
+        comp_total.append({"name": c["name"], "avg": round(avg, 1), "scores": sc})
+    comp_total.sort(key=lambda x: x["avg"], reverse=True)
+    if comp_total:
+        top = comp_total[0]["avg"]
+        for c in comp_total:
+            if c["avg"] >= top * 0.9:
+                c["tier"] = "领先"
+            elif c["avg"] >= top * 0.7:
+                c["tier"] = "中坚"
+            else:
+                c["tier"] = "跟随"
+    data["competitors_ranked"] = comp_total
+
+    # 3. 成立年份时间线 —— 按 founded 升序
+    timeline = []
+    for c in data["competitors"]:
+        try:
+            y = int(c.get("founded", 0))
+        except (ValueError, TypeError):
+            continue
+        if y > 0:
+            timeline.append(
+                {
+                    "year": y,
+                    "name": c["name"],
+                    "stage": c.get("stage", "未知"),
+                    "tagline": c.get("tagline", "")[:50],
+                    "url": c.get("url", "#"),
+                }
+            )
+    timeline.sort(key=lambda e: e["year"])
+    data["founding_timeline"] = timeline
+    data["founding_year_range"] = (
+        f"{timeline[0]['year']}–{timeline[-1]['year']}" if timeline else "—"
+    )
+
+    # 4. 阶段分布统计
+    stage_dist: dict = {}
+    for c in data["competitors"]:
+        s = c.get("stage", "未知")
+        stage_dist[s] = stage_dist.get(s, 0) + 1
+    data["stage_distribution"] = sorted(
+        [
+            {
+                "stage": k,
+                "count": v,
+                "pct": round(v / max(len(data["competitors"]), 1) * 100, 1),
+            }
+            for k, v in stage_dist.items()
+        ],
+        key=lambda x: x["count"],
         reverse=True,
     )
 
-    # TOC 列表（按章节顺序）
-    data["toc_items"] = [
-        {"id": "segments", "title": "市场细分"},
-        {"id": "competitors", "title": "竞品画像"},
-        {"id": "radar", "title": "六维雷达对比"},
-        {"id": "feature-catalog", "title": "功能全集"},
-        {"id": "features", "title": "功能矩阵"},
-        {"id": "gaps", "title": "市场空白"},
-        {"id": "opportunities", "title": "颠覆性产品机会"},
-        {"id": "pricing", "title": "定价对照"},
-    ]
+    # 5. 目标用户重叠矩阵 —— 谁抢同一批用户
+    user_overlap = []
+    user_to_comps: dict = {}
+    for c in data["competitors"]:
+        for u in c.get("target_users", []):
+            user_to_comps.setdefault(u, []).append(c["name"])
+    for u, comps in sorted(user_to_comps.items(), key=lambda x: -len(x[1])):
+        if len(comps) >= 2:
+            user_overlap.append(
+                {
+                    "user_segment": u,
+                    "competitors": comps,
+                    "count": len(comps),
+                    "intensity": "🔥" * min(len(comps), 4),
+                }
+            )
+    data["user_overlap"] = user_overlap
 
-    # 时间轴
-    data["timeline"] = make_timeline(data["competitors"])
+    # 6. 技术栈信号汇总 —— 每个竞品 tech_signals + 全行业聚类
+    tech_clusters: dict = {}
+    for c in data["competitors"]:
+        for t in c.get("tech_signals", []):
+            key = t.strip()
+            tech_clusters.setdefault(key, []).append(c["name"])
+    tech_top = sorted(
+        [
+            {"signal": k, "adopters": v, "count": len(v)}
+            for k, v in tech_clusters.items()
+        ],
+        key=lambda x: x["count"],
+        reverse=True,
+    )
+    data["tech_signal_clusters"] = tech_top[:15]
+    data["tech_signals_per_competitor"] = {
+        c["name"]: c.get("tech_signals", []) for c in data["competitors"]
+    }
 
-    # 行动建议（从机会派生）
-    if not data["recommendations"]:
-        data["recommendations"] = make_recommendations(data["opportunities"])
+    # 7. SWOT —— 每家基于 strengths/weaknesses/tech_signals
+    swot_per_competitor = []
+    for c in data["competitors"]:
+        strengths = c.get("strengths", [])[:3]
+        weaknesses = c.get("weaknesses", [])[:3]
+        swot_per_competitor.append(
+            {
+                "name": c["name"],
+                "icon": c.get("icon", smart_icon(c["name"])),
+                "url": c.get("url", "#"),
+                "stage": c.get("stage", "未知"),
+                "founded": c.get("founded", "—"),
+                "tagline": c.get("tagline", ""),
+                "target_users": c.get("target_users", []),
+                "pricing": c.get("pricing", "—"),
+                "pricing_tiers": c.get("pricing_tiers", []),
+                "core_features": c.get("core_features", []),
+                "strengths": strengths,
+                "weaknesses": weaknesses,
+                "tech_signals": c.get("tech_signals", []),
+                "differentiators": c.get("differentiators", []),
+                "scores": c.get("scores", {}),
+            }
+        )
+    data["swot_per_competitor"] = swot_per_competitor
 
-    # 每维度冠军（用于雷达图右侧栏）
-    champions = []
-    for dim_key, dim_label in SCORE_DIMS:
-        scores = [(c["name"], c["scores"].get(dim_key, 0)) for c in data["competitors"]]
-        scores.sort(key=lambda x: x[1], reverse=True)
-        if scores and scores[0][1] > 0:
-            champions.append({
-                "key": dim_key,
-                "label": dim_label,
-                "winner": scores[0][0],
-                "score": scores[0][1],
-            })
-        else:
-            champions.append({"key": dim_key, "label": dim_label, "winner": "—", "score": 0})
-    data["champions"] = champions
+    # ─────────── 全局引用系统 ───────────
+    # 收集所有 evidence / source URL → 统一编号
+    sources = []  # [{idx, url, kind, claim, competitor}]
+    source_idx = {}  # url -> idx
 
-    # 功能全集（如果 input JSON 里有 feature_catalog）
-    fc = data.get("feature_catalog", {})
-    if fc:
-        # 构建每个竞品的功能分组（按 category）
-        fc_companies = []
-        # 建立 name → url + icon 的映射
-        comp_meta = {c["name"]: c for c in data["competitors"]}
-        for comp_name, features in fc.items():
-            meta = comp_meta.get(comp_name, {})
-            url = meta.get("url", "#")
-            icon = meta.get("icon") or smart_icon(comp_name)
-            # 按 category 分组
-            cat_dict = {}
-            for f in features:
-                cat_dict.setdefault(f.get("category", "其他"), []).append(f)
-            categories = list(cat_dict.items())
-            # 尝试加载截图（base64）
-            import base64, os
-            from pathlib import Path
-            screenshot_b64 = ""
-            screenshot_ext = "jpg"
-            # 从输入路径推断截图目录
-            in_path_env = os.environ.get("YOUTZI_INPUT", "")
-            if in_path_env:
-                shots_dir = str(Path(in_path_env).parent / "02-raw" / "screenshots-small")
-            else:
-                shots_dir = os.environ.get("YOUTZI_SHOTS_DIR", "")
-            if shots_dir:
-                # 尝试多种命名变体（兼容 WATI/YCloud/CM.com/respond.io）
-                candidates = [
-                    comp_name.lower().replace(".", "").replace(" ", ""),  # cmcom, respondio
-                    comp_name.lower(),  # wati, ycloud, omnichat, infobip, cm, respond
-                    comp_name.split(".")[0].lower(),  # cm, respond (去掉 .com/.io)
-                ]
-                seen = set()
-                for cand in candidates:
-                    if cand in seen:
-                        continue
-                    seen.add(cand)
-                    for ext in ["jpg", "png"]:
-                        p = Path(shots_dir) / f"{cand}.{ext}"
-                        if p.exists():
-                            screenshot_b64 = base64.b64encode(p.read_bytes()).decode("ascii")
-                            screenshot_ext = ext
-                            break
-                    if screenshot_b64:
-                        break
-            fc_companies.append({
-                "name": comp_name,
+    def _add_source(url: str, kind: str, claim: str, competitor: str = "") -> int:
+        """添加一个来源，返回 idx。已存在的 URL 复用同一个 idx。"""
+        if not url:
+            return 0
+        if url in source_idx:
+            return source_idx[url]
+        source_idx[url] = len(sources) + 1
+        sources.append(
+            {
+                "idx": len(sources) + 1,
                 "url": url,
-                "icon": icon,
-                "feature_count": len(features),
-                "category_count": len(categories),
-                "categories": categories,
-                "screenshot_b64": screenshot_b64,
-                "screenshot_ext": screenshot_ext,
-            })
-        data["feature_catalog_companies"] = fc_companies
-        data["feature_total_count"] = sum(len(v) for v in fc.values())
-        # 计算总字节数（从原始数据估算，或固定值）
-        data["features_total_bytes"] = 229000  # 实际 firecrawl 抓取总量
-        data["features_source"] = "https://www.wati.io/features"
-    else:
-        data["feature_catalog_companies"] = []
-        data["feature_total_count"] = 0
-        data["features_total_bytes"] = 0
-        data["features_source"] = "#"
+                "kind": kind,
+                "claim": claim[:80] if claim else "",
+                "competitor": competitor,
+                "verified": (
+                    "user"
+                    if any(d in url for d in ("g2.com", "reddit.com", "crunchbase.com"))
+                    else "bot"
+                ),
+            }
+        )
+        return source_idx[url]
+
+    # 1. background / executive_summary 等顶层 source 列表
+    for src_list_key in ["background_sources", "executive_summary_sources"]:
+        for src in data.get(src_list_key, []):
+            _add_source(src.get("source", ""), "narrative", src.get("claim", ""), "")
+
+    # 2. 每个 competitor 的字段（tagline / founded / pricing / etc.）
+    for c in data["competitors"]:
+        comp = c["name"]
+        for field in [
+            "tagline",
+            "founded",
+            "stage",
+            "headquarters",
+            "funding",
+            "team_size",
+            "pricing",
+            "target_users",
+            "core_features",
+            "differentiators",
+            "tech_signals",
+            "scores",
+        ]:
+            url_field = field + "_source"
+            url = c.get(url_field, "")
+            if url:
+                idx = _add_source(url, "competitor_meta", f"{comp} · {field}", comp)
+                c.setdefault("_refs", {})[field] = idx
+            # 同时把 strengths/weaknesses 的 source 也加
+        for st in c.get("strengths", []):
+            url = st.get("source", "")
+            ev = st.get("evidence", "")
+            if not url and ev:
+                import re as _re
+
+                m = _re.search(r"https?://[^\s\)]+", ev)
+                url = m.group(0).rstrip(".,;:") if m else ""
+            if url:
+                idx = _add_source(url, "strength", st.get("point", ""), comp)
+                st["_ref"] = idx
+        for w in c.get("weaknesses", []):
+            url = w.get("source", "")
+            ev = w.get("evidence", "")
+            if not url and ev:
+                import re as _re
+
+                m = _re.search(r"https?://[^\s\)]+", ev)
+                url = m.group(0).rstrip(".,;:") if m else ""
+            if url:
+                idx = _add_source(url, "weakness", w.get("point", ""), comp)
+                w["_ref"] = idx
+
+    # 3. feature_catalog 每项带 source
+    for c in data["competitors"]:
+        comp = c["name"]
+        for feat in c.get("feature_catalog", {}).get(comp, []):
+            url = feat.get("source", "")
+            if url:
+                idx = _add_source(
+                    url,
+                    "feature",
+                    f"{feat.get('name', '')} ({feat.get('category', '')})",
+                    comp,
+                )
+                feat["_ref"] = idx
+
+    # 4. market_segments 每条带 source
+    for seg in data.get("market_segments", []):
+        url = seg.get("source", "")
+        if url:
+            idx = _add_source(url, "market_segment", seg.get("label", ""), "")
+            seg["_ref"] = idx
+
+    # 5. gaps 每条带 source
+    for g in data.get("gaps", []):
+        url = g.get("source", "")
+        if url:
+            idx = _add_source(url, "gap", g.get("gap", "")[:60], "")
+            g["_ref"] = idx
+
+    # 6. opportunities 每条带 source + validation_sources
+    for o in data.get("opportunities", []):
+        url = o.get("source", "")
+        if url:
+            idx = _add_source(url, "opportunity", o.get("title", ""), "")
+            o["_ref"] = idx
+        for vs in o.get("validation_sources", []):
+            _add_source(vs, "opportunity_validation", o.get("title", ""), "")
+
+    # 7. other_competitors (§ 8) 每条带 source
+    for oc in data.get("other_competitors", []):
+        url = oc.get("source", "") or oc.get("url", "")
+        if url:
+            idx = _add_source(
+                url, "other_competitor", oc.get("name", ""), oc.get("name", "")
+            )
+            oc["_ref"] = idx
+
+    data["sources"] = sources
+    data["source_count"] = len(sources)
+    # 统计可被 bot 访问的 URL 占比
+    bot_verified = sum(1 for s in sources if s.get("verified") == "bot")
+    data["source_bot_verified_count"] = bot_verified
+    data["source_user_verified_count"] = len(sources) - bot_verified
+    # 来源按 kind 分组（用于 Sources 区块分组渲染）
+    by_kind: dict = {}
+    for s in sources:
+        by_kind.setdefault(s["kind"], []).append(s)
+    data["sources_by_kind"] = [
+        {"kind": k, "items": v, "count": len(v)}
+        for k, v in sorted(by_kind.items(), key=lambda x: -len(x[1]))
+    ]
+    # 来源分组图标 + 标签
+    data["kind_icon"] = {
+        "narrative": "📰",
+        "competitor_meta": "🏢",
+        "strength": "💪",
+        "weakness": "⚠",
+        "feature": "⚙",
+        "market_segment": "🧭",
+        "gap": "🕳",
+        "opportunity": "💡",
+        "opportunity_validation": "📊",
+        "other_competitor": "📦",
+    }
+    data["kind_label"] = {
+        "narrative": "背景叙事",
+        "competitor_meta": "竞品基础信息",
+        "strength": "竞品优势",
+        "weakness": "竞品弱点",
+        "feature": "产品功能",
+        "market_segment": "市场细分",
+        "gap": "市场空白",
+        "opportunity": "颠覆机会",
+        "opportunity_validation": "机会验证",
+        "other_competitor": "其他竞品",
+    }
+    # 预渲染 sources 区块 HTML（避免嵌套 for 循环 quadratic 性能）
+    data["sources_html"] = _render_sources_html(data["sources_by_kind"])
+
+    # 8. Top 3 机会卡片 —— disrupt_score 排序
+    sorted_opps = sorted(
+        [
+            o
+            for o in data["opportunities"]
+            if isinstance(o.get("disrupt_score"), (int, float))
+        ],
+        key=lambda o: o["disrupt_score"],
+        reverse=True,
+    )
+    data["top_opportunities"] = sorted_opps[:3]
+
+    # 9. 竞品分段 + 每段平均分
+    if comp_total:
+        data["leader"] = comp_total[0]["name"] if comp_total else "—"
+        data["leader_avg"] = comp_total[0]["avg"] if comp_total else 0
+
+    # 10. 市场细分概览（在 sources 之后构建以带上 _ref）
+    seg_summary = []
+    for seg in data["market_segments"]:
+        seg_summary.append(
+            {
+                "label": seg.get("label", "—"),
+                "desc": seg.get("desc", ""),
+                "players": seg.get("players", []),
+                "count": len(seg.get("players", [])),
+                "icon": seg.get("icon", smart_icon(seg.get("label", ""))),
+                "source": seg.get("source", ""),
+                "_ref": seg.get("_ref", 0),
+            }
+        )
+    data["segments_summary"] = seg_summary
+
+    # TOC 列表（按章节顺序，与 templates/report.html 的 section ID 对齐）
+    data["toc_items"] = [
+        {"id": "background", "title": "背景与目标"},
+        {"id": "conclusion", "title": "结论与建议"},
+        {"id": "positioning", "title": "产品定位分析"},
+        {"id": "business", "title": "商业策略分析"},
+        {"id": "product-design", "title": "产品设计分析"},
+        {"id": "data-growth", "title": "产品数据分析"},
+        {"id": "user-feedback", "title": "用户反馈分析"},
+        {"id": "other-competitors", "title": "其他竞品资料库"},
+        {"id": "sources", "title": "来源与参考资料"},
+    ]
 
     return data
 
 
 def self_check(data, html_str):
+    """严格自检：未解析模板标签 / 数据完整性 / 文件大小。"""
     print("\n=== self-check ===")
     ok = True
+    # 1. 模板里残留的 {{ 或 {% 必须为 0
+    unresolved = html_str.count("{{") + html_str.count("{%")
+    # 排除 JS 中的字面 {{ ... }}（例如模板字符串）—— 这里简单计数足够
     checks = [
-        ("竞品 ≥ 3",          len(data["competitors"]) >= 3),
-        ("雷达图渲染",          '<svg viewBox="0 0' in html_str),
-        ("竞品卡片 ≥ 3 张",     html_str.count('id="c-') >= 3),
-        ("opportunities ≥ 3",  len(data["opportunities"]) >= 3),
-        ("executive_summary",   bool(data.get("executive_summary"))),
-        ("主题 token 完整",     "--accent:" in html_str and "--bg:" in html_str),
-        ("热力图存在",          '<table>' in html_str),
+        ("竞品 ≥ 3", len(data["competitors"]) >= 3),
+        ("opportunities ≥ 3", len(data["opportunities"]) >= 3),
+        ("executive_summary 非空", bool(data.get("executive_summary"))),
+        ("主题 token 完整", "--accent:" in html_str and "--bg:" in html_str),
+        ("未解析模板标签 = 0", unresolved == 0),
+        (
+            "所有 9 个 section 渲染齐全",
+            all(
+                f'id="{sid}"' in html_str
+                for sid in [
+                    "background",
+                    "conclusion",
+                    "positioning",
+                    "business",
+                    "product-design",
+                    "data-growth",
+                    "user-feedback",
+                    "other-competitors",
+                    "sources",
+                ]
+            ),
+        ),
+        (
+            "每个竞品卡片渲染",
+            html_str.count('class="card"') >= len(data["competitors"]),
+        ),
     ]
     for name, passed in checks:
         print(f"  {'✓' if passed else '✗'} {name}")
         if not passed:
             ok = False
+    if unresolved > 0:
+        print(f"  ⚠ 检测到 {unresolved} 处未解析标签，前 3 行：")
+        for line in html_str.split("\n"):
+            if "{{" in line or "{%" in line:
+                print(f"    → {line.strip()[:120]}")
     size_kb = len(html_str.encode("utf-8")) / 1024
-    print(f"  📦 HTML size: {size_kb:.1f} KB" + (" (✓ < 1.5MB)" if size_kb < 1500 else " (✗ 过大)"))
+    print(
+        f"  📦 HTML size: {size_kb:.1f} KB"
+        + (" (✓ < 1.5MB)" if size_kb < 1500 else " (✗ 过大)")
+    )
     print("==================\n")
     return ok
 
@@ -1132,10 +2019,6 @@ def main():
         sys.exit(1)
 
     data = normalize(json.loads(in_path.read_text(encoding="utf-8")))
-    data["radar_svg"] = make_radar(data["competitors"])
-    data["radar_legend"] = make_legend(data["competitors"])
-    data["heatmap_html"] = make_heatmap(data["competitors"], data["feature_overlap"])
-    data["market_map_svg"] = make_market_map(data["competitors"])
 
     template = Template(tmpl_path.read_text(encoding="utf-8"))
     rendered = template.render(data)

@@ -5,12 +5,11 @@ Firecrawl Adapter for /youzi skill（最优先的爬虫）
 API 文档：https://docs.firecrawl.dev
 依赖：firecrawl-py  或  调用 firecrawl CLI
 """
+
 import os
 import subprocess
 import json
 import base64
-from pathlib import Path
-from typing import Optional
 
 
 def is_available() -> bool:
@@ -20,7 +19,9 @@ def is_available() -> bool:
         return True
     # 检查 CLI
     try:
-        result = subprocess.run(["which", "firecrawl"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(
+            ["which", "firecrawl"], capture_output=True, text=True, timeout=5
+        )
         return result.returncode == 0
     except Exception:
         return False
@@ -53,9 +54,12 @@ def scrape(url: str, max_chars: int = 50000, screenshot: bool = False) -> dict:
             )
             # 用 firecrawl CLI 抓取
             cmd = [
-                "firecrawl", "scrape", url,
+                "firecrawl",
+                "scrape",
+                url,
                 "--only-main-content",
-                "--wait-for", "2000",
+                "--wait-for",
+                "2000",
             ]
             if screenshot:
                 cmd.extend(["-f", "screenshot", "-f", "markdown"])
@@ -76,8 +80,14 @@ def scrape(url: str, max_chars: int = 50000, screenshot: bool = False) -> dict:
                         # 下载截图并转 base64
                         try:
                             import urllib.request
-                            with urllib.request.urlopen(screenshot_url, timeout=30) as resp:
-                                screenshot_b64 = "data:image/jpeg;base64," + base64.b64encode(resp.read()).decode()
+
+                            with urllib.request.urlopen(
+                                screenshot_url, timeout=30
+                            ) as resp:
+                                screenshot_b64 = (
+                                    "data:image/jpeg;base64,"
+                                    + base64.b64encode(resp.read()).decode()
+                                )
                         except Exception:
                             pass
                 else:
@@ -126,8 +136,13 @@ def scrape(url: str, max_chars: int = 50000, screenshot: bool = False) -> dict:
                 screenshot_b64 = ""
                 if screenshot_url and screenshot_url.startswith("http"):
                     try:
-                        with urllib.request.urlopen(screenshot_url, timeout=30) as sresp:
-                            screenshot_b64 = "data:image/jpeg;base64," + base64.b64encode(sresp.read()).decode()
+                        with urllib.request.urlopen(
+                            screenshot_url, timeout=30
+                        ) as sresp:
+                            screenshot_b64 = (
+                                "data:image/jpeg;base64,"
+                                + base64.b64encode(sresp.read()).decode()
+                            )
                     except Exception:
                         pass
 

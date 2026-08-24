@@ -13,6 +13,7 @@ Playwright Adapter for /youzi skill
     pip install playwright
     playwright install chromium
 """
+
 import asyncio
 import os
 import json
@@ -100,26 +101,31 @@ async def _scrape(
                 if api_key:
                     try:
                         import urllib.request
+
                         # 用 Claude API 提取
                         req_data = {
                             "model": "claude-3-5-sonnet-20241022",
                             "max_tokens": 4000,
-                            "messages": [{
-                                "role": "user",
-                                "content": f"""{extract_prompt}
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": f"""{extract_prompt}
 
 网页内容（前 8000 字符）：
-{text[:8000]}"""
-                            }],
-                            "tools": [{
-                                "name": "extract_data",
-                                "description": "Extract structured data based on the prompt",
-                                "input_schema": {
-                                    "type": "object",
-                                    "properties": {},
-                                    "additionalProperties": True
+{text[:8000]}""",
                                 }
-                            }],
+                            ],
+                            "tools": [
+                                {
+                                    "name": "extract_data",
+                                    "description": "Extract structured data based on the prompt",
+                                    "input_schema": {
+                                        "type": "object",
+                                        "properties": {},
+                                        "additionalProperties": True,
+                                    },
+                                }
+                            ],
                             "tool_choice": {"type": "tool", "name": "extract_data"},
                         }
                         req = urllib.request.Request(
@@ -175,13 +181,16 @@ def scrape(
         )
         return future.result(timeout=timeout / 1000 + 10)
     except RuntimeError:
-        return asyncio.run(_scrape(url, wait_selector, screenshot_path, extract_prompt, timeout))
+        return asyncio.run(
+            _scrape(url, wait_selector, screenshot_path, extract_prompt, timeout)
+        )
 
 
 def is_available() -> bool:
     """检查 playwright 是否安装 + 浏览器是否下载。"""
     try:
         from playwright.async_api import async_playwright  # noqa
+
         return True
     except ImportError:
         return False

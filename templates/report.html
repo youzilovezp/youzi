@@ -10,141 +10,64 @@
      ============================================================ -->
 <style>
   /* ============================================================
-     DESIGN TOKENS — 主题感知（浅色 = :root，深色 = media + stamp）
-     配色方向：深夜蓝灰 + 信号红 + 暖米白 = 「决策级」咨询感
-     字体配对：serif display（编辑权威）+ system sans（实用）
+     DESIGN TOKENS — 主题感知
      ============================================================ */
   :root {
-    /* Neutrals — 偏暖的米白（不是纯灰） */
     --bg:        #f6f4ee;
     --bg-elev:   #ffffff;
     --bg-soft:   #ece8de;
     --bg-deeper: #e3ddcd;
-
-    /* Foreground */
     --fg:        #16181d;
     --fg-soft:   #4a4d56;
     --fg-mute:   #8a8d96;
-
-    /* Lines */
     --line:      #d8d2c2;
     --line-strong: #b6ad95;
-
-    /* Signal — 决策红 + 战略蓝 */
-    --accent:        #c4314b;        /* 主色：信号红（颠覆感） */
+    --accent:        #c4314b;
     --accent-deep:   #8c1f37;
     --accent-soft:   #f5dee2;
     --accent-fg:     #ffffff;
-
-    /* Data palette — 色盲友好 */
-    --data-1: #c4314b;  /* 红 */
-    --data-2: #2b6cb0;  /* 蓝 */
-    --data-3: #1f7a44;  /* 绿 */
-    --data-4: #b7791f;  /* 金 */
-    --data-5: #6b46a0;  /* 紫 */
-    --data-6: #1d6e7a;  /* 青 */
-
-    /* Semantic */
-    --good: #1f7a44;
-    --good-soft: #d8efe1;
-    --bad:  #b3261e;
-    --bad-soft: #fadcd8;
-    --warn: #b7791f;
-    --warn-soft: #fbeacd;
-    --info: #2b6cb0;
-    --info-soft: #dde9f5;
-
-    /* Shadows — 柔和多层 */
+    --data-1: #c4314b;  --data-2: #2b6cb0;  --data-3: #1f7a44;
+    --data-4: #b7791f;  --data-5: #6b46a0;  --data-6: #1d6e7a;
+    --good: #1f7a44;  --good-soft: #d8efe1;
+    --bad:  #b3261e;  --bad-soft:  #fadcd8;
+    --warn: #b7791f;  --warn-soft: #fbeacd;
+    --info: #2b6cb0;  --info-soft: #dde9f5;
     --shadow-xs: 0 1px 2px rgba(20,18,14,.05);
     --shadow-sm: 0 2px 6px rgba(20,18,14,.06), 0 1px 2px rgba(20,18,14,.04);
     --shadow-md: 0 6px 18px rgba(20,18,14,.08), 0 2px 6px rgba(20,18,14,.05);
     --shadow-lg: 0 16px 40px rgba(20,18,14,.10), 0 4px 10px rgba(20,18,14,.05);
-
-    /* Type */
     --font-display: "Iowan Old Style", "Apple Garamond", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
     --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-
-    /* Geometry */
-    --radius-xs: 4px;
-    --radius-sm: 8px;
-    --radius-md: 14px;
-    --radius-lg: 22px;
-
+    --radius-xs: 4px;  --radius-sm: 8px;  --radius-md: 14px;  --radius-lg: 22px;
     --w: 1240px;
   }
-
-  /* 暗色主题 — 深夜蓝灰 + 信号红（咨询级） */
   :root[data-theme="dark"] {
-    --bg:        #0e1015;
-    --bg-elev:   #161922;
-    --bg-soft:   #1d2030;
-    --bg-deeper: #252839;
-
-    --fg:        #ece9e0;
-    --fg-soft:   #b8b4a8;
-    --fg-mute:   #74716a;
-
-    --line:      #2c3043;
-    --line-strong: #3d4159;
-
-    --accent:        #ff5d75;
-    --accent-deep:   #c4314b;
-    --accent-soft:   #2a1820;
-    --accent-fg:     #0e1015;
-
-    --data-1: #ff5d75;
-    --data-2: #6aa3e0;
-    --data-3: #5fc78c;
-    --data-4: #e0b25c;
-    --data-5: #a684d4;
-    --data-6: #5fb4c4;
-
-    --good: #5fc78c;
-    --good-soft: #16331f;
-    --bad:  #e87a73;
-    --bad-soft: #2e1817;
-    --warn: #e0b25c;
-    --warn-soft: #2e2618;
-    --info: #6aa3e0;
-    --info-soft: #182838;
-
+    --bg: #0e1015;  --bg-elev: #161922;  --bg-soft: #1d2030;  --bg-deeper: #252839;
+    --fg: #ece9e0;  --fg-soft: #b8b4a8;  --fg-mute: #74716a;
+    --line: #2c3043;  --line-strong: #3d4159;
+    --accent: #ff5d75;  --accent-deep: #c4314b;  --accent-soft: #2a1820;  --accent-fg: #0e1015;
+    --data-1: #ff5d75;  --data-2: #6aa3e0;  --data-3: #5fc78c;  --data-4: #e0b25c;  --data-5: #a684d4;  --data-6: #5fb4c4;
+    --good: #5fc78c;  --good-soft: #16331f;
+    --bad:  #e87a73;  --bad-soft:  #2e1817;
+    --warn: #e0b25c;  --warn-soft: #2e2618;
+    --info: #6aa3e0;  --info-soft: #182838;
     --shadow-xs: 0 1px 2px rgba(0,0,0,.4);
     --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
     --shadow-md: 0 6px 18px rgba(0,0,0,.6);
     --shadow-lg: 0 16px 40px rgba(0,0,0,.7);
   }
-
-  /* 系统暗色（未显式选择时） */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg:        #0e1015;
-      --bg-elev:   #161922;
-      --bg-soft:   #1d2030;
-      --bg-deeper: #252839;
-      --fg:        #ece9e0;
-      --fg-soft:   #b8b4a8;
-      --fg-mute:   #74716a;
-      --line:      #2c3043;
-      --line-strong: #3d4159;
-      --accent:        #ff5d75;
-      --accent-deep:   #c4314b;
-      --accent-soft:   #2a1820;
-      --accent-fg:     #0e1015;
-      --data-1: #ff5d75;
-      --data-2: #6aa3e0;
-      --data-3: #5fc78c;
-      --data-4: #e0b25c;
-      --data-5: #a684d4;
-      --data-6: #5fb4c4;
-      --good: #5fc78c;
-      --good-soft: #16331f;
-      --bad:  #e87a73;
-      --bad-soft: #2e1817;
-      --warn: #e0b25c;
-      --warn-soft: #2e2618;
-      --info: #6aa3e0;
-      --info-soft: #182838;
+      --bg: #0e1015;  --bg-elev: #161922;  --bg-soft: #1d2030;  --bg-deeper: #252839;
+      --fg: #ece9e0;  --fg-soft: #b8b4a8;  --fg-mute: #74716a;
+      --line: #2c3043;  --line-strong: #3d4159;
+      --accent: #ff5d75;  --accent-deep: #c4314b;  --accent-soft: #2a1820;  --accent-fg: #0e1015;
+      --data-1: #ff5d75;  --data-2: #6aa3e0;  --data-3: #5fc78c;  --data-4: #e0b25c;  --data-5: #a684d4;  --data-6: #5fb4c4;
+      --good: #5fc78c;  --good-soft: #16331f;
+      --bad:  #e87a73;  --bad-soft:  #2e1817;
+      --warn: #e0b25c;  --warn-soft: #2e2618;
+      --info: #6aa3e0;  --info-soft: #182838;
       --shadow-xs: 0 1px 2px rgba(0,0,0,.4);
       --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
       --shadow-md: 0 6px 18px rgba(0,0,0,.6);
@@ -152,9 +75,7 @@
     }
   }
 
-  /* ============================================================
-     Reset + base
-     ============================================================ */
+  /* Reset + base */
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
   body {
@@ -166,62 +87,23 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "ss01", "kern";
   }
-
-  a {
-    color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-color .15s;
-  }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; }
   a:hover { border-bottom-color: var(--accent); }
-
-  /* 数字对齐 */
   .num { font-variant-numeric: tabular-nums; }
-
-  /* ============================================================
-     TYPOGRAPHY — Display serif for headlines
-     ============================================================ */
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    line-height: 1.2;
-    margin: 0;
-    letter-spacing: -0.01em;
-    text-wrap: balance;
-  }
+  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
   h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -0.025em; }
   h2 { font-size: clamp(1.5rem, 3.5vw, 2rem); }
   h3 { font-size: 1.25rem; }
-  h4 {
-    font-size: .8rem;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    font-weight: 600;
-    color: var(--fg-mute);
-    font-family: var(--font-body);
-  }
+  h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 600; color: var(--fg-mute); font-family: var(--font-body); }
   p { margin: 0; }
-  code, .mono {
-    font-family: var(--font-mono);
-    font-size: .88em;
-    background: var(--bg-soft);
-    padding: .1em .35em;
-    border-radius: var(--radius-xs);
-  }
+  code, .mono { font-family: var(--font-mono); font-size: .88em; background: var(--bg-soft); padding: .1em .35em; border-radius: var(--radius-xs); }
   hr { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
 
-  /* ============================================================
-     LAYOUT
-     ============================================================ */
-  .wrap {
-    max-width: var(--w);
-    margin: 0 auto;
-    padding: 0 1.5rem 4rem;
-  }
+  /* Layout */
+  .wrap { max-width: var(--w); margin: 0 auto; padding: 0 1.5rem 4rem; }
 
-  /* HERO ============================================ */
+  /* Hero */
   .hero {
     position: relative;
     padding: 4rem 0 3rem;
@@ -252,18 +134,7 @@
     text-transform: uppercase;
     margin-bottom: 1.25rem;
   }
-  .hero h1 {
-    margin-bottom: .75rem;
-    color: var(--fg);
-  }
-  .hero h1 .accent { color: var(--accent); font-style: italic; }
-  .hero .lede {
-    font-size: 1.15rem;
-    color: var(--fg-soft);
-    max-width: 720px;
-    margin-top: .75rem;
-    line-height: 1.55;
-  }
+  .hero h1 { margin-bottom: .75rem; color: var(--fg); }
   .hero .meta {
     margin-top: 1.5rem;
     color: var(--fg-mute);
@@ -272,28 +143,13 @@
     flex-wrap: wrap;
     gap: 1.5rem;
   }
-  .hero .meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-  }
-  .hero .meta strong {
-    color: var(--fg);
-    font-weight: 600;
-  }
+  .hero .meta strong { color: var(--fg); font-weight: 600; }
 
-/* ============================================================
-     SECTION — 章节标题（用衬线大字 + 序号 + 红色细线）
-     ============================================================ */
-  section {
-    margin-bottom: 4rem;
-    margin-top: 1rem;
-    scroll-margin-top: 1rem;
-    padding-top: 1rem;
-  }
+  /* Section base */
+  section { margin-bottom: 4rem; scroll-margin-top: 1rem; padding-top: 1rem; }
   .sec-head {
     display: grid;
-    grid-template-columns: 60px 1fr;
+    grid-template-columns: 70px 1fr;
     gap: 1.5rem;
     align-items: end;
     margin-bottom: 1.75rem;
@@ -326,40 +182,22 @@
     letter-spacing: .1em;
     font-weight: 500;
   }
-
-  /* ============================================================
-     PILL / BADGE
-     ============================================================ */
-  .pill {
-    display: inline-block;
-    font-size: .75rem;
-    padding: .2rem .65rem;
-    border-radius: 999px;
-    background: var(--bg-soft);
-    color: var(--fg-soft);
-    border: 1px solid var(--line);
-    margin: 0 .25rem .25rem 0;
-    line-height: 1.4;
+  .sub-head {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 1.5rem 0 0.75rem;
   }
-  .pill.good { background: var(--good-soft); color: var(--good); border-color: transparent; }
-  .pill.bad  { background: var(--bad-soft);  color: var(--bad);  border-color: transparent; }
-  .pill.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
-  .pill.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
-  .pill.accent { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 600; }
 
-  /* ============================================================
-     CARDS — 竞品卡片（新设计：左侧色条 + 大字 logo 缩写）
-     ============================================================ */
-  /* 通用卡片网格（市场细分等） */
+  /* Cards */
   .card-grid {
     display: grid;
     gap: 1.25rem;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   }
-  /* 竞品卡片网格：更宽松，2 列 */
   .card-grid.competitors {
-    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
   }
   .card {
     position: relative;
@@ -369,7 +207,7 @@
     padding: 1.25rem 1.25rem 1.25rem 1.5rem;
     box-shadow: var(--shadow-xs);
     overflow: hidden;
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    transition: transform .18s, box-shadow .18s, border-color .18s;
   }
   .card::before {
     content: "";
@@ -378,452 +216,15 @@
     width: 4px;
     background: var(--card-color, var(--accent));
   }
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--line-strong);
-  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--line-strong); }
   .card-head {
     display: grid;
-    grid-template-columns: 52px 1fr auto;
+    grid-template-columns: 52px 1fr;
     gap: 1rem;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
   .card-mark {
-    width: 52px; height: 52px;
-    border-radius: 12px;
-    background: var(--card-color, var(--accent));
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.5rem;
-    letter-spacing: -0.04em;
-    box-shadow: var(--shadow-xs);
-  }
-  .card-name {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--fg);
-    margin: 0;
-    line-height: 1.1;
-  }
-  .card-name a {
-    color: inherit;
-    border-bottom: 0;
-  }
-  .card-name a:hover { color: var(--accent); }
-  .card-sub {
-    font-family: var(--font-body);
-    font-size: .8rem;
-    color: var(--fg-mute);
-    margin-top: .25rem;
-  }
-  .card-stage {
-    font-family: var(--font-body);
-    font-size: .7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    padding: .25rem .6rem;
-    border-radius: 999px;
-    background: var(--bg-soft);
-    color: var(--fg-soft);
-  }
-  .card-head-main { flex: 1; min-width: 0; }
-  .card-link {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    font-family: var(--font-body);
-    font-size: .78rem;
-    font-weight: 600;
-    color: var(--card-color, var(--accent));
-    background: transparent;
-    border: 1.5px solid var(--card-color, var(--accent));
-    padding: .35rem .75rem;
-    border-radius: 999px;
-    white-space: nowrap;
-    transition: all .15s;
-    text-decoration: none;
-  }
-  .card-link:hover {
-    background: var(--card-color, var(--accent));
-    color: white;
-    border-color: var(--card-color, var(--accent));
-    transform: translateY(-1px);
-  }
-
-  /* 功能全景：紧凑网格 */
-  .feature-pano {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .35rem .75rem;
-    background: var(--bg-soft);
-    border-radius: var(--radius-sm);
-    padding: .75rem .85rem;
-    margin-top: .25rem;
-  }
-  .fp-item {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    font-size: .82rem;
-    color: var(--fg-soft);
-    line-height: 1.4;
-  }
-  .fp-check {
-    color: var(--good);
-    font-weight: 700;
-    font-size: .9rem;
-    flex-shrink: 0;
-  }
-  .fp-label { color: var(--fg-soft); }
-
-  .card-tagline {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.05rem;
-    color: var(--fg-soft);
-    line-height: 1.4;
-    padding: .75rem 0 1rem;
-    border-bottom: 1px dashed var(--line);
-    margin-bottom: 1rem;
-  }
-  .card-tagline::before { content: "\201C"; color: var(--accent); margin-right: .1em; font-size: 1.4em; vertical-align: -.15em; }
-  .card-tagline::after  { content: "\201D"; color: var(--accent); margin-left: .1em; font-size: 1.4em; vertical-align: -.25em; }
-
-  .card-section-title {
-    font-family: var(--font-body);
-    font-size: .68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    color: var(--fg-mute);
-    margin: .75rem 0 .35rem;
-  }
-
-  /* SCORE TABLE */
-  .score-row {
-    display: grid;
-    grid-template-columns: 90px 1fr 32px;
-    align-items: center;
-    gap: .5rem;
-    margin-bottom: .25rem;
-    font-size: .82rem;
-  }
-  .score-row .label { color: var(--fg-soft); }
-  .score-row .track {
-    height: 6px;
-    background: var(--bg-soft);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .score-row .fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--card-color, var(--accent)), var(--card-color, var(--accent-deep)));
-    border-radius: 3px;
-    transition: width .4s ease;
-  }
-  .score-row .num {
-    color: var(--fg);
-    font-weight: 600;
-    text-align: right;
-    font-size: .85rem;
-  }
-
-  /* SW (Strengths / Weaknesses) list */
-  .sw-list { list-style: none; padding: 0; margin: 0; }
-  .sw-list li {
-    padding: .55rem 0;
-    border-bottom: 1px dashed var(--line);
-    font-size: .9rem;
-  }
-  .sw-list li:last-child { border-bottom: 0; }
-
-  /* ============================================================
-     杀手锏（Differentiators）— 醒目星标 + 高亮背景
-     ============================================================ */
-  .diff-list {
-    display: flex;
-    flex-direction: column;
-    gap: .35rem;
-    margin-top: .25rem;
-  }
-  .diff-item {
-    display: flex;
-    align-items: flex-start;
-    gap: .55rem;
-    padding: .45rem .65rem;
-    background: linear-gradient(135deg, var(--accent-soft), transparent);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    font-size: .85rem;
-    color: var(--fg);
-    line-height: 1.45;
-  }
-  .diff-bullet {
-    color: var(--accent);
-    font-weight: 700;
-    font-size: .9rem;
-    flex-shrink: 0;
-    line-height: 1.5;
-  }
-  .diff-text { flex: 1; }
-  .sw-point { font-weight: 600; color: var(--fg); margin-bottom: .25rem; }
-  .sw-ev {
-    font-size: .78rem;
-    color: var(--fg-mute);
-    font-style: italic;
-    margin-top: .15rem;
-    padding-left: .85rem;
-    border-left: 2px solid var(--line);
-  }
-  .sw-badge {
-    display: inline-block;
-    font-size: .68rem;
-    font-weight: 700;
-    padding: .12rem .4rem;
-    border-radius: 3px;
-    margin-right: .4rem;
-    vertical-align: middle;
-    color: white;
-  }
-  .sw-badge.s { background: var(--good); }
-  .sw-badge.w { background: var(--bad); }
-
-  /* ============================================================
-     RADAR — 雷达图（升级版）
-     ============================================================ */
-  .radar-wrap {
-    background:
-      radial-gradient(ellipse at center top, var(--accent-soft) 0%, transparent 50%),
-      var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem;
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-  }
-  .radar-wrap::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--data-1), var(--data-2), var(--data-3), var(--data-4), var(--data-5), var(--data-6));
-    opacity: 0.5;
-  }
-  .radar-grid {
-    display: grid;
-    grid-template-columns: 1fr 240px;
-    gap: 2rem;
-    align-items: start;
-  }
-  .radar-main { min-width: 0; }
-  .radar-champions {
-    background: var(--bg-soft);
-    border-radius: var(--radius-md);
-    padding: 1.25rem;
-    border: 1px solid var(--line);
-  }
-  .radar-champions h4 {
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--line);
-    color: var(--accent);
-  }
-  .radar-champions ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .radar-champions li {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.25rem 0.5rem;
-    padding: 0.6rem 0;
-    border-bottom: 1px dashed var(--line);
-    font-size: 0.85rem;
-  }
-  .radar-champions li:last-child { border-bottom: 0; }
-  .champ-dim {
-    grid-column: 1;
-    color: var(--fg-mute);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.72rem;
-    font-weight: 600;
-  }
-  .champ-name {
-    grid-column: 1;
-    color: var(--fg);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1rem;
-  }
-  .champ-score {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: center;
-    background: #fbbf24;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
-    font-variant-numeric: tabular-nums;
-  }
-  .radar-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-    font-size: .85rem;
-  }
-  .radar-legend .item {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .35rem .75rem;
-    border-radius: 999px;
-    background: var(--bg-soft);
-    cursor: pointer;
-    user-select: none;
-    color: var(--fg-soft);
-    transition: all .15s;
-  }
-  .radar-legend .item:hover {
-    background: var(--bg-deeper);
-    color: var(--fg);
-    transform: translateY(-1px);
-  }
-  .radar-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-    font-size: .85rem;
-  }
-  .radar-legend .item {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    cursor: pointer;
-    user-select: none;
-    color: var(--fg-soft);
-    transition: opacity .15s;
-  }
-  .radar-legend .item:hover { color: var(--fg); }
-  .radar-legend .dot {
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    box-shadow: var(--shadow-xs);
-  }
-
-/* ============================================================
-     HEATMAP — 功能重叠矩阵（升级版）
-     ============================================================ */
-  .heatmap {
-    overflow-x: auto;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    background: var(--bg-elev);
-    box-shadow: var(--shadow-md);
-  }
-  .heatmap table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .9rem;
-  }
-  .heatmap th, .heatmap td {
-    padding: .85rem .9rem;
-    text-align: center;
-    border-bottom: 1px solid var(--line);
-    border-right: 1px solid var(--line);
-    transition: background .15s;
-  }
-  .heatmap th {
-    background: var(--bg-soft);
-    font-weight: 700;
-    font-size: .85rem;
-    color: var(--fg);
-    letter-spacing: 0.02em;
-  }
-  .heatmap td.feature-name {
-    text-align: left;
-    font-weight: 600;
-    color: var(--fg);
-    background: var(--bg-elev);
-    border-right: 2px solid var(--line-strong);
-  }
-  .heatmap tr:hover td { background: var(--bg-soft); }
-  .heatmap td.yes {
-    background: var(--good-soft);
-    color: var(--good);
-    font-weight: 700;
-    font-size: 1.1rem;
-  }
-  .heatmap tr:hover td.yes { background: var(--good); color: white; }
-  .heatmap td.no {
-    color: var(--fg-mute);
-    opacity: .4;
-    font-size: 1rem;
-  }
-  .heatmap td.partial {
-    background: var(--warn-soft);
-    color: var(--warn);
-    font-weight: 700;
-  }
-  .heatmap tr:hover td.partial { background: var(--warn); color: white; }
-
-  /* ============================================================
-     FEATURE CATALOG — 功能全集
-     ============================================================ */
-  .feature-catalog-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 1.5rem;
-  }
-  .fc-card {
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
-    transition: transform .18s, box-shadow .18s;
-  }
-  .fc-card::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-    background: var(--card-color, var(--accent));
-  }
-  .fc-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-  .fc-head {
-    display: grid;
-    grid-template-columns: 52px 1fr auto;
-    gap: 1rem;
-    align-items: center;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--line);
-  }
-  .fc-mark {
     width: 52px; height: 52px;
     border-radius: 12px;
     background: var(--card-color, var(--accent));
@@ -836,271 +237,900 @@
     font-size: 1.3rem;
     letter-spacing: -0.02em;
   }
-  .fc-name {
+  .card-name {
     font-family: var(--font-display);
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: var(--fg);
-    text-decoration: none;
-    border-bottom: 2px solid var(--card-color, var(--accent));
+    margin: 0;
     line-height: 1.1;
-    display: inline-block;
-    transition: color .15s;
   }
-  .fc-name:hover { color: var(--card-color, var(--accent)); }
-  .fc-stats {
-    font-size: .75rem;
-    color: var(--fg-mute);
-    margin-top: .35rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    font-weight: 600;
-  }
-  .fc-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background: transparent;
-    border: 1.5px solid var(--card-color, var(--accent));
-    color: var(--card-color, var(--accent));
-    text-decoration: none;
-    font-size: 1rem;
-    transition: all .15s;
-  }
-  .fc-link:hover {
-    background: var(--card-color, var(--accent));
-    color: white;
-    transform: scale(1.05);
-  }
-
-  .fc-screenshot {
-    margin-bottom: 1.25rem;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--bg-soft);
-    border: 1px solid var(--line);
-    position: relative;
-  }
-  .fc-screenshot img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform .3s ease;
-  }
-  .fc-screenshot:hover img {
-    transform: scale(1.02);
-  }
-  .fc-screenshot a {
-    display: block;
-    text-decoration: none;
-    border: 0;
-  }
-  .fc-shot-label {
-    text-align: center;
-    font-size: .75rem;
-    color: var(--fg-mute);
-    padding: .4rem 0;
-    background: var(--bg-elev);
-    border-top: 1px solid var(--line);
-    letter-spacing: .03em;
-  }
-
-  .fc-cat-group {
-    margin-bottom: 1rem;
-  }
-  .fc-cat-group:last-child { margin-bottom: 0; }
-  .fc-cat-label {
-    font-family: var(--font-body);
-    font-size: .7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    color: var(--card-color, var(--accent));
-    margin-bottom: .5rem;
-    padding-bottom: .35rem;
-    border-bottom: 1px dashed var(--line);
-  }
-  .fc-cat-items {
-    display: flex;
-    flex-direction: column;
-    gap: .4rem;
-  }
-  .fc-item {
-    display: grid;
-    grid-template-columns: minmax(120px, 1fr) 2fr;
-    gap: .75rem;
-    align-items: baseline;
-    padding: .35rem 0;
-    font-size: .85rem;
-  }
-  .fc-item-name {
+  .card-quote {
     font-family: var(--font-display);
-    font-weight: 600;
-    color: var(--fg);
-    line-height: 1.3;
-  }
-  .fc-item-desc {
-    color: var(--fg-mute);
-    font-size: .82rem;
-    line-height: 1.4;
-  }
-
-  .fc-source-note {
-    margin-top: 2rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--bg-soft);
-    border-radius: var(--radius-md);
-    border-left: 4px solid var(--accent);
-    font-size: .88rem;
-    color: var(--fg-soft);
-    line-height: 1.7;
-  }
-  .fc-source-note a {
-    color: var(--accent);
-    border-bottom: 1px dotted var(--accent);
-  }
-  .fc-source-note a:hover { border-bottom-style: solid; }
-
-  /* ============================================================
-     OPPORTUNITIES — 机会卡片
-     ============================================================ */
-  .opp {
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--accent);
-    border-radius: var(--radius-md);
-    padding: 1.5rem 1.75rem;
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow-sm);
-    transition: transform .18s, box-shadow .18s;
-  }
-  .opp:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-  .opp-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-  .opp-title {
-    font-family: var(--font-display);
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--fg);
-    line-height: 1.25;
-  }
-  .opp-title .rank {
-    font-family: var(--font-display);
-    color: var(--accent);
-    font-size: .9em;
-    margin-right: .5rem;
+    font-size: 1.05rem;
     font-style: italic;
-    font-weight: 700;
+    color: var(--fg);
+    line-height: 1.55;
+    margin: 0.5rem 0;
   }
-  .opp-score {
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-size: .75rem;
-    font-weight: 700;
-    padding: .3rem .7rem;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-  .opp-grid {
+  .card-quote::before { content: "\201C"; color: var(--accent); font-size: 1.4em; margin-right: 0.1em; font-style: normal; }
+  .card-quote::after { content: "\201D"; color: var(--accent); font-size: 1.4em; margin-left: 0.1em; font-style: normal; }
+
+  /* Diff/opp list (有角度) */
+  .diff-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .diff-item {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem 1.5rem;
+    grid-template-columns: 130px 1fr;
+    gap: 0.85rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-soft);
+    border-left: 3px solid var(--good);
+  }
+  .diff-item.negative { border-left-color: var(--bad); }
+  .diff-angle {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.85rem;
+  }
+  .diff-body strong { color: var(--fg); }
+  .diff-body .insight { color: var(--good); margin-top: 0.25rem; }
+  .diff-item.negative .diff-body .insight { color: var(--bad); }
+
+  /* Table (heatmap) */
+  .heatmap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-sm);
+  }
+  .heatmap table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .heatmap th, .heatmap td {
+    padding: 0.7rem 0.9rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  .heatmap th { background: var(--bg-soft); font-weight: 700; color: var(--fg); letter-spacing: 0.02em; }
+  .heatmap td.feature-name { text-align: left; font-weight: 600; color: var(--fg-soft); background: var(--bg-elev); border-right: 2px solid var(--line-strong); }
+  .heatmap td.yes { background: var(--good-soft); color: var(--good); font-weight: 700; }
+  .heatmap td.no { color: var(--fg-mute); opacity: 0.4; }
+  .heatmap tr:hover td { background: var(--bg-soft); }
+
+  /* Hero quote (一、背景与目标) */
+  .hero-quote {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: var(--fg);
+    background: linear-gradient(135deg, var(--accent-soft), var(--bg-elev));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+
+  /* Goals pills */
+  .goals-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin-top: 1rem;
   }
-  .opp-field { font-size: .9rem; }
-  .opp-field dt {
-    font-family: var(--font-body);
-    font-size: .68rem;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    font-weight: 700;
-    color: var(--fg-mute);
-    margin-bottom: .35rem;
-  }
-  .opp-field dd { margin: 0 0 .5rem; color: var(--fg-soft); line-height: 1.55; }
-  .opp-field-wide { grid-column: 1 / -1; }
-
-  /* ============================================================
-     灵感来源 — 引用框样式
-     ============================================================ */
-  .opp-inspire {
-    position: relative;
-    background: linear-gradient(135deg, var(--bg-soft), var(--bg-elev));
-    border-left: 3px solid var(--accent);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    padding: .85rem 1.1rem;
-    margin-bottom: 1rem;
-  }
-  .opp-inspire-label {
-    font-family: var(--font-body);
-    font-size: .68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .14em;
+  .goal-pill {
+    background: var(--bg-elev);
+    border: 1px solid var(--accent);
     color: var(--accent);
-    margin-bottom: .35rem;
-  }
-  .opp-inspire-quote {
-    font-family: var(--font-display);
-    font-size: 1.02rem;
-    line-height: 1.55;
-    color: var(--fg);
-    font-style: italic;
-    position: relative;
-    padding-left: 0;
-  }
-  .opp-inspire-quote::before {
-    content: "\201C";
-    color: var(--accent);
-    font-size: 1.6em;
-    font-style: normal;
-    margin-right: .1em;
-    vertical-align: -.18em;
-    line-height: 0;
-    font-family: serif;
-  }
-
-  /* ============================================================
-     护城河 — 独立卡片 + 渐变背景
-     ============================================================ */
-  .moat-card {
-    display: block;
-    padding: .85rem 1.1rem;
-    background: linear-gradient(135deg, var(--good-soft), var(--bg-elev));
-    border: 1.5px solid var(--good);
-    border-radius: var(--radius-md);
-    color: var(--fg);
-    font-size: .92rem;
-    line-height: 1.55;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
     font-weight: 500;
-    position: relative;
+  }
+
+  /* Six.Voice (商业策略) */
+  .biz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+  .biz-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+  }
+  .biz-card h4 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  .biz-card .biz-row { font-size: 0.9rem; line-height: 1.7; margin: 0.4rem 0; }
+  .biz-card .biz-row strong { color: var(--accent); }
+
+  /* Feedback (七、用户反馈) */
+  .fb-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
     box-shadow: var(--shadow-xs);
   }
-  .moat-card::before {
-    content: "🛡";
-    position: absolute;
-    top: -10px;
-    left: 12px;
-    background: var(--bg-elev);
-    padding: 0 .35rem;
+  .fb-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .fb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .fb-col h4 { font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .fb-col.positive h4 { color: var(--good); }
+  .fb-col.negative h4 { color: var(--bad); }
+  .fb-item {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+  }
+  .fb-item.positive { background: var(--good-soft); }
+  .fb-item.negative { background: var(--bad-soft); }
+  .fb-source { color: var(--fg-mute); font-size: 0.75rem; margin-top: 0.25rem; }
+  .fb-summary { font-size: 0.9rem; color: var(--fg-soft); background: var(--bg-soft); padding: 0.75rem 1rem; border-radius: 6px; margin: 0; }
+
+  /* Executive summary box */
+  .exec-box {
+    background: linear-gradient(135deg, var(--accent-soft), var(--bg-elev));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .exec-box h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  .exec-box p {
+    font-family: var(--font-display);
     font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--fg);
   }
 
-  /* ============================================================
-     Theme toggle
-     ============================================================ */
+  /* § 5.2 功能对比矩阵 */
+  .feat-summary-bar {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .feat-summary-stat {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    flex: 1; min-width: 140px;
+    text-align: center;
+  }
+  .feat-summary-stat .num {
+    font-family: var(--font-display);
+    font-size: 1.7rem; font-weight: 700;
+    color: var(--accent);
+  }
+  .feat-summary-stat .lbl {
+    font-size: 0.75rem; color: var(--fg-mute);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .feat-matrix-wrap {
+    overflow-x: auto;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+  }
+  .feat-matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+  .feat-matrix th, .feat-matrix td {
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    text-align: center;
+    vertical-align: middle;
+  }
+  .feat-matrix thead th {
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky; top: 0;
+  }
+  .feat-matrix th:first-child, .feat-matrix td:first-child {
+    text-align: left;
+    background: var(--bg-soft);
+    color: var(--fg);
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-right: 2px solid var(--line-strong);
+    min-width: 140px;
+  }
+  .feat-matrix tr:hover td { background: var(--bg-soft); }
+  .feat-matrix td.feature-cell {
+    background: var(--bg-elev);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  /* 几家共有的功能 */
+  .feat-matrix .share-1 { background: rgba(196, 49, 75, 0.10); color: var(--accent); }
+  .feat-matrix .share-2 { background: rgba(184, 142, 47, 0.08); color: var(--warn); }
+  .feat-matrix .share-3 { background: rgba(31, 122, 68, 0.08); color: var(--good); }
+  .feat-matrix .share-4 { background: rgba(43, 108, 176, 0.08); color: var(--info); }
+  .feat-matrix .share-5 { background: rgba(43, 108, 176, 0.16); color: var(--info); }
+  .feat-matrix .share-6 { background: var(--info); color: white; }
+  .feat-matrix .coverage-cell {
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--bg-soft);
+  }
+  .feat-matrix .total-row td { background: var(--bg-deeper); font-weight: 700; }
+  .feat-matrix .total-row td.feature-cell { background: var(--bg-deeper); }
+
+  /* § 5.2 独家功能 / 共性功能分类卡 */
+  .feat-category-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .feat-category-card .cat-head {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding-bottom: 0.5rem; margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .feat-category-card .cat-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-family: var(--font-display);
+  }
+  .feat-category-card .cat-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem; color: var(--fg);
+    flex: 1;
+  }
+  .feat-category-card .cat-count {
+    font-size: 0.78rem; color: var(--fg-mute);
+    background: var(--bg-soft);
+    padding: 0.15rem 0.55rem; border-radius: 999px;
+  }
+  .feat-category-card .feat-row {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--line);
+    align-items: start;
+  }
+  .feat-category-card .feat-name {
+    font-weight: 600; color: var(--fg);
+    font-size: 0.9rem;
+  }
+  .feat-category-card .feat-desc {
+    font-size: 0.78rem; color: var(--fg-mute);
+    margin-top: 0.15rem;
+  }
+  .feat-category-card .feat-comps {
+    display: flex; flex-wrap: wrap; gap: 0.25rem;
+  }
+  .feat-category-card .comp-pill {
+    display: inline-flex; align-items: center; gap: 0.2rem;
+    padding: 0.15rem 0.55rem; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 600;
+    border: 1px solid var(--line);
+  }
+  .feat-category-card .comp-pill.unique { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .feat-category-card .comp-pill.shared { background: var(--bg-soft); color: var(--fg-soft); }
+
+  /* § 2 同类厂商聚类 */
+  .segment-cluster {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 5px solid var(--info);
+  }
+  .segment-cluster .cluster-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 0.85rem; padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .segment-cluster .cluster-head h4 {
+    margin: 0; color: var(--info);
+    font-family: var(--font-display); font-size: 1.1rem;
+  }
+  .segment-cluster .cluster-head .count {
+    background: var(--info-soft); color: var(--info);
+    padding: 0.2rem 0.7rem; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .segment-cluster .cluster-desc {
+    color: var(--fg-soft); font-size: 0.85rem; margin: 0.4rem 0 0.85rem;
+    font-style: italic;
+  }
+  .cluster-comp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.75rem;
+  }
+  .cluster-comp-card {
+    background: var(--bg-soft);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    border-top: 3px solid var(--data-1);
+  }
+  .cluster-comp-card .cc-name {
+    font-family: var(--font-display);
+    font-weight: 700; color: var(--fg);
+    font-size: 1rem; margin-bottom: 0.35rem;
+  }
+  .cluster-comp-card .cc-tagline {
+    color: var(--fg-soft); font-size: 0.82rem;
+    font-style: italic; margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+  .cluster-comp-card .cc-stats {
+    display: flex; gap: 0.4rem; flex-wrap: wrap;
+    margin-top: 0.4rem;
+  }
+  .cluster-comp-card .cc-stat {
+    font-size: 0.72rem;
+    background: var(--bg-elev);
+    padding: 0.15rem 0.45rem; border-radius: 4px;
+    color: var(--fg-mute); border: 1px solid var(--line);
+  }
+  .cluster-comp-card .cc-stat strong { color: var(--accent); }
+
+  /* § 2 通俗解释 - 关键术语卡片 */
+  .glossary-grid {
+    display: grid; gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 1rem;
+  }
+  .glossary-item {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--info);
+    padding: 0.55rem 0.85rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.85rem;
+  }
+  .glossary-item .term {
+    font-weight: 700; color: var(--accent);
+    font-family: var(--font-mono); font-size: 0.85rem;
+  }
+  .glossary-item .explain {
+    color: var(--fg-soft); margin-top: 0.2rem; line-height: 1.5;
+  }
+
+  /* § 2 评分可视化条 */
+  .score-visual-bar {
+    display: grid;
+    grid-template-columns: 50px 1fr 35px;
+    gap: 0.4rem;
+    align-items: center;
+    font-size: 0.8rem;
+    padding: 0.25rem 0;
+  }
+  .score-visual-bar .label {
+    color: var(--fg-soft); font-weight: 600;
+  }
+  .score-visual-bar .track {
+    height: 12px; background: var(--bg-deeper);
+    border-radius: 999px; overflow: hidden;
+    position: relative;
+  }
+  .score-visual-bar .fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--warn), var(--accent));
+  }
+  .score-visual-bar .val {
+    font-family: var(--font-mono); font-weight: 700;
+    color: var(--accent); text-align: right;
+  }
+  .score-bar-tier {
+    display: inline-block;
+    padding: 0.1rem 0.4rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700;
+    margin-left: 0.5rem;
+  }
+  .tier-领先 { background: var(--good-soft); color: var(--good); }
+  .tier-中坚 { background: var(--info-soft); color: var(--info); }
+  .tier-跟随 { background: var(--bg-soft); color: var(--fg-mute); }
+
+  /* Six. Visual signal (5.3 交互视觉) */
+  .visual-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .visual-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+  }
+  .visual-card h4 { color: var(--accent); font-size: 1rem; margin: 0 0 0.5rem; }
+  .visual-card p { font-size: 0.9rem; line-height: 1.6; color: var(--fg-soft); margin: 0; }
+
+  /* Six. Data growth */
+  .growth-hero {
+    background: linear-gradient(135deg, var(--accent-soft), var(--bg-elev));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .growth-hero p {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--fg);
+    margin: 0;
+  }
+  .growth-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .growth-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-xs);
+  }
+  .growth-card .signal { font-size: 0.8rem; color: var(--fg-mute); }
+  .growth-card .value {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--good);
+    margin: 0.4rem 0;
+  }
+  .growth-card .source { font-size: 0.75rem; color: var(--fg-mute); }
+  .growth-summary {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--fg-soft);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+  }
+
+  /* SWOT grid (二.3) */
+  .swot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .swot-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border-top: 4px solid var(--accent);
+  }
+  .swot-card .swot-head {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .swot-card .swot-mark {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-family: var(--font-display);
+  }
+  .swot-card h4 {
+    margin: 0; font-family: var(--font-display);
+    font-size: 1.05rem; color: var(--fg); text-transform: none; letter-spacing: 0;
+  }
+  .swot-block { margin-bottom: 0.75rem; }
+  .swot-block h5 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    margin: 0.5rem 0 0.3rem; font-weight: 700;
+  }
+  .swot-block.s h5 { color: var(--good); }
+  .swot-block.w h5 { color: var(--bad); }
+  .swot-block.o h5 { color: var(--info); }
+  .swot-block.t h5 { color: var(--warn); }
+  .swot-block ul { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.65; }
+  .swot-block li { color: var(--fg-soft); margin-bottom: 0.2rem; }
+  .swot-block li .ev { color: var(--fg-mute); font-size: 0.78rem; font-style: italic; }
+
+  /* Top opp cards (二.4) */
+  .opp-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .opp-card {
+    background: linear-gradient(135deg, var(--accent-soft), var(--bg-elev));
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .opp-card .score-badge {
+    position: absolute; top: 0.75rem; right: 0.75rem;
+    background: var(--accent); color: white;
+    border-radius: 999px; padding: 0.2rem 0.7rem;
+    font-weight: 700; font-size: 0.85rem;
+    font-family: var(--font-display);
+  }
+  .opp-card h4 {
+    margin: 0 0 0.5rem; font-family: var(--font-display);
+    font-size: 1.05rem; color: var(--fg);
+    text-transform: none; letter-spacing: 0;
+    padding-right: 3.5rem;
+  }
+  .opp-card .insp { font-size: 0.85rem; color: var(--fg-soft); margin: 0.4rem 0; line-height: 1.55; }
+  .opp-card .target { font-size: 0.78rem; color: var(--fg-mute); margin-top: 0.5rem; }
+  .opp-card .target strong { color: var(--accent); }
+
+  /* Score comparison table (四.1) */
+  .score-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    font-size: 0.88rem;
+    margin-top: 1rem;
+  }
+  .score-table th, .score-table td {
+    padding: 0.6rem 0.85rem; text-align: center;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  .score-table th { background: var(--bg-soft); font-weight: 700; color: var(--fg); }
+  .score-table th:first-child { text-align: left; }
+  .score-table td:first-child { text-align: left; font-weight: 600; color: var(--fg-soft); }
+  .score-table tr:last-child td { border-bottom: 0; }
+  .score-table .score-cell { font-family: var(--font-mono); font-weight: 700; }
+  .score-table .rank-1 { background: var(--good-soft); color: var(--good); }
+  .score-table .rank-2 { background: rgba(184, 142, 47, 0.12); color: var(--warn); }
+  .score-table .rank-3 { background: rgba(180, 83, 9, 0.12); color: var(--warn); }
+
+  /* Tier comparison (四.0 增强) */
+  .tier-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.85rem; }
+  .tier-table th, .tier-table td {
+    padding: 0.5rem 0.7rem; text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  .tier-table th { background: var(--bg-soft); font-weight: 700; color: var(--fg); }
+  .tier-table td:first-child { font-weight: 700; color: var(--accent); }
+
+  /* Timeline (四.2) */
+  .timeline-wrap {
+    margin-top: 1rem; padding: 1rem 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
+  .timeline-axis {
+    position: relative; padding: 1.5rem 1rem 1rem;
+    min-width: 600px;
+  }
+  .timeline-axis::before {
+    content: ""; position: absolute; left: 1rem; right: 1rem;
+    top: 2.5rem; height: 2px; background: var(--line-strong);
+  }
+  .timeline-events {
+    display: flex; justify-content: space-between;
+    gap: 0.5rem; position: relative;
+  }
+  .timeline-event {
+    flex: 1; text-align: center; position: relative;
+    padding-top: 0.5rem;
+  }
+  .timeline-event::before {
+    content: ""; position: absolute;
+    top: -0.7rem; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--bg-elev);
+  }
+  .timeline-event .year {
+    font-family: var(--font-display); font-size: 1.1rem;
+    font-weight: 700; color: var(--accent);
+  }
+  .timeline-event .name {
+    font-size: 0.82rem; font-weight: 700; color: var(--fg);
+    margin-top: 0.2rem;
+  }
+  .timeline-event .stage {
+    font-size: 0.7rem; color: var(--fg-mute);
+    margin-top: 0.15rem;
+  }
+
+  /* Stage distribution (四.3) */
+  .stage-bars { margin-top: 1rem; }
+  .stage-bar-row {
+    display: grid; grid-template-columns: 100px 1fr 80px;
+    gap: 0.75rem; align-items: center; padding: 0.4rem 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .stage-bar-label { font-weight: 600; color: var(--fg-soft); font-size: 0.88rem; }
+  .stage-bar-track {
+    height: 18px; background: var(--bg-soft);
+    border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .stage-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--info));
+    border-radius: 4px;
+  }
+  .stage-bar-pct {
+    font-family: var(--font-mono); font-weight: 700;
+    color: var(--fg); text-align: right;
+  }
+
+  /* Tech signal clusters (五.4) */
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.6rem; margin-top: 0.75rem;
+  }
+  .tech-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 0.85rem; background: var(--bg-soft);
+    border-radius: var(--radius-sm); font-size: 0.85rem;
+  }
+  .tech-item .sig { color: var(--fg); font-weight: 500; }
+  .tech-item .cnt {
+    background: var(--accent); color: white;
+    border-radius: 999px; padding: 0.1rem 0.55rem;
+    font-size: 0.75rem; font-weight: 700;
+  }
+
+  /* User overlap matrix (三.3) */
+  .overlap-list { margin-top: 0.75rem; }
+  .overlap-row {
+    display: grid; grid-template-columns: 200px 1fr 60px;
+    gap: 0.75rem; align-items: center; padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .overlap-segment {
+    font-weight: 600; color: var(--fg); font-size: 0.9rem;
+  }
+  .overlap-comps {
+    display: flex; flex-wrap: wrap; gap: 0.35rem;
+  }
+  .overlap-chip {
+    padding: 0.2rem 0.65rem; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 0.78rem; font-weight: 600;
+  }
+  .overlap-intensity {
+    font-size: 1.1rem; text-align: right;
+  }
+
+  /* Segment overview (六.0) */
+  .segment-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem; margin-top: 1rem;
+  }
+  .segment-card {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 1rem;
+    border-left: 4px solid var(--info);
+  }
+  .segment-card h4 {
+    margin: 0 0 0.4rem; color: var(--info);
+    font-family: var(--font-display); font-size: 1rem;
+    text-transform: none; letter-spacing: 0;
+  }
+  .segment-card .players {
+    display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem;
+  }
+  .segment-card .player-chip {
+    padding: 0.15rem 0.55rem; border-radius: 6px;
+    background: var(--info-soft); color: var(--info);
+    font-size: 0.78rem;
+  }
+
+  /* ────── 阅读进度条（顶部） ────── */
+  .reading-progress {
+    position: fixed; top: 0; left: 0;
+    height: 3px; background: var(--accent);
+    z-index: 200; transition: width 0.1s linear;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ────── 引用系统 ────── */
+  .ref {
+    display: inline-block;
+    vertical-align: super;
+    font-size: 0.7em;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.05em 0.35em;
+    border-radius: 4px;
+    margin-left: 0.2em;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: var(--font-mono);
+  }
+  .ref:hover { background: var(--accent); color: white; }
+
+  /* ────── Sources 列表 ────── */
+  .sources-list {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 0.6rem;
+  }
+  .source-item {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--accent);
+    padding: 0.6rem 0.85rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.85rem;
+  }
+  .source-item .src-num {
+    display: inline-block; width: 24px; height: 24px; line-height: 24px;
+    text-align: center; border-radius: 50%;
+    background: var(--accent); color: white;
+    font-weight: 700; font-family: var(--font-mono);
+    font-size: 0.78rem; margin-right: 0.5rem;
+  }
+  .source-item .src-claim {
+    color: var(--fg); font-weight: 600;
+  }
+  .source-item .src-meta {
+    color: var(--fg-mute); font-size: 0.75rem;
+    margin-top: 0.25rem;
+  }
+  .source-item a {
+    color: var(--info); word-break: break-all;
+  }
+
+  /* ────── 章节 Hero ────── */
+  .sec-hero {
+    background: linear-gradient(135deg, var(--accent-soft), var(--bg-elev));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .sec-hero .hero-tags {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+  .hero-tag {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* ────── 浮动 TOC ────── */
+  .toc-sidebar {
+    position: fixed;
+    right: 1rem; top: 5rem;
+    width: 220px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+    z-index: 50;
+    box-shadow: var(--shadow-sm);
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+    font-size: 0.82rem;
+  }
+  .toc-sidebar h5 {
+    margin: 0 0 0.5rem;
+    font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--accent);
+    font-family: var(--font-body); font-weight: 700;
+  }
+  .toc-sidebar ol {
+    list-style: none; padding: 0; margin: 0;
+    counter-reset: toc;
+  }
+  .toc-sidebar li {
+    counter-increment: toc;
+    margin: 0.1rem 0;
+  }
+  .toc-sidebar a {
+    display: block;
+    padding: 0.3rem 0.5rem;
+    color: var(--fg-soft);
+    border-radius: 4px;
+    text-decoration: none;
+    border: 0;
+    line-height: 1.4;
+  }
+  .toc-sidebar a::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--fg-mute);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    margin-right: 0.4rem;
+  }
+  .toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+
+  /* ────── 信息条/chips ────── */
+  .info-chips {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+  .info-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.65rem;
+    background: var(--bg-soft);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--fg-soft);
+    border: 1px solid var(--line);
+  }
+  .info-chip .lbl { color: var(--fg-mute); font-size: 0.7rem; }
+  .info-chip .val { color: var(--fg); font-weight: 600; }
+
+  /* Pricing tier table */
+  .pricing-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-elev); border-radius: var(--radius-md);
+    overflow: hidden; font-size: 0.88rem;
+    margin-top: 1rem;
+  }
+  .pricing-table th, .pricing-table td {
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  .pricing-table th {
+    background: var(--accent); color: white; font-weight: 700;
+    font-size: 0.82rem;
+  }
+  .pricing-table td:first-child { font-weight: 700; color: var(--accent); }
+  .pricing-table tr:hover td { background: var(--bg-soft); }
+
+  /* Feature chip cluster */
+  .feature-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+  .feature-chip {
+    display: inline-block;
+    padding: 0.18rem 0.6rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+
+  /* Theme toggle */
   .theme-toggle {
     position: fixed;
-    top: 1rem;
-    right: 1rem;
+    top: 1rem; right: 1rem;
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -1115,15 +1145,13 @@
   }
   .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
 
-  /* ============================================================
-     Footer
-     ============================================================ */
+  /* Footer */
   footer {
     margin-top: 5rem;
     padding-top: 2rem;
     border-top: 1px solid var(--line);
     color: var(--fg-mute);
-    font-size: .85rem;
+    font-size: 0.85rem;
     text-align: center;
   }
   footer .signoff {
@@ -1131,32 +1159,20 @@
     font-style: italic;
     font-size: 1.1rem;
     color: var(--fg-soft);
-    margin-bottom: .5rem;
+    margin-bottom: 0.5rem;
   }
 
-  /* ============================================================
-     Responsive
-     ============================================================ */
-  @media (max-width: 900px) {
-    .exec { grid-template-columns: 1fr; gap: 1.5rem; }
-    .sec-head { grid-template-columns: 1fr; gap: .5rem; }
-    .sec-num { font-size: 2.5rem; }
-
-  }
-  @media (max-width: 600px) {
+  /* Responsive */
+  @media (max-width: 700px) {
     .wrap { padding: 0 1rem 3rem; }
     .hero { padding: 2rem 0 1.5rem; }
+    .sec-head { grid-template-columns: 1fr; gap: 0.5rem; }
+    .sec-num { font-size: 2.5rem; }
+    .fb-grid { grid-template-columns: 1fr; }
   }
-
-  /* ============================================================
-     Print
-     ============================================================ */
   @media print {
     .theme-toggle { display: none; }
-    .card, .opp, .rec, .radar-wrap, .heatmap {
-      break-inside: avoid;
-      box-shadow: none;
-    }
+    .card, .fb-card, .exec-box, .growth-hero { break-inside: avoid; box-shadow: none; }
     section { break-inside: avoid; }
   }
 </style>
@@ -1165,389 +1181,692 @@
 
 <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌗 主题</button>
 
+<div class="reading-progress" id="readingProgress"></div>
+
+<aside class="toc-sidebar" id="tocSidebar">
+  <h5>📑 本报告目录</h5>
+  <ol>
+    {% for t in toc_items %}
+    <li><a href="#{{t.id}}">{{t.title}}</a></li>
+    {% endfor %}
+    <li style="margin-top:0.5rem; border-top:1px solid var(--line); padding-top:0.5rem;">
+      <a href="#sources">📚 来源 ({{source_count}})</a>
+    </li>
+  </ol>
+</aside>
+
 <div class="wrap">
 
-  <!-- HERO ============================================== -->
+  <!-- ════ HERO ════ -->
   <header class="hero">
-    <span class="hero-eyebrow">YOUZI · 战略竞争情报</span>
-    <h1>{{topic}}<br><span class="accent">{{topic_accent}}</span></h1>
-    <p class="lede">{{subtitle}}</p>
+    <span class="hero-eyebrow">YOUZI · 竞品颠覆性分析报告</span>
+    <h1>{{topic}}</h1>
+    <p style="color: var(--fg-soft); font-size: 1.05rem; margin-top: 0.75rem; max-width: 800px;">{{subtitle}}</p>
     <div class="meta">
-      <span>📅 <strong>{{date}}</strong></span>
+      <span>📅 {{date}}</span>
       <span>🏷 分析 <strong>{{competitor_count}}</strong> 个竞品</span>
-      <span>💡 挖掘 <strong>{{opportunity_count}}</strong> 个颠覆性机会</span>
+      <span>💡 <strong>{{opportunity_count}}</strong> 个颠覆性机会</span>
       <span>⏱ 由 <a href="https://docs.claude.com">Claude /youzi</a> 生成</span>
     </div>
   </header>
 
-<!-- TOC ============================================== -->
-  <nav style="margin: 2.5rem 0 3.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line);">
-    <h4 style="margin-bottom: .75rem;">📑 报告导览</h4>
-    <ol style="margin: 0; padding-left: 0; list-style: none; columns: 3; column-gap: 2rem;">
-      {% for item in toc_items %}
-      <li style="padding: .25rem 0;"><a href="#{{item.id}}">{{ "%02d"|format(loop.index) }} · {{item.title}}</a></li>
-      {% endfor %}
-    </ol>
-  </nav>
-
-  <!-- MARKET SEGMENTS =================================== -->
-  <section id="segments">
+  <!-- ════ 一、背景与目标 ════ -->
+  <section id="background">
     <div class="sec-head">
       <div class="sec-num">01</div>
       <div>
-        <h2 class="sec-title">市场细分</h2>
-        <div class="sec-subtitle">Market Segments · 玩家分群</div>
+        <h2 class="sec-title">背景与目标</h2>
+        <div class="sec-subtitle">Background &amp; Goals</div>
       </div>
     </div>
-    <div class="card-grid">
-      {% for seg in market_segments %}
-      <div class="card" style="--card-color: var(--data-{{loop.index0_mod6}})">
-        <div class="card-head">
-          <div class="card-mark">{{seg.label|slice:2}}</div>
-          <div>
-            <h3 class="card-name">{{seg.label}}</h3>
-            <div class="card-sub">{{seg.desc}}</div>
-          </div>
-          <span class="pill">{{seg.players_count}} 家</span>
-        </div>
-        <div>
-          {% for p in seg.players %}<span class="pill info">{{p}}</span>{% endfor %}
-        </div>
+    <div class="sec-hero">
+      <h3 style="margin:0; font-family:var(--font-display); font-size:1.1rem; color:var(--accent);">📋 分析背景</h3>
+      <p style="margin-top:0.5rem; line-height:1.7; color:var(--fg);">{{background}}
+      {% for bs in background_sources %}<a href="#src-{{bs._ref|default:''}}" class="ref">{{bs._ref|default:loop.index}}</a>{% endfor %}
+      </p>
+      {% if goals %}
+      <h3 style="margin:1.25rem 0 0.6rem; font-family:var(--font-display); font-size:1rem; color:var(--accent);">🎯 本次分析目标</h3>
+      <div class="hero-tags">
+        {% for g in goals %}<span class="hero-tag">{{g}}</span>{% endfor %}
       </div>
-      {% endfor %}
+      {% endif %}
+      <div class="info-chips" style="margin-top:1rem;">
+        <span class="info-chip"><span class="lbl">竞品</span><span class="val">{{competitor_count}} 家</span></span>
+        <span class="info-chip"><span class="lbl">机会</span><span class="val">{{opportunity_count}} 个</span></span>
+        <span class="info-chip"><span class="lbl">空白</span><span class="val">{{gap_count}} 条</span></span>
+        <span class="info-chip"><span class="lbl">综合领先</span><span class="val">{{leader}}</span></span>
+        <span class="info-chip"><span class="lbl">平均成熟度</span><span class="val">{{avg_maturity}}/10</span></span>
+        <span class="info-chip"><span class="lbl">来源</span><span class="val">{{source_count}} 条</span></span>
+      </div>
     </div>
   </section>
 
-    <!-- COMPETITORS ======================================= -->
-  <section id="competitors">
+  <!-- ════ 二、结论与建议 ════ -->
+  <section id="conclusion">
     <div class="sec-head">
       <div class="sec-num">02</div>
       <div>
-        <h2 class="sec-title">竞品画像</h2>
-        <div class="sec-subtitle">Competitor Profiles · {{competitor_count}} 家逐家拆解</div>
+        <h2 class="sec-title">结论与建议</h2>
+        <div class="sec-subtitle">Conclusion &amp; Recommendations</div>
       </div>
     </div>
-    <div class="card-grid competitors">
-      {% for c in competitors %}
-      <div class="card" id="c-{{c.slug}}" style="--card-color: var(--data-{{loop.index0_mod6}})">
-        <div class="card-head">
-          <div class="card-mark">{{c.icon|default:c.name|slice:2}}</div>
-          <div class="card-head-main">
-            <h3 class="card-name">{{c.name}}</h3>
-            <div class="card-sub">{{c.founded}} 年成立 · {{c.stage}}</div>
-          </div>
-          <a class="card-link" href="{{c.url}}" target="_blank" rel="noopener" title="访问 {{c.name}} 官网">
-            🌐 访问官网 →
-          </a>
-        </div>
 
-        <p class="card-tagline">{{c.tagline}}</p>
-
-        <div class="card-section-title">目标用户</div>
-        <div>{% for u in c.target_users %}<span class="pill">{{u}}</span>{% endfor %}</div>
-
-        <div class="card-section-title">核心能力</div>
-        <div>{% for f in c.core_features %}<span class="pill info">{{f}}</span>{% endfor %}</div>
-
-        <div class="card-section-title" style="color: var(--accent);">▦ 功能全景</div>
-        <div class="feature-pano">
-          {% for f in c.core_features %}
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">{{f}}</span>
-          </div>
-          {% endfor %}
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">API & Webhook 集成</span>
-          </div>
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">多渠道统一收件箱</span>
-          </div>
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">自动化流程编排</span>
-          </div>
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">模板消息管理</span>
-          </div>
-          <div class="fp-item">
-            <span class="fp-check">✓</span>
-            <span class="fp-label">数据看板 / 报表</span>
-          </div>
-        </div>
-
-        <div class="card-section-title">六维评分</div>
-        <div class="score-row">
-          <span class="label">功能丰富度</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.feature_richness}}0%"></span></span>
-          <span class="num">{{c.scores.feature_richness}}</span>
-        </div>
-        <div class="score-row">
-          <span class="label">用户体验</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.ux}}0%"></span></span>
-          <span class="num">{{c.scores.ux}}</span>
-        </div>
-        <div class="score-row">
-          <span class="label">定价性价比</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.pricing_value}}0%"></span></span>
-          <span class="num">{{c.scores.pricing_value}}</span>
-        </div>
-        <div class="score-row">
-          <span class="label">生态集成</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.integration}}0%"></span></span>
-          <span class="num">{{c.scores.integration}}</span>
-        </div>
-        <div class="score-row">
-          <span class="label">AI 能力</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.ai_capability}}0%"></span></span>
-          <span class="num">{{c.scores.ai_capability}}</span>
-        </div>
-        <div class="score-row">
-          <span class="label">增长势头</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.momentum}}0%"></span></span>
-          <span class="num">{{c.scores.momentum}}</span>
-        </div>
-
-        <div class="card-section-title" style="color: var(--good);">✓ 强项</div>
-        <ul class="sw-list">
-          {% for s in c.strengths %}
-          <li>
-            <div class="sw-point"><span class="sw-badge s">{{s.score}}</span>{{s.point}}</div>
-            <div class="sw-ev">📎 {{s.evidence}}</div>
-          </li>
-          {% endfor %}
-        </ul>
-
-        <div class="card-section-title" style="color: var(--bad);">✗ 弱项</div>
-        <ul class="sw-list">
-          {% for w in c.weaknesses %}
-          <li>
-            <div class="sw-point"><span class="sw-badge w">{{w.score}}</span>{{w.point}}</div>
-            <div class="sw-ev">📎 {{w.evidence}}</div>
-          </li>
-          {% endfor %}
-        </ul>
-
-        {% if c.differentiators %}
-        <div class="card-section-title" style="color: var(--accent);">★ 杀手锏</div>
-        <div class="diff-list">
-          {% for d in c.differentiators %}
-          <div class="diff-item">
-            <span class="diff-bullet">★</span>
-            <span class="diff-text">{{d}}</span>
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
+    {% if executive_summary %}
+    <div class="exec-box" style="margin-bottom: 2rem;">
+      <h3>★ 核心结论</h3>
+      <p>{{executive_summary}}</p>
     </div>
-  </section>
+    {% endif %}
 
-  <!-- RADAR ============================================= -->
-  <section id="radar">
-    <div class="sec-head">
-      <div class="sec-num">03</div>
-      <div>
-        <h2 class="sec-title">六维雷达对比</h2>
-        <div class="sec-subtitle">Six-Dimensional Comparison · 点击图例显隐</div>
-      </div>
-    </div>
-    <div class="radar-wrap">
-      <div class="radar-grid">
-        <div class="radar-main">{{!radar_svg}}</div>
-        <aside class="radar-champions">
-          <h4>★ 每维度冠军</h4>
-          <ul>
-            {% for dim in champions %}
-            <li>
-              <span class="champ-dim">{{dim.label}}</span>
-              <span class="champ-name">{{dim.winner}}</span>
-              <span class="champ-score">{{dim.score}}/10</span>
-            </li>
-            {% endfor %}
-          </ul>
-        </aside>
-      </div>
-      <div class="radar-legend">{{!radar_legend}}</div>
-    </div>
-  </section>
+    {# ──── 同类厂商聚类(按市场细分) ──── #}
+    <h3 class="sub-head">2.0 同类厂商聚类 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{competitors_by_segment|length}} 个细分赛道 · 同类放一起便于对比</span></h3>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家头部竞品按<strong>市场定位 + 业务模式</strong>分组。<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">同色边框 = 同一赛道</span>,可以直接对比同类玩家的差异。</p>
 
-  <!-- FEATURE CATALOG ========================================== -->
-  <section id="feature-catalog">
-    <div class="sec-head">
-      <div class="sec-num">04</div>
-      <div>
-        <h2 class="sec-title">功能全集</h2>
-        <div class="sec-subtitle">Feature Catalog · {{feature_total_count}} 项功能 · 基于 firecrawl 抓取各竞品官网</div>
+    {% for cluster in competitors_by_segment %}
+    <div class="segment-cluster" style="border-left-color: var(--data-{{loop.index0_mod6}});">
+      <div class="cluster-head">
+        <h4>🏷 {{cluster.segment}}</h4>
+        <span class="count">{{cluster.competitors|length}} 家 · {{cluster.segment_desc}}</span>
       </div>
-    </div>
-    <p style="color: var(--fg-soft); margin-bottom: 1.5rem; font-size: 0.92rem;">
-      每个竞品的<a href="{{features_source}}" target="_blank" rel="noopener" style="color: var(--accent);">官网功能页</a> 真实抓取（合计 {{features_total_bytes}} 字符）。
-      点击竞品名可跳转其功能页。下表按 <strong>类别</strong> 分组展示所有功能点。
-    </p>
-
-    <div class="feature-catalog-grid">
-      {% for comp in feature_catalog_companies %}
-      <div class="fc-card" style="--card-color: var(--data-{{loop.index0_mod6}})">
-        <div class="fc-head">
-          <div class="fc-mark">{{comp.icon}}</div>
-          <div class="fc-head-main">
-            <a href="{{comp.url}}" target="_blank" rel="noopener" class="fc-name">{{comp.name}}</a>
-            <div class="fc-stats">{{comp.feature_count}} 项功能 · {{comp.category_count}} 个类别</div>
+      {% if cluster.segment_desc %}
+      <p class="cluster-desc">{{cluster.segment_desc}}</p>
+      {% endif %}
+      <div class="cluster-comp-grid">
+        {% for c in cluster.competitors %}
+        <div class="cluster-comp-card" style="border-top-color: var(--data-{{loop.index0_mod6}});">
+          <div class="cc-name">
+            <a href="{{c.url}}" target="_blank" style="color: var(--fg); border: 0;">{{c.icon|default:c.name|slice:2}} · {{c.name}}</a>
           </div>
-          <a class="fc-link" href="{{comp.url}}" target="_blank" rel="noopener" title="访问官网">🌐</a>
-        </div>
-
-        {% if comp.screenshot_b64 %}
-        <div class="fc-screenshot">
-          <a href="{{comp.url}}" target="_blank" rel="noopener">
-            <img src="data:image/{{comp.screenshot_ext}};base64,{{comp.screenshot_b64}}" alt="{{comp.name}} 官网截图" loading="lazy"/>
-          </a>
-          <div class="fc-shot-label">↑ 点击查看 {{comp.name}} 完整功能页</div>
-        </div>
-        {% endif %}
-
-        {% for cat_name, cat_features in comp.categories %}
-        <div class="fc-cat-group">
-          <div class="fc-cat-label">{{cat_name}}</div>
-          <div class="fc-cat-items">
-            {% for f in cat_features %}
-            <div class="fc-item">
-              <span class="fc-item-name">{{f.name}}</span>
-              <span class="fc-item-desc">{{f.desc}}</span>
-            </div>
-            {% endfor %}
+          <div class="cc-tagline">「{{c.tagline}}」</div>
+          <div class="cc-stats">
+            <span class="cc-stat">阶段 <strong>{{c.stage}}</strong></span>
+            <span class="cc-stat">成立 <strong>{{c.founded}}</strong></span>
+            <span class="cc-stat">总人数 <strong>{{c.team_size}}</strong></span>
+            <span class="cc-stat">综合分 <strong>{{(c.scores.feature_richness + c.scores.ux + c.scores.pricing_value + c.scores.integration + c.scores.ai_capability + c.scores.momentum)/6|round:1}}/10</strong></span>
+            <span class="cc-stat">💰 {{c.pricing|default:'—'}}</span>
+          </div>
+          <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--fg-mute);">
+            🎯 目标用户:
+            {% for u in c.target_users %}<span style="display:inline-block; padding:0.05rem 0.4rem; margin:0.1rem 0.2rem 0.1rem 0; background:var(--bg-elev); border-radius:4px; color:var(--fg-soft);">{{u}}</span>{% endfor %}
+          </div>
+          <div style="margin-top:0.4rem; font-size:0.78rem;">
+            <a href="{{c.url}}" target="_blank" style="color:var(--info);">↗ {{c.url|default:""}}</a>
           </div>
         </div>
         {% endfor %}
       </div>
+    </div>
+    {% endfor %}
+
+    {# ──── 评分可视化(小白友好的可视化条) ──── #}
+    <h3 class="sub-head">2.0.1 6 家竞品综合实力可视化</h3>
+    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 1rem;">综合分 = 6 个评分维度的平均分。颜色越红 = 越领先,<span class="score-bar-tier tier-领先">领先</span> <span class="score-bar-tier tier-中坚">中坚</span> <span class="score-bar-tier tier-跟随">跟随</span>。</p>
+    {% for c in competitors_ranked %}
+    <div class="score-visual-bar" style="margin-bottom:0.5rem;">
+      <div class="label" style="font-weight:700;">{{c.name}}</div>
+      <div class="track">
+        <div class="fill" style="width: {{c.avg * 10}}%;"></div>
+      </div>
+      <div class="val">{{c.avg}}/10 <span class="score-bar-tier tier-{{c.tier}}">{{c.tier}}</span></div>
+    </div>
+    {% endfor %}
+
+    {# ──── 通俗术语表(小白友好) ──── #}
+    <h3 class="sub-head">2.0.2 专业术语速查(小白友好)</h3>
+    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 0.5rem;">第一次看这些词不知道啥意思?这里通俗解释 ↓</p>
+    <div class="glossary-grid">
+      <div class="glossary-item"><span class="term">BSP</span><div class="explain">Business Solution Provider,WhatsApp 官方授权的中间商。中小公司要找他们才能拿到 WhatsApp API(就像旅行社代理机票)。</div></div>
+      <div class="glossary-item"><span class="term">SaaS</span><div class="explain">Software as a Service,按月付费的在线软件,不用自己装服务器。WATI、Respond.io 都属此类。</div></div>
+      <div class="glossary-item"><span class="term">CTWA 广告</span><div class="explain">Click-to-WhatsApp Ads,Meta 出的新型广告。用户在 Instagram/Facebook 点广告,直接跳到 WhatsApp 对话。转化率比传统广告高 3x。</div></div>
+      <div class="glossary-item"><span class="term">CDP</span><div class="explain">Customer Data Platform,客户数据平台。打通用户在多个渠道的数据,知道同一客户在不同渠道的所有行为。</div></div>
+      <div class="glossary-item"><span class="term">momentum</span><div class="explain">增长势头。综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。</div></div>
+      <div class="glossary-item"><span class="term">API</span><div class="explain">Application Programming Interface,程序之间的"数据服务员"。可以问它要数据或让它干活。</div></div>
+      <div class="glossary-item"><span class="term">Webhook</span><div class="explain">"反向 API"。当某事件发生时,服务器主动推送通知给你。比轮询省资源。</div></div>
+      <div class="glossary-item"><span class="term">Shopify 集成</span><div class="explain">和 Shopify 电商平台无缝对接。可以同步订单、库存、客户,实现 WhatsApp 订单通知。</div></div>
+      <div class="glossary-item"><span class="term">SLA</span><div class="explain">Service Level Agreement,服务等级协议。99.9% SLA 表示一年最多 8 小时停机。</div></div>
+      <div class="glossary-item"><span class="term">SOC2 / HIPAA</span><div class="explain">国际合规认证。SOC2 = 企业数据安全;HIPAA = 美国医疗数据合规。大客户采购必备。</div></div>
+    </div>
+
+    <h3 class="sub-head">2.1 启发点（竞品的优点）</h3>
+    {% for angle, items in inspiration_points %}
+    <h4 style="font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: 1rem 0 0.5rem; background: var(--good-soft); padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-block;">▸ {{angle}}</h4>
+    <div class="diff-list">
+      {% for it in items %}
+      <div class="diff-item">
+        <div class="diff-angle">{{it.competitor}}</div>
+        <div class="diff-body">
+          <strong>优点：</strong>{{it.good}}<br>
+          <div class="insight">💡 启发：{{it.inspiration}}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% if not inspiration_points %}
+    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无启发点数据</p>
+    {% endif %}
+
+    <h3 class="sub-head">2.2 机会点（竞品的缺点）</h3>
+    {% for angle, items in opportunity_points %}
+    <h4 style="font-size: 0.85rem; font-weight: 600; color: var(--bad); margin: 1rem 0 0.5rem; background: var(--bad-soft); padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-block;">▸ {{angle}}</h4>
+    <div class="diff-list">
+      {% for it in items %}
+      <div class="diff-item negative">
+        <div class="diff-angle">{{it.competitor}}</div>
+        <div class="diff-body">
+          <strong>缺点：</strong>{{it.weakness}}<br>
+          <div class="insight">🎯 机会：{{it.opportunity}}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% if not opportunity_points %}
+    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无机会点数据</p>
+    {% endif %}
+
+    <h3 class="sub-head">2.3 SWOT 全图（6 家竞品 × 4 维度）</h3>
+    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.6rem;">每家竞品的内部优势 / 弱点 + 外部机会 / 技术信号 + 目标用户 + 核心功能 + 定价模式 一览。所有结论带 <span class="ref">N</span> 出处，可点击跳转 Sources。</p>
+    <div class="swot-grid">
+      {% for s in swot_per_competitor %}
+      <div class="swot-card">
+        <div class="swot-head">
+          <div class="swot-mark">{{s.icon|default:s.name|slice:2}}</div>
+          <div>
+            <h4><a href="{{s.url}}" target="_blank" style="color: var(--fg); border: 0;">{{s.name}}</a></h4>
+            <div style="font-size:0.75rem; color:var(--fg-mute); margin-top:0.15rem;">{{s.stage}} · 成立 {{s.founded}}</div>
+          </div>
+        </div>
+        {% if s.tagline %}
+        <div style="font-size:0.85rem; color:var(--fg-soft); font-style:italic; margin-bottom:0.6rem; padding:0.4rem 0.6rem; background:var(--bg-soft); border-radius:6px;">「{{s.tagline}}」</div>
+        {% endif %}
+        <div class="info-chips">
+          {% for u in s.target_users %}<span class="info-chip">👤 {{u}}</span>{% endfor %}
+        </div>
+        {% if s.core_features %}
+        <div style="margin-top:0.6rem;">
+          <div style="font-size:0.72rem; color:var(--fg-mute); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">⚙ 核心功能</div>
+          <div class="feature-chips">
+            {% for f in s.core_features %}<span class="feature-chip">{{f}}</span>{% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if s.pricing %}
+        <div style="margin-top:0.6rem; font-size:0.82rem; color:var(--fg-soft);">
+          <span style="color:var(--fg-mute);">💵 </span>{{s.pricing}}
+        </div>
+        {% endif %}
+        <div class="swot-block s">
+          <h5>💪 优势 S · {{s.strengths|length}} 条</h5>
+          <ul>
+            {% for st in s.strengths %}
+            <li>{{st.point}}{% if st._ref %}<a href="#src-{{st._ref}}" class="ref">{{st._ref}}</a>{% endif %}<br><span class="ev">↳ {{st.evidence}}</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="swot-block w">
+          <h5>⚠ 弱点 W · {{s.weaknesses|length}} 条</h5>
+          <ul>
+            {% for w in s.weaknesses %}
+            <li>{{w.point}}{% if w._ref %}<a href="#src-{{w._ref}}" class="ref">{{w._ref}}</a>{% endif %}<br><span class="ev">↳ {{w.evidence}}</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="swot-block o">
+          <h5>🎯 差异化 O · {{s.differentiators|length}} 条</h5>
+          <ul>
+            {% for d in s.differentiators %}
+            <li>{{d}}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="swot-block t">
+          <h5>🛠 技术信号 T</h5>
+          <ul>
+            {% for t in s.tech_signals %}
+            <li>{{t}}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
       {% endfor %}
     </div>
 
-    <div class="fc-source-note">
-      <strong>📡 数据来源</strong>：所有功能均通过 firecrawl 在 2026-08-15 抓取各竞品官方功能页面：
-      <a href="https://www.wati.io/features" target="_blank">wati.io/features</a> ·
-      <a href="https://www.ycloud.com/whatsapp-business-api" target="_blank">ycloud.com</a> ·
-      <a href="https://www.omnichat.ai/whatsapp-business-api" target="_blank">omnichat.ai</a> ·
-      <a href="https://www.infobip.com/products/whatsapp-business" target="_blank">infobip.com</a> ·
-      <a href="https://www.cm.com/platform" target="_blank">cm.com</a> ·
-      <a href="https://respond.io/features" target="_blank">respond.io</a>
+    <h3 class="sub-head">2.4 Top 3 颠覆性机会 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按 disrupt_score 排序</span></h3>
+    <div class="opp-cards">
+      {% for o in top_opportunities %}
+      <div class="opp-card">
+        <span class="score-badge">⚡ {{o.disrupt_score}}/10</span>
+        <h4>#{{loop.index}} {{o.title}}</h4>
+        <p class="insp"><strong style="color:var(--accent);">灵感：</strong>{{o.inspiration|default:"—"}}</p>
+        <p class="target">
+          <strong>目标用户：</strong>
+          {% for u in o.target_users %}<span style="background:var(--bg-soft); padding:0.1rem 0.45rem; border-radius:4px; margin-right:0.25rem;">{{u}}</span>{% endfor %}
+        </p>
+        <p class="target" style="margin-top:0.4rem;">
+          <strong>差异化：</strong>
+          {% for d in o.differentiators %}<span style="display:block; margin-top:0.2rem;">• {{d}}</span>{% endfor %}
+        </p>
+        {% if o.moat %}<p class="target" style="margin-top:0.4rem;"><strong>护城河：</strong>{{o.moat}}</p>{% endif %}
+      </div>
+      {% endfor %}
     </div>
   </section>
 
-  <!-- FEATURE HEATMAP =================================== -->
-  <section id="features">
+  <!-- ════ 三、产品定位分析 ════ -->
+  <section id="positioning">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div>
+        <h2 class="sec-title">产品定位分析</h2>
+        <div class="sec-subtitle">Product Positioning</div>
+      </div>
+    </div>
+
+    <h3 class="sub-head">3.1 产品宣传口号</h3>
+    <div class="card-grid">
+      {% for c in competitors %}
+      <div class="card" style="--card-color: var(--data-{{loop.index0_mod6}});">
+        <div class="card-head">
+          <div class="card-mark">{{c.icon|default:c.name|slice:2}}</div>
+          <div class="card-name">{{c.name}}</div>
+        </div>
+        <p class="card-quote">{{product_slogans[c.name]|default:"（暂无口号）"}}{% if c._refs.tagline %}<a href="#src-{{c._refs.tagline}}" class="ref">{{c._refs.tagline}}</a>{% endif %}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3 class="sub-head">3.2 用户及市场定位</h3>
+    <div class="heatmap">
+      <table>
+        <thead>
+          <tr><th>竞品</th><th>目标用户</th><th>区域</th><th>规模</th><th>核心市场</th></tr>
+        </thead>
+        <tbody>
+          {% for c in competitors %}
+
+          <tr>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td>{{user_positioning[c.name].target_segment|default:"—"}}</td>
+            <td>{{user_positioning[c.name].region|default:"—"}}</td>
+            <td>{{user_positioning[c.name].scale|default:"—"}}</td>
+            <td>{{user_positioning[c.name].key_market|default:"—"}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-head">3.3 目标用户重叠矩阵 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">谁在抢同一批客户？</span></h3>
+    {% if user_overlap %}
+    <div class="overlap-list">
+      {% for ov in user_overlap %}
+      <div class="overlap-row">
+        <div class="overlap-segment">{{ov.user_segment}}</div>
+        <div class="overlap-comps">
+          {% for cp in ov.competitors %}<span class="overlap-chip">{{cp}}</span>{% endfor %}
+        </div>
+        <div class="overlap-intensity">{{ov.intensity}}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ════ 四、商业策略分析 ════ -->
+  <section id="business">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div>
+        <h2 class="sec-title">商业策略分析</h2>
+        <div class="sec-subtitle">Commercial Strategy</div>
+      </div>
+    </div>
+    <div class="biz-grid">
+      {% for c in competitors %}
+
+      <div class="biz-card">
+        <h4>{{c.name}}</h4>
+        <div class="biz-row"><strong>💰 模式：</strong>{{commercial_strategies[c.name].model|default:"—"}}</div>
+        <div class="biz-row"><strong>💵 定价：</strong>{{commercial_strategies[c.name].pricing_tiers|default:"—"|join:" / "}}</div>
+        <div class="biz-row"><strong>📣 GTM：</strong>{{commercial_strategies[c.name].gtm|default:"—"}}</div>
+        <div class="biz-row"><strong>🛡 护城河：</strong>{{commercial_strategies[c.name].moat|default:"—"}}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3 class="sub-head">4.1 6 维评分横向对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">🥇🥈🥉 = 各维度前三名 · 领先 {{leader}} 综合 {{leader_avg}}/10</span></h3>
+    <table class="score-table">
+      <thead>
+        <tr>
+          <th>竞品 \\ 维度</th>
+          {% for dim in score_table %}
+          <th>{{dim.label}}</th>
+          {% endfor %}
+          <th style="background:var(--accent); color:white;">综合分</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for comp in competitors_ranked %}
+        <tr>
+          <td>
+            <span class="rank-badge" style="display:inline-block; width:20px; height:20px; line-height:20px; text-align:center; background:var(--bg-soft); border-radius:50%; font-size:0.7rem; font-weight:700; margin-right:0.4rem;">{{loop.index}}</span>
+            <strong>{{comp.name}}</strong>
+            <span style="display:inline-block; margin-left:0.4rem; padding:0.05rem 0.4rem; border-radius:4px; font-size:0.7rem;
+              {% if comp.tier == '领先' %}background:var(--good-soft); color:var(--good);
+              {% elif comp.tier == '中坚' %}background:var(--info-soft); color:var(--info);
+              {% else %}background:var(--bg-soft); color:var(--fg-mute);{% endif %}">{{comp.tier}}</span>
+          </td>
+          {% for dim in score_table %}
+            {% for r in dim.rows %}
+              {% if r.name == comp.name %}
+              <td class="score-cell {% if r.rank == 1 %}rank-1{% elif r.rank == 2 %}rank-2{% elif r.rank == 3 %}rank-3{% endif %}">
+                {{r.score}} <span style="font-size:0.7rem; opacity:0.7;">{{r.medal}}</span>
+              </td>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          <td style="font-family: var(--font-display); font-weight: 700; color: var(--accent); font-size:1.05rem;">{{comp.avg}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h3 class="sub-head">4.2 成立年份时间线 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{founding_year_range}} · {{founding_timeline|length}} 家</span></h3>
+    {% if founding_timeline %}
+    <div class="timeline-wrap">
+      <div class="timeline-axis">
+        <div class="timeline-events">
+          {% for e in founding_timeline %}
+          <div class="timeline-event">
+            <div class="year">{{e.year}}</div>
+            <div class="name"><a href="{{e.url}}" target="_blank" style="color: var(--fg); border: 0;">{{e.name}}</a></div>
+            <div class="stage">{{e.stage}}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <h3 class="sub-head">4.3 阶段分布</h3>
+    <div class="stage-bars">
+      {% for sd in stage_distribution %}
+      <div class="stage-bar-row">
+        <div class="stage-bar-label">{{sd.stage}}</div>
+        <div class="stage-bar-track">
+          <div class="stage-bar-fill" style="width: {{sd.pct}}%;"></div>
+        </div>
+        <div class="stage-bar-pct">{{sd.count}} 家 · {{sd.pct}}%</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3 class="sub-head">4.4 定价明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每家定价 tier + 模式 + 原始字符串</span></h3>
+    <table class="pricing-table">
+      <thead>
+        <tr><th>竞品</th><th>💰 模式</th><th>💵 定价 tier（已切分）</th><th>原始定价</th></tr>
+      </thead>
+      <tbody>
+        {% for c in competitors %}
+        <tr>
+          <td>{{c.name}}</td>
+          <td>{{commercial_strategies[c.name].model|default:"—"}}</td>
+          <td>
+            {% for t in commercial_strategies[c.name].pricing_tiers %}
+            <span class="feature-chip" style="background:var(--info-soft); color:var(--info); margin:0.1rem 0.2rem 0.1rem 0; display:inline-block;">{{t}}</span>
+            {% endfor %}
+            {% if not commercial_strategies[c.name].pricing_tiers %}—{% endif %}
+          </td>
+          <td style="font-size:0.8rem; color:var(--fg-mute);">{{c.pricing|default:"—"}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="stage-bars">
+      {% for sd in stage_distribution %}
+      <div class="stage-bar-row">
+        <div class="stage-bar-label">{{sd.stage}}</div>
+        <div class="stage-bar-track">
+          <div class="stage-bar-fill" style="width: {{sd.pct}}%;"></div>
+        </div>
+        <div class="stage-bar-pct">{{sd.count}} 家 · {{sd.pct}}%</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ════ 五、产品设计分析 ════ -->
+  <section id="product-design">
     <div class="sec-head">
       <div class="sec-num">05</div>
       <div>
-        <h2 class="sec-title">功能矩阵</h2>
-        <div class="sec-subtitle">Feature Overlap · ✅ 标配 / ⚠ 部分 / ❌ 没有</div>
+        <h2 class="sec-title">产品设计分析</h2>
+        <div class="sec-subtitle">Product Design</div>
       </div>
     </div>
-    <div class="heatmap">{{!heatmap_html}}</div>
+
+    <h3 class="sub-head">5.1 产品概览（4 端支持）</h3>
+    <div class="heatmap">
+      <table>
+        <thead>
+          <tr><th>竞品</th><th>🌐 网页端</th><th>💻 电脑客户端</th><th>📱 移动端</th><th>📦 其他</th></tr>
+        </thead>
+        <tbody>
+          {% for c in competitors %}
+          {% set po = product_overview[c.name] %}
+          <tr>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td>{{product_overview[c.name].web|default:"—"}}</td>
+            <td>{{product_overview[c.name].desktop|default:"—"}}</td>
+            <td>{{product_overview[c.name].mobile|default:"—"}}</td>
+            <td>{{product_overview[c.name].other|default:"—"}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-head">5.2 产品功能 · 功能全集(厂商对比)<span style="font-size:0.7rem; color:var(--fg-mute); margin-left:0.5rem; font-weight:400;">{{feature_total_count}} 项功能 · {{feature_catalog_companies|length}} 家竞品 · {{feature_comparison_matrix.categories|length}} 个类别</span></h3>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家竞品的 {{feature_total_count}} 个功能汇集成 <strong>{{feature_comparison_matrix.categories|length}} 个功能类别</strong>。下表<strong>横轴=竞品</strong>,<strong>纵轴=功能</strong>,一眼看清各家的功能覆盖与独有性。颜色越深=支持该功能的竞品越多(浅色=独家)。</p>
+ {{section5_2_html|safe}}
+
+    <h3 class="sub-head">5.3 交互 &amp; 视觉</h3>
+    <div class="visual-grid">
+      {% for c in competitors %}
+      <div class="visual-card">
+        <h4>{{c.name}}</h4>
+        <p>{{visual_signals[c.name]|default:"（暂无视觉分析）"}}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3 class="sub-head">5.4 技术栈信号对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按全行业聚类频次排序 · top 15</span></h3>
+    <div class="tech-grid">
+      {% for tc in tech_signal_clusters %}
+      <div class="tech-item">
+        <span class="sig">{{tc.signal}}</span>
+        <span class="cnt">{{tc.count}} 家</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% if not tech_signal_clusters %}
+    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无技术信号数据。</p>
+    {% endif %}
+
+    <h3 class="sub-head">5.5 各家核心技术栈明细</h3>
+    <div class="heatmap">
+      <table>
+        <thead>
+          <tr><th>竞品</th><th>核心技术信号</th></tr>
+        </thead>
+        <tbody>
+          {% for c in competitors %}
+          <tr>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td>
+              {% for t in tech_signals_per_competitor[c.name] %}
+              <span style="display:inline-block; padding:0.15rem 0.5rem; margin:0.15rem 0.2rem 0.15rem 0; background:var(--info-soft); color:var(--info); border-radius:6px; font-size:0.8rem;">{{t}}</span>
+              {% endfor %}
+              {% if not tech_signals_per_competitor[c.name] %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- GAPS ============================================== -->
-  <section id="gaps">
+  <!-- ════ 六、产品数据分析 ════ -->
+  <section id="data-growth">
     <div class="sec-head">
       <div class="sec-num">06</div>
       <div>
-        <h2 class="sec-title">市场空白</h2>
-        <div class="sec-subtitle">Unmet Needs · 所有头部都没解决的痛点</div>
+        <h2 class="sec-title">产品数据分析</h2>
+        <div class="sec-subtitle">Product Data</div>
       </div>
     </div>
-    {% for g in gaps %}
-    <div class="opp">
-      <div class="opp-head">
-        <div class="opp-title">{{g.gap}}</div>
-        <span class="opp-score" style="background: var(--{% if g.severity == 'high' %}bad{% elif g.severity == 'medium' %}warn{% else %}info{% endif %});">
-          {{g.severity|upper}}
-        </span>
+
+    <h3 class="sub-head">6.0 市场细分全景 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{segments_summary|length}} 个细分赛道</span></h3>
+    {% if segments_summary %}
+    <div class="segment-grid">
+      {% for seg in segments_summary %}
+      <div class="segment-card">
+        <h4>{{seg.icon|default:seg.label|slice:2}} · {{seg.label}}{% if seg._ref %}<a href="#src-{{seg._ref}}" class="ref">{{seg._ref}}</a>{% endif %}</h4>
+        <p style="font-size:0.85rem; color:var(--fg-soft); margin:0; line-height:1.55;">{{seg.desc|default:"—"}}</p>
+        <div style="font-size:0.72rem; color:var(--fg-mute); margin-top:0.5rem;">{{seg.count}} 家玩家</div>
+        <div class="players">
+          {% for p in seg.players %}<span class="player-chip">{{p}}</span>{% endfor %}
+        </div>
+        {% if seg.source %}<div style="font-size:0.72rem; color:var(--info); margin-top:0.4rem;"><a href="{{seg.source}}" target="_blank">↗ 来源</a></div>{% endif %}
       </div>
-      <p style="color: var(--fg-soft); margin-top: .5rem;">{{g.evidence}}</p>
+      {% endfor %}
     </div>
-    {% endfor %}
+
+    <h3 class="sub-head">6.1 整体数据增长</h3>
+    <div class="growth-hero">
+      <p>{{data_growth.overall|default:"（暂无整体数据）"}}</p>
+    </div>
+
+    <h3 class="sub-head">6.2 关键增长点</h3>
+    <div class="growth-grid">
+      {% for kp in data_growth.key_growth_points %}
+      <div class="growth-card">
+        <div class="signal">{{kp.signal}}</div>
+        <div class="value">{{kp.value}}</div>
+        <div class="source">来源：{{kp.source|default:"未知"}}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3 class="sub-head">6.3 增长总结</h3>
+    <p class="growth-summary">{{data_growth.summary|default:"（暂无增长总结）"}}</p>
   </section>
 
-  <!-- OPPORTUNITIES ===================================== -->
-  <section id="opportunities">
+  <!-- ════ 七、用户反馈分析 ════ -->
+  <section id="user-feedback">
     <div class="sec-head">
       <div class="sec-num">07</div>
       <div>
-        <h2 class="sec-title">颠覆性产品机会</h2>
-        <div class="sec-subtitle">Disruptive Opportunities · 按颠覆指数排序</div>
+        <h2 class="sec-title">用户反馈分析</h2>
+        <div class="sec-subtitle">User Feedback</div>
       </div>
     </div>
-    {% for o in opportunities %}
-    <div class="opp">
-      <div class="opp-head">
-        <div class="opp-title"><span class="rank">#{{loop.index}}</span> {{o.title}}</div>
-        <span class="opp-score">颠覆性 {{o.disrupt_score}}/10</span>
-      </div>
-      <div class="opp-inspire">
-        <div class="opp-inspire-label">灵感来源</div>
-        <div class="opp-inspire-quote">"{{o.inspiration}}"</div>
+
+    {% for c in competitors %}
+    {% set fb = user_feedback[c.name] %}
+
+    <div class="fb-card">
+      <div class="fb-card-head">
+        <div class="card-mark" style="width:36px;height:36px;font-size:1rem;background:var(--accent);">{{c.icon|default:c.name|slice:2}}</div>
+        <h3 style="margin:0;font-size:1.1rem;font-family:var(--font-display);">{{c.name}}</h3>
       </div>
 
-      <dl class="opp-grid">
-        <div class="opp-field">
-          <dt>🎯 目标用户</dt>
-          <dd>{% for u in o.target_users %}<span class="pill">{{u}}</span>{% endfor %}</dd>
+      <div class="fb-grid">
+        <div class="fb-col positive">
+          <h4>✓ 正面反馈</h4>
+          {% for p in fb.positive %}
+          <div class="fb-item positive">
+            <div>{{p.text}}</div>
+            <div class="fb-source">{{p.source}} · 提及 {{p.count|default:"?"}} 次</div>
+          </div>
+          {% endfor %}
+          {% if not fb.positive %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">暂无数据</p>{% endif %}
         </div>
-        <div class="opp-field">
-          <dt>💡 差异化</dt>
-          <dd>{% for d in o.differentiators %}<span class="pill info">{{d}}</span>{% endfor %}</dd>
+        <div class="fb-col negative">
+          <h4>✗ 负面反馈</h4>
+          {% for n in fb.negative %}
+          <div class="fb-item negative">
+            <div>{{n.text}}</div>
+            <div class="fb-source">{{n.source}} · 提及 {{n.count|default:"?"}} 次</div>
+          </div>
+          {% endfor %}
+          {% if not fb.negative %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">暂无数据</p>{% endif %}
         </div>
-        <div class="opp-field">
-          <dt>📊 可量化验证</dt>
-          <dd>{% for v in o.validation %}<span class="pill good">{{v}}</span>{% endfor %}</dd>
-        </div>
-        <div class="opp-field opp-field-wide">
-          <dt>🛡 护城河</dt>
-          <dd><div class="moat-card">{{o.moat}}</div></dd>
-        </div>
-      </dl>
+      </div>
+
+      <p class="fb-summary"><strong style="color:var(--accent);">📊 总结：</strong>{{user_feedback[c.name].summary|default:"（暂无反馈总结）"}}</p>
     </div>
     {% endfor %}
   </section>
 
-  <!-- PRICING COMPARISON ================================ -->
-  <section id="pricing">
+  <!-- ════ 八、其他竞品资料库 ════ -->
+  <section id="other-competitors">
     <div class="sec-head">
       <div class="sec-num">08</div>
       <div>
-        <h2 class="sec-title">定价对照</h2>
-        <div class="sec-subtitle">Pricing Comparison · 按性价比排名</div>
+        <h2 class="sec-title">其他竞品资料库 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400;">{{other_competitors|length}} 家市场全景玩家</span></h2>
+        <div class="sec-subtitle">Other Competitors Database</div>
       </div>
     </div>
-    <div class="card-grid">
-      {% for c in competitors_sorted_by_pricing %}
-      <div class="card" style="--card-color: var(--data-{{loop.index0_mod6}})">
-        <div class="card-head">
-          <div class="card-mark">{{c.icon|default:c.name|slice:2}}</div>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">除正文 6 家深度分析外，本节列出市场上其他主流 WhatsApp 广告 / 客服玩家。涵盖 BSP / 中小 SaaS / 广告投放 / AI Agent / 客服大厂 / 垂直行业 6 大类别，便于建立完整市场地图。每条带原始来源 URL。</p>
+
+    {% for cat_group in other_competitors_by_category %}
+    <h3 class="sub-head">{{cat_group.category}} <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{cat_group.count}} 家</span></h3>
+    <div class="swot-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      {% for oc in cat_group.players %}
+      <div class="swot-card" style="border-top-color: var(--info);">
+        <div class="swot-head">
+          <div class="swot-mark" style="background: var(--info);">{{oc.name|slice:2}}</div>
           <div>
-            <h3 class="card-name">{{c.name}}</h3>
-            <div class="card-sub">{{c.pricing}}</div>
+            <h4><a href="{{oc.url}}" target="_blank" style="color: var(--fg); border: 0;">{{oc.name}}</a></h4>
+            <div style="font-size:0.72rem; color:var(--fg-mute); margin-top:0.15rem;">{{oc.stage|default:""}} · 成立 {{oc.founded|default:"—"}}</div>
           </div>
         </div>
-        <div class="score-row" style="margin-top: 1rem;">
-          <span class="label">性价比评分</span>
-          <span class="track"><span class="fill" style="width: {{c.scores.pricing_value}}0%"></span></span>
-          <span class="num">{{c.scores.pricing_value}}/10</span>
+        {% if oc.tagline %}
+        <div style="font-size:0.85rem; color:var(--fg-soft); font-style:italic; margin-bottom:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-soft); border-radius:6px;">「{{oc.tagline}}」</div>
+        {% endif %}
+        <div style="font-size:0.82rem; color:var(--fg-soft); margin-top:0.4rem;"><span style="color:var(--fg-mute);">💰 </span>{{oc.price_hint|default:"—"}}</div>
+        <div style="font-size:0.82rem; color:var(--fg-soft); margin-top:0.4rem;"><span style="color:var(--fg-mute);">🎯 </span>{{oc.key_strength|default:"—"}}</div>
+        <div style="font-size:0.72rem; color:var(--info); margin-top:0.5rem;">
+          {% if oc._ref %}<a href="#src-{{oc._ref}}" class="ref">{{oc._ref}}</a>{% endif %}
+          <a href="{{oc.source|default:oc.url}}" target="_blank">↗ 原始来源</a>
         </div>
       </div>
       {% endfor %}
     </div>
+    {% endfor %}
   </section>
 
+  <!-- ════ 📚 Sources (所有引用汇总) ════ -->
+  <section id="sources">
+    <div class="sec-head">
+      <div class="sec-num">★</div>
+      <div>
+        <h2 class="sec-title">来源与参考资料 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400;">{{source_count}} 条带 URL 证据</span></h2>
+        <div class="sec-subtitle">Sources &amp; References</div>
+      </div>
+    </div>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">报告中所有结论都带 <span class="ref">N</span> 出处，以下是完整证据清单（共 {{source_count}} 条）。所有 URL 可直接点击访问。</p>
+
+    {{sources_html|safe}}
+    {% if not sources %}
+    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无引用。</p>
+    {% endif %}
+  </section>
 
   <footer>
-    <p class="signoff">YOUZI · 战略竞争情报</p>
-    <p>由 <a href="https://docs.claude.com">Claude Code</a> 驱动 · 真实数据 · 可执行洞察</p>
+    <p class="signoff">YOUZI · 竞品颠覆性分析报告</p>
+    <p>由 <a href="https://docs.claude.com">Claude Code</a> 驱动 · 真实数据 · 你专属的竞品情报站</p>
   </footer>
 </div>
 
@@ -1570,20 +1889,48 @@
     localStorage.setItem('youzi-theme', next);
   }
 
-  // 雷达图图例：点击显隐
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.radar-legend .item').forEach(function(item) {
-      item.addEventListener('click', function() {
-        const key = this.getAttribute('data-key');
-        const path = document.querySelector('.radar-poly[data-key="' + key + '"]');
-        const dot = this.querySelector('.dot');
-        if (!path) return;
-        const hidden = path.style.display === 'none';
-        path.style.display = hidden ? '' : 'none';
-        dot.style.opacity = hidden ? '1' : '.3';
-      });
-    });
-  });
+  // 阅读进度条
+  (function() {
+    const bar = document.getElementById('readingProgress');
+    const toc = document.getElementById('tocSidebar');
+    if (!bar) return;
+    function onScroll() {
+      const h = document.documentElement;
+      const b = h.scrollTop || document.body.scrollTop;
+      const max = h.scrollHeight - h.clientHeight;
+      const pct = max > 0 ? (b / max) * 100 : 0;
+      bar.style.width = pct + '%';
+
+      // TOC active highlight
+      if (toc) {
+        const sections = document.querySelectorAll('section[id]');
+        let cur = '';
+        for (const s of sections) {
+          const top = s.getBoundingClientRect().top;
+          if (top < 100) cur = s.id;
+        }
+        toc.querySelectorAll('a').forEach(a => {
+          const isActive = a.getAttribute('href') === '#' + cur;
+          a.style.background = isActive ? 'var(--accent-soft)' : '';
+          a.style.color = isActive ? 'var(--accent)' : '';
+          a.style.fontWeight = isActive ? '700' : '';
+        });
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // 移动端：折叠 TOC
+  (function() {
+    const toc = document.getElementById('tocSidebar');
+    if (!toc) return;
+    function onResize() {
+      toc.style.display = window.innerWidth < 1200 ? 'none' : 'block';
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+  })();
 </script>
 </body>
 </html>

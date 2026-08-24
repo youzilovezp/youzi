@@ -1,0 +1,47 @@
+{
+  // markdownlint-cli2 配置 · /youzi 工程
+  //
+  // 工程文档以中文为主，且包含大段内嵌 HTML（br / details / span），
+  // 因此默认规则需要放宽；只保留真正能改善可读性的项。
+  //
+  // 用法：
+  //   markdownlint-cli2 "**/*.md"          # CLI
+  //   pre-commit run markdownlint --all-files   # 通过 pre-commit
+  "config": {
+    "default": true,
+
+    // 中文段落天然超过 80 字符，关掉行长度限制
+    "MD013": false,
+
+    // 同一层级允许重复标题（不同章节下都可叫"使用"/"步骤"）
+    "MD024": { "siblings_only": true },
+
+    // 允许内联 HTML —— 文档里大量使用 <br> <details> <span>
+    "MD033": false,
+
+    // 允许裸 URL —— 中文文档里直接放链接很常见
+    "MD034": false,
+
+    // 不强制首行必须是 H1 —— 部分文档开头有说明/前置段落
+    "MD041": false,
+
+    // 强制 fenced 代码块风格
+    "MD046": { "style": "fenced" },
+
+    // 强制代码块带语言标识（已存在的 ```bash / ```python 不要触发）
+    "MD040": false,
+
+    // 不强制单一 H1 —— 文档中可能有 frontmatter / 多个并列标题
+    "MD025": { "front_matter_title": "^\\s*title\\s*[:=]" }
+  },
+  "globs": [
+    "**/*.md"
+  ],
+  "ignores": [
+    "node_modules/**",
+    ".code-review-graph/**",
+    ".claude/**",
+    ".serena/**",
+    ".idea/**"
+  ]
+}

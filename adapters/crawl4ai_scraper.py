@@ -9,12 +9,15 @@ Crawl4AI Adapter for /youzi skill
     pip install crawl4ai
     crawl4ai-setup    # 安装 Playwright + 浏览器
 """
+
 import asyncio
 import os
 from typing import Optional
 
 
-async def _scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000) -> dict:
+async def _scrape(
+    url: str, prompt: Optional[str] = None, max_chars: int = 50000
+) -> dict:
     """异步抓取单个 URL。
 
     Args:
@@ -54,12 +57,21 @@ async def _scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000
         if prompt:
             try:
                 from crawl4ai.extraction_strategy import LLMExtractionStrategy
-                api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+
+                api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get(
+                    "OPENAI_API_KEY"
+                )
                 if api_key:
                     if "ANTHROPIC" in os.environ:
-                        llm_config = LLMConfig(provider="anthropic", api_key=api_key, model="claude-3-5-sonnet-20241022")
+                        llm_config = LLMConfig(
+                            provider="anthropic",
+                            api_key=api_key,
+                            model="claude-3-5-sonnet-20241022",
+                        )
                     else:
-                        llm_config = LLMConfig(provider="openai", api_key=api_key, model="gpt-4o-mini")
+                        llm_config = LLMConfig(
+                            provider="openai", api_key=api_key, model="gpt-4o-mini"
+                        )
                     extraction_strategy = LLMExtractionStrategy(
                         llm_config=llm_config,
                         instruction=prompt,
@@ -84,6 +96,7 @@ async def _scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000
             if hasattr(result, "extracted_content") and result.extracted_content:
                 try:
                     import json
+
                     if isinstance(result.extracted_content, str):
                         extracted = json.loads(result.extracted_content)
                     else:
@@ -130,6 +143,7 @@ def is_available() -> bool:
     """检查 crawl4ai 是否安装可用。"""
     try:
         from crawl4ai import AsyncWebCrawler  # noqa
+
         return True
     except ImportError:
         return False
