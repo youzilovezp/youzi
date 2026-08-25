@@ -150,7 +150,7 @@ OUT_DIR = ~/youzi-out/<topic>-<YYYY-MM-DD>/
 
 写到 `OUT_DIR/03-analysis.json`（schema 见 references/analysis-framework.md 末尾）。
 
-### Step 4 · 渲染精美 HTML（render.py · 零依赖）
+### Step 4 · 渲染精美 HTML（render.py · Jinja2）
 
 直接执行：
 
@@ -161,7 +161,7 @@ python3 ~/.claude/skills/youzi/render.py \
   --output "$OUT_DIR/report.html"
 ```
 
-`render.py` 是**纯 Python 零依赖**实现，**不需要 jinja2 / npm / 任何包**，模板就是 `templates/report.html`（用 `{{var}}` 和 `{% for %}` 占位符，由 render.py 自己解析）。生成的 HTML：
+`render.py` 用 **Jinja2**（业界标准、经过充分测试）解析 `templates/report.html` 里的 `{{var}}` 和 `{% for %}` 占位符。生成的 HTML：
 
 - **单文件**，无任何外部依赖（CSS/JS/SVG 全部 inline）
 - **响应式**（桌面 / 平板 / 手机）
@@ -204,7 +204,7 @@ python3 ~/.claude/skills/youzi/render.py \
 - `references/crawl-strategy.md` — 爬取策略（**3 个爬虫并行 + 合并**）
 - `references/analysis-framework.md` — 13 字段提取 + opportunities 生成 prompt
 - `templates/report.html` — HTML 模板（render.py 解析的）
-- `render.py` — 零依赖 HTML 渲染器
+- `render.py` — Jinja2 渲染器
 
 ## 反模式（不要做）
 

@@ -87,6 +87,15 @@ async def _scrape(
             # 提取内容
             html = await page.content()
             text = await page.evaluate("() => document.body.innerText")
+            # 转 markdown(与其他 adapter 一致)— 用 markdownify 降级
+            try:
+                import markdownify as _md
+
+                markdown = _md.markdownify(
+                    html, heading_style="ATX", strip=["script", "style"]
+                )
+            except Exception:
+                markdown = text  # 降级用纯文本
 
             # 截图
             screenshot_file = None
@@ -151,6 +160,7 @@ async def _scrape(
                 "error": None,
                 "html": html,
                 "text": text,
+                "markdown": markdown,
                 "screenshot": screenshot_file,
                 "extracted": extracted,
             }

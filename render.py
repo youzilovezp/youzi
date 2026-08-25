@@ -15,11 +15,22 @@ import json
 import re
 import sys
 import html
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE = HERE / "templates" / "report.html"
+
+# 生产级日志:默认 INFO, --verbose 提升到 DEBUG
+logger = logging.getLogger("youzi.render")
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+    )
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 # ============================================================
 # 评分维度（6 维）—— 用于校准每个竞品 scores 字段
@@ -45,576 +56,23 @@ SCORE_DIMS = [
 #   {% if x %}body{% endif %}
 # ============================================================
 class Template:
-    FOR_RE = re.compile(r"\{%\s*for\s+([\w, ]+?)\s+in\s+([\w.\[\]]+)\s*%\}")
-    ENDFOR_RE = re.compile(r"\{%\s*endfor\s*%\}")
-    IF_RE = re.compile(r"\{%\s*if\s+(.+?)\s*%\}")
-    ELIF_RE = re.compile(r"\{%\s*elif\s+(.+?)\s*%\}")
-    ELSE_RE = re.compile(r"\{%\s*else\s*%\}")
-    ENDIF_RE = re.compile(r"\{%\s*endif\s*%\}")
-    SET_RE = re.compile(r"\{%\s*set\s+([\w.\[\]]+)\s*=\s*(.+?)\s*%\}")
-    VAR_RE = re.compile(r"\{\{\s*([^\{\}]+?)\s*\}\}")
-    RAW_RE = re.compile(r"\{\{\!\s*([^\{\}]+?)\s*\}\}")
+    """Jinja2 渲染器。
+
+    - ChainableUndefined: 缺失字段退化为 ''（避免模板里写大量 {% if %}）
+    - autoescape: HTML/XML/XHTML 文件自动转义，防 XSS
+    """
 
     def __init__(self, source: str):
-        self.source = source
+        from jinja2 import Environment, ChainableUndefined, select_autoescape
 
-    # -------------------- 变量解析 --------------------
-    def _resolve(self, path: str, ctx) -> object:
-        """解析形如 a.b.c[expr].d 的 key 路径。
+        self._env = Environment(
+            undefined=ChainableUndefined,
+            autoescape=select_autoescape(("html", "htm", "xml", "xhtml")),
+        )
+        self._template = self._env.from_string(source)
 
-        支持：
-          - 字面字符串（带引号）："x" / 'x'
-          - 点号访问：a.b.c
-          - 下标访问：
-              a["x"]   字面字符串下标（带引号）
-              a[x]     ctx 中的变量作为 key（x 解析后取其值）
-              a[0]     整数下标（针对 list/tuple）
-        """
-        if (path.startswith('"') and path.endswith('"')) or (
-            path.startswith("'") and path.endswith("'")
-        ):
-            return path[1:-1]
-        # 先把所有 [expr] 解析出来 —— expr 内的变量先按 ctx 求值
-        # 然后拼成 a.__lit__<value> 形式，让 split('.') 能处理
-        norm_parts = []
-        i = 0
-        s = path
-        while i < len(s):
-            j = s.find("[", i)
-            if j == -1:
-                norm_parts.append(s[i:])
-                break
-            norm_parts.append(s[i:j])
-            k = s.find("]", j + 1)
-            if k == -1:
-                # 不闭合的 [ 视为字面
-                norm_parts.append(s[j:])
-                break
-            inner = s[j + 1 : k].strip()
-            i = k + 1
-            # 三种情况：字面字符串 / 整数 / ctx 中的变量路径
-            if (inner.startswith('"') and inner.endswith('"')) or (
-                inner.startswith("'") and inner.endswith("'")
-            ):
-                key_val = inner[1:-1]
-                norm_parts.append("__lit__" + key_val)
-            elif inner.lstrip("-").isdigit():
-                norm_parts.append("__idx__" + inner)
-            else:
-                # 当作 ctx 路径解析
-                try:
-                    key_val = self._resolve(inner, ctx)
-                    if key_val is None or key_val == "":
-                        return ""
-                    norm_parts.append("__lit__" + str(key_val))
-                except Exception:
-                    return ""
-        cur = ctx
-        for part in norm_parts:
-            if part == "":
-                continue
-            if part.startswith("__lit__"):
-                lit = part[len("__lit__") :]
-                if isinstance(cur, dict):
-                    cur = cur.get(lit, "")
-                elif isinstance(cur, (list, tuple)):
-                    try:
-                        cur = cur[int(lit)]
-                    except (ValueError, IndexError):
-                        return ""
-                else:
-                    return ""
-            elif part.startswith("__idx__"):
-                idx = int(part[len("__idx__") :])
-                if isinstance(cur, (list, tuple)):
-                    try:
-                        cur = cur[idx]
-                    except IndexError:
-                        return ""
-                else:
-                    return ""
-            else:
-                # 普通 part 可能含 "a.b.c" —— 逐段走 dict/attr
-                for sub in part.split("."):
-                    if sub == "":
-                        continue
-                    if isinstance(cur, dict):
-                        cur = cur.get(sub, "")
-                    elif isinstance(cur, (list, tuple)):
-                        try:
-                            cur = cur[int(sub)]
-                        except (ValueError, IndexError):
-                            return ""
-                    elif hasattr(cur, sub):
-                        cur = getattr(cur, sub)
-                    else:
-                        return ""
-                    if cur == "" or cur is None:
-                        return ""
-                continue
-            if cur == "" or cur is None:
-                return ""
-        return cur
-
-    def _eval_expr(self, expr: str, ctx) -> bool:
-        try:
-            py = expr
-            for name in re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_.]*)\b", py):
-                val = self._resolve(name, ctx)
-                rep = repr(val) if isinstance(val, str) else str(val)
-                py = re.sub(rf"\b{re.escape(name)}\b", rep, py)
-            return bool(eval(py, {"__builtins__": {}}, {}))
-        except Exception:
-            return False
-
-    # -------------------- 主入口 --------------------
     def render(self, ctx: dict) -> str:
-        return self._parse_block(self.source, ctx)
-
-    def _parse_block(self, src: str, ctx: dict) -> str:
-        """解析一段文本（不含 for/if 顶层标记），返回渲染结果。
-
-        支持 for / if / var 互相嵌套，因为用递归下降：
-        - 遇到 {% for %} → 进入 _parse_for
-        - 遇到 {% if %} → 进入 _parse_if
-        - 其他文本 → 直接输出，遇到 {{var}} 替换
-        """
-        out = []
-        i = 0
-        while i < len(src):
-            # 找下一个标记
-            next_for = self.FOR_RE.search(src, i)
-            next_if = self.IF_RE.search(src, i)
-            next_set = self.SET_RE.search(src, i)
-            # 取最近的
-            candidates = []
-            if next_for:
-                candidates.append(("for", next_for))
-            if next_if:
-                candidates.append(("if", next_if))
-            if next_set:
-                candidates.append(("set", next_set))
-            if not candidates:
-                # 后面全是纯文本 + var
-                out.append(self._render_text(src[i:], ctx))
-                break
-            # 选最近的
-            candidates.sort(key=lambda x: x[1].start())
-            kind, m = candidates[0]
-            # 输出标记之前的文本
-            out.append(self._render_text(src[i : m.start()], ctx))
-            if kind == "for":
-                result, end = self._parse_for(src, m.start(), ctx)
-                out.append(result)
-                i = end
-            elif kind == "if":
-                result, end = self._parse_if(src, m.start(), ctx)
-                out.append(result)
-                i = end
-            else:  # set
-                # 清洗整个 set 标签（如偶然捕获了 "%}" 残留）
-                tag_text = src[m.start() : m.end()]
-                tag_text = re.sub(r"%}.*", "%}", tag_text)
-                # 重新匹配清洗后的标签
-                m2 = self.SET_RE.match(tag_text)
-                if not m2:
-                    i = m.end()
-                    continue
-                var_name = m2.group(1).strip()
-                expr = m2.group(2).strip()
-                # 解析表达式
-                if "|" in expr:
-                    p2, filters = expr.split("|", 1)
-                    val = self._resolve(p2.strip(), ctx)
-                    m3 = re.search(r'default:\s*"([^"]*)"', filters)
-                    if m3 and (val is None or val == ""):
-                        val = m3.group(1)
-                else:
-                    val = self._resolve(expr, ctx)
-                if (
-                    var_name
-                    and " " not in var_name
-                    and "=" not in var_name
-                    and "|" not in var_name
-                ):
-                    ctx[var_name] = val
-                i = m.end()
-        return "".join(out)
-
-    def _parse_for(self, src: str, start: int, ctx: dict) -> tuple[str, int]:
-        """从 {% for x in path %} 开始，找到匹配 endfor（含嵌套），处理。
-
-        支持单变量 (for x in path) 和 tuple 解构 (for k, v in path)。
-        """
-        m = self.FOR_RE.match(src, start)
-        if not m:
-            return "", start
-        var_str = m.group(1)
-        path = m.group(2)
-        body_start = m.end()
-        # 找匹配的 endfor（嵌套深度计数）
-        end = self._find_matching_endfor(src, body_start)
-        if end == -1:
-            return "", start
-        body = src[body_start:end]
-        end_m = self.ENDFOR_RE.match(src, end)
-        endfor_end = end + len(end_m.group(0)) if end_m else end
-        # 迭代
-        items = self._resolve(path, ctx)
-        # dict 转为 items() 列表以支持 (k, v) 解构
-        if isinstance(items, dict):
-            items = list(items.items())
-        if not isinstance(items, (list, tuple)):
-            return "", endfor_end
-        # 解析变量名（支持 "k, v" 形式）
-        var_names = [v.strip() for v in var_str.split(",")]
-        parts = []
-        for idx, item in enumerate(items):
-            sub = dict(ctx)
-            # tuple 解构或多变量
-            if (
-                len(var_names) > 1
-                and isinstance(item, (list, tuple))
-                and len(item) == len(var_names)
-            ):
-                for vn, iv in zip(var_names, item):
-                    sub[vn] = iv
-            elif (
-                len(var_names) == 1
-                and isinstance(item, (list, tuple))
-                and len(item) == 2
-            ):
-                # 单变量名但 item 是二元组：把整个 item 赋给 var，并提供 _0/_1 访问
-                sub[var_names[0]] = item
-                sub["_0"] = item[0]
-                sub["_1"] = item[1]
-            else:
-                sub[var_names[0]] = item
-            sub["loop"] = {
-                "index": idx + 1,
-                "index0": idx,
-                "index0_mod6": idx % 6,
-                "length": len(items),
-                "first": idx == 0,
-                "last": idx == len(items) - 1,
-            }
-            parts.append(self._parse_block(body, sub))
-        return "".join(parts), endfor_end
-
-    def _find_matching_endfor(self, src: str, start: int) -> int:
-        """从 start 开始，找与最近的 {% for %} 匹配的 {% endfor %}。返回 endfor 的起始位置。"""
-        depth = 1
-        i = start
-        while i < len(src):
-            nxt_for = self.FOR_RE.search(src, i)
-            nxt_end = self.ENDFOR_RE.search(src, i)
-            if not nxt_end:
-                return -1
-            if nxt_for and nxt_for.start() < nxt_end.start():
-                depth += 1
-                i = nxt_for.end()
-            else:
-                depth -= 1
-                if depth == 0:
-                    return nxt_end.start()
-                i = nxt_end.end()
-        return -1
-
-    def _parse_if(self, src: str, start: int, ctx: dict) -> tuple[str, int]:
-        m = self.IF_RE.match(src, start)
-        if not m:
-            return "", start
-        # 解析 if/elif/else/endif 链：把所有分支切成 (expr, body) 对
-        expr = m.group(1)
-        body_start = m.end()
-        # 找匹配 endif（处理嵌套 for/if）
-        end = self._find_matching_endif(src, body_start)
-        if end == -1:
-            return "", start
-        end_m = self.ENDIF_RE.match(src, end)
-        endif_end = end + len(end_m.group(0)) if end_m else end
-        full_block = src[body_start:end]
-        # 在 full_block 里切分支：elif/else 都是分支标记
-        branches = []  # [(expr_or_None, body)]
-        current_expr = expr
-        current_body_start = 0
-        i = 0
-        while i < len(full_block):
-            # 排除嵌套 if 的 elif/else：要求分支标记不在嵌套 if 里
-            # 简化处理：只切最外层的 elif/else（不在任何 if 块内的）
-            # 通过深度计数找最外层的 elif/else
-            depth = 0
-            cut_pos = -1
-            cut_type = None
-            j = i
-            while j < len(full_block):
-                # 找最近的下一个标记
-                next_any = None
-                for marker_re, marker_type in [
-                    (self.IF_RE, "if"),
-                    (self.ELIF_RE, "elif"),
-                    (self.ELSE_RE, "else"),
-                    (self.ENDIF_RE, "endif"),
-                ]:
-                    mm = marker_re.search(full_block, j)
-                    if mm and (next_any is None or mm.start() < next_any.start()):
-                        next_any = mm
-                        next_type = marker_type
-                if next_any is None:
-                    break
-                if next_type == "if":
-                    depth += 1
-                elif next_type == "endif":
-                    depth -= 1
-                    if depth == 0:
-                        break
-                elif depth == 0 and next_type in ("elif", "else"):
-                    cut_pos = next_any.start()
-                    cut_type = next_type
-                    break
-                j = next_any.end()
-            if cut_pos == -1:
-                # 没找到分支标记，剩余就是当前分支的 body
-                branches.append((current_expr, full_block[current_body_start:]))
-                break
-            else:
-                branches.append((current_expr, full_block[current_body_start:cut_pos]))
-                if cut_type == "elif":
-                    em = self.ELIF_RE.match(full_block, cut_pos)
-                    current_expr = em.group(1)
-                    current_body_start = em.end()
-                else:  # else
-                    current_expr = None  # None 表示无条件
-                    em = self.ELSE_RE.match(full_block, cut_pos)
-                    current_body_start = em.end()
-                i = current_body_start
-        # 评估分支
-        for branch_expr, branch_body in branches:
-            if branch_expr is None or self._eval_expr(branch_expr, ctx):
-                return self._parse_block(branch_body, ctx), endif_end
-        return "", endif_end
-
-    def _find_matching_endif(self, src: str, start: int) -> int:
-        """找与 if 匹配的 endif。需考虑嵌套 if/elif/else/endfor 等。
-
-        注意：for/endfor 配对不影响 if 深度（互相独立）。
-        """
-        depth = 1
-        i = start
-        while i < len(src):
-            # 找下一个最近的标记
-            candidates = []
-            for marker_re, kind in [
-                (self.IF_RE, "if"),
-                (self.ENDIF_RE, "endif"),
-                (self.FOR_RE, "for"),
-            ]:
-                m = marker_re.search(src, i)
-                if m:
-                    candidates.append((m.start(), m.end(), kind, marker_re))
-            if not candidates:
-                return -1
-            candidates.sort(key=lambda x: x[0])
-            pos, nxt_end, kind, _ = candidates[0]
-            if kind == "if":
-                depth += 1
-                i = nxt_end
-            elif kind == "endif":
-                depth -= 1
-                if depth == 0:
-                    return pos
-                i = nxt_end
-            else:  # 'for' —— 完全跳过（不增减 if 深度）
-                i = nxt_end
-        return -1
-
-    def _render_text(self, text: str, ctx: dict) -> str:
-        """渲染纯文本片段：替换 {{var}} 和 {{!var}}。
-
-        支持 Jinja 风格过滤器：|length / |upper / |slice:N / |default:X
-        """
-
-        def _apply_filters(val, filter_str):
-            """从右到左依次应用过滤器。"""
-            if not filter_str:
-                return val
-            for f in filter_str.split("|"):
-                f = f.strip()
-                if not f:
-                    continue
-                if f == "length":
-                    try:
-                        val = len(val)
-                    except Exception:
-                        val = 0
-                elif f == "upper":
-                    val = str(val).upper()
-                elif f == "lower":
-                    val = str(val).lower()
-                elif f.startswith("slice"):
-                    # slice:1 或 slice:0:2 或 slice(1) 或 slice(0, 2)
-                    s = f[5:].strip()
-                    # 去掉括号
-                    if s.startswith("(") and s.endswith(")"):
-                        s = s[1:-1]
-                    # 解析参数
-                    parts = []
-                    if s:
-                        for x in s.split(":"):
-                            x = x.strip()
-                            if x:
-                                try:
-                                    parts.append(int(x))
-                                except ValueError:
-                                    pass
-                    if isinstance(val, str) and parts:
-                        try:
-                            val = val[slice(*parts)]
-                        except Exception:
-                            pass
-                elif f.startswith("map_cat_commons"):
-                    # 特殊过滤器:返回所有 category 中 _comps 列表长度的最大值
-                    if f.endswith("max_share"):
-                        try:
-                            val = max(
-                                (
-                                    len(feat.get("_comps", []))
-                                    for cat in val
-                                    for feat in cat.get("features", [])
-                                ),
-                                default=0,
-                            )
-                        except Exception:
-                            val = 0
-                elif f.startswith("sort_reverse_by_total"):
-                    val = sorted(val, key=lambda x: -x.get("total_features", 0))
-                elif f == "minus":
-                    # 把上一步结果当成数字减 8 (在 cat_features 切片场景使用)
-                    try:
-                        val = val - 8
-                    except Exception:
-                        val = val
-                elif f.startswith("format"):
-                    # 语法: format(expr) → Python format 调用 val.format(*[args])
-                    try:
-                        if "(" in f:
-                            inner = f[f.index("(") + 1 : f.rindex(")")]
-                            args = []
-                            for part in inner.split(","):
-                                part = part.strip()
-                                # 1. 数字字面
-                                if part.lstrip("-").isdigit():
-                                    args.append(int(part))
-                                # 2. 字符串字面（带引号）
-                                elif (part.startswith('"') and part.endswith('"')) or (
-                                    part.startswith("'") and part.endswith("'")
-                                ):
-                                    args.append(part[1:-1])
-                                # 3. 变量路径（从 ctx 解析）
-                                else:
-                                    # 从当前 ctx 解析变量（如 loop.index）
-                                    try:
-                                        # 简单路径解析: a.b.c → ctx["a"]["b"]["c"]
-                                        cur = ctx
-                                        for k in part.split("."):
-                                            if isinstance(cur, dict):
-                                                cur = cur.get(k, "")
-                                            else:
-                                                cur = ""
-                                                break
-                                        args.append(cur)
-                                    except Exception:
-                                        args.append(part)
-                            # 区分 C 风格（%02d）和 Python 风格（{0:02d}）
-                            if isinstance(val, str) and "%" in val and "{" not in val:
-                                # C 风格：用 % 运算符
-                                if len(args) == 1:
-                                    val = val % args[0]
-                                else:
-                                    val = val % tuple(args)
-                            else:
-                                # Python 风格：str.format
-                                val = val.format(*args) if args else str(val)
-                        else:
-                            val = str(val)
-                    except Exception:
-                        val = str(val)
-                elif f.startswith("default"):
-                    # default:"X"   字面字符串（带引号）
-                    # default:c.name  当前 ctx 中的变量路径
-                    if val == "" or val is None:
-                        arg = (
-                            f[len("default:") :].strip()
-                            if f.startswith("default:")
-                            else ""
-                        )
-                        if not arg:
-                            val = ""
-                        elif (arg.startswith('"') and arg.endswith('"')) or (
-                            arg.startswith("'") and arg.endswith("'")
-                        ):
-                            val = arg[1:-1]
-                        else:
-                            # 当作 ctx 路径解析
-                            try:
-                                val = self._resolve(arg, ctx)
-                                if val is None:
-                                    val = ""
-                            except Exception:
-                                val = ""
-                elif f.startswith("join"):
-                    # join:"X"   用 X 连接 list/tuple；默认 ", "
-                    sep = ", "
-                    if ":" in f:
-                        sep_part = f.split(":", 1)[1].strip()
-                        if (sep_part.startswith('"') and sep_part.endswith('"')) or (
-                            sep_part.startswith("'") and sep_part.endswith("'")
-                        ):
-                            sep = sep_part[1:-1]
-                        elif sep_part:
-                            sep = sep_part
-                    if isinstance(val, (list, tuple)):
-                        val = sep.join(str(x) for x in val)
-                    elif isinstance(val, str) and val:
-                        # 已经是字符串就不动
-                        pass
-                    else:
-                        val = ""
-                elif f == "safe":
-                    pass  # already handled by {{!var}}
-            return val
-
-        def _parse_var(spec):
-            """解析 'a.b.c | filter1 | filter2(arg)' → (path, filters)。"""
-            parts = spec.split("|")
-            path = parts[0].strip()
-            filters = "|".join(parts[1:])
-            return path, filters
-
-        def repl_safe(m):
-            spec = m.group(1)
-            path, filters = _parse_var(spec)
-            val = self._resolve(path, ctx)
-            if val is None:
-                val = ""
-            val = _apply_filters(val, filters)
-            return "" if val is None else str(val)
-
-        def repl_esc(m):
-            spec = m.group(1)
-            path, filters = _parse_var(spec)
-            val = self._resolve(path, ctx)
-            if val is None:
-                val = ""
-            val = _apply_filters(val, filters)
-            if isinstance(val, (int, float)):
-                return str(val)
-            return html.escape(str(val), quote=False)
-
-        # 先 raw 再 escape
-        text = self.RAW_RE.sub(repl_safe, text)
-        text = self.VAR_RE.sub(repl_esc, text)
-        return text
+        return self._template.render(**ctx)
 
 
 def smart_icon(name: str) -> str:
@@ -645,6 +103,17 @@ def slugify(name: str) -> str:
     return s or "x"
 
 
+def _truncate_with_ellipsis(text: str, max_len: int) -> str:
+    """超长文本截断到 max_len,末尾追加 '…'。
+
+    None/空 文本会得到 '—'。截断长度 ≤ max_len 时不追加省略号。
+    """
+    safe = text if text else "—"
+    if len(safe) <= max_len:
+        return safe
+    return safe[:max_len] + "…"
+
+
 # ============================================================
 # 派生：从 13 字段 JSON 推出飞书模板所需的所有结构
 # ============================================================
@@ -671,7 +140,7 @@ def _classify_angle(text: str) -> str:
 
 
 def _derive_inspiration_points(competitors):
-    """从 strengths 派生 inspiration_points: {angle: [{competitor, good, inspiration}]}"""
+    """从 strengths 派生 inspiration_points: {angle: [{competitor, good, inspiration, evidence, _ref}]}"""
     result: dict = {}
     for c in competitors:
         for s in c.get("strengths", []):
@@ -683,14 +152,16 @@ def _derive_inspiration_points(competitors):
                 {
                     "competitor": c["name"],
                     "good": point,
+                    "evidence": s.get("evidence", ""),
                     "inspiration": f"可借鉴 {c['name']} 的实践：{point[:30]}",
+                    "_ref": s.get("_ref", 0),
                 }
             )
     return result
 
 
 def _derive_opportunity_points(competitors):
-    """从 weaknesses 派生 opportunity_points: {angle: [{competitor, weakness, opportunity}]}"""
+    """从 weaknesses 派生 opportunity_points: {angle: [{competitor, weakness, opportunity, evidence, _ref}]}"""
     result: dict = {}
     for c in competitors:
         for w in c.get("weaknesses", []):
@@ -702,9 +173,53 @@ def _derive_opportunity_points(competitors):
                 {
                     "competitor": c["name"],
                     "weakness": point,
+                    "evidence": w.get("evidence", ""),
                     "opportunity": f"差异化机会：解决 {c['name']} 没做好的「{point[:20]}」",
+                    "_ref": w.get("_ref", 0),
                 }
             )
+    return result
+
+
+def _group_inspiration_by_competitor(inspiration_points, competitors):
+    """按竞品重排 inspiration_points。
+
+    输出: {comp_name: [{angle, good, evidence, inspiration, _ref}, ...]}
+    —— 让 §2.4 可以按厂商查阅,不混在角度分类里。
+    """
+    result: dict = {c["name"]: [] for c in competitors}
+    for angle, items in inspiration_points.items():
+        for it in items:
+            comp = it.get("competitor")
+            if comp in result:
+                result[comp].append(
+                    {
+                        "angle": angle,
+                        "good": it["good"],
+                        "evidence": it.get("evidence", ""),
+                        "inspiration": it["inspiration"],
+                        "_ref": it.get("_ref", 0),
+                    }
+                )
+    return result
+
+
+def _group_opportunity_by_competitor(opportunity_points, competitors):
+    """按竞品重排 opportunity_points。"""
+    result: dict = {c["name"]: [] for c in competitors}
+    for angle, items in opportunity_points.items():
+        for it in items:
+            comp = it.get("competitor")
+            if comp in result:
+                result[comp].append(
+                    {
+                        "angle": angle,
+                        "weakness": it["weakness"],
+                        "evidence": it.get("evidence", ""),
+                        "opportunity": it["opportunity"],
+                        "_ref": it.get("_ref", 0),
+                    }
+                )
     return result
 
 
@@ -721,9 +236,18 @@ def _derive_user_positioning(c):
 
 
 def _derive_commercial_strategies(c):
-    """从 pricing + differentiators 派生商业策略。"""
+    """从 pricing + differentiators 派生商业策略。
+
+    differentiators 可能是 list[str] (原始) 或 list[{name, source, _ref}] (Phase 1A 后),
+    这里统一取 .name 兼容两种格式。
+    """
     pricing = c.get("pricing", "—")
     differentiators = c.get("differentiators", [])
+
+    def _name(it):
+        return it["name"] if isinstance(it, dict) else it
+
+    diff_names = [_name(d) for d in differentiators]
     # pricing_tiers: 按 + / 、 切分
     if pricing and pricing != "—":
         tiers = [t.strip() for t in re.split(r"[+、；;]", pricing) if t.strip()]
@@ -734,14 +258,14 @@ def _derive_commercial_strategies(c):
         if any("$" in t or "月" in t or "年" in t for t in tiers)
         else "—",
         "pricing_tiers": tiers,
-        "gtm": differentiators[0][:60] if differentiators else "—",
-        "moat": differentiators[1][:60]
-        if len(differentiators) > 1
-        else (differentiators[0][:60] if differentiators else "—"),
+        "gtm": diff_names[0][:60] if diff_names else "—",
+        "moat": diff_names[1][:60]
+        if len(diff_names) > 1
+        else (diff_names[0][:60] if diff_names else "—"),
     }
 
 
-def _derive_product_overview(c):
+def _derive_product_overview():
     """产品端覆盖 — 默认 '—'，留作人工补充。"""
     return {
         "web": "支持",
@@ -752,26 +276,63 @@ def _derive_product_overview(c):
 
 
 def _derive_visual_signals(c):
-    """从 tech_signals + tagline 派生视觉/交互描述。"""
-    signals = c.get("tech_signals", [])
-    tagline = c.get("tagline", "")
-    bits = []
-    if tagline:
-        bits.append(f"定位：「{tagline}」")
-    if signals:
-        bits.append("技术：" + "、".join(signals[:2]))
-    return "。".join(bits) if bits else "—"
+    """基于 tagline + 核心功能 + 技术栈 推断 UI/UX 风格。
+
+    返回结构化字段(visual_style / interaction_pattern / key_ui_element),
+    供 §5.3 视觉卡片直接渲染 —— 比旧版「拼接 tagline + tech 字符串」更可读。
+    """
+    fc = c.get("feature_catalog", {}).get(c["name"], [])
+    fc_names = {f.get("name", "") for f in fc}
+    tagline = c.get("tagline", "") or ""
+
+    # 视觉风格推断
+    if "AI" in tagline or any("AI" in n for n in fc_names):
+        style = "现代 AI 驱动界面,深色主调 + 强调色"
+    elif "WhatsApp" in tagline or "WhatsApp" in str(fc_names):
+        style = "WhatsApp Web 风格对话列表,左导航 + 中对话区"
+    else:
+        style = "经典 SaaS 控制台风格"
+
+    # 交互模式推断
+    interactions = []
+    if any("收件箱" in n or "Inbox" in n for n in fc_names):
+        interactions.append("多坐席协作收件箱")
+    if any("AI" in n for n in fc_names):
+        interactions.append("AI 自动回复")
+    if any("工作流" in n or "Workflow" in n for n in fc_names):
+        interactions.append("拖拽式工作流")
+    if any("模板" in n for n in fc_names):
+        interactions.append("模板市场")
+
+    return {
+        "visual_style": style,
+        "interaction_pattern": " + ".join(interactions)
+        if interactions
+        else "标准表单式",
+        "feature_count": len(fc),
+        "tagline": tagline,
+    }
 
 
 def _derive_user_feedback(c):
-    """从 strengths/weaknesses 派生用户反馈小结。"""
+    """从 strengths/weaknesses 派生用户反馈小结(带 source URL)。"""
     pos = [
-        {"text": s.get("point", ""), "source": "G2/Reddit/官网评测", "count": "—"}
+        {
+            "text": s.get("point", ""),
+            "source": s.get("source", "") or c.get("url", ""),
+            "source_label": s.get("source_label", "G2 / 评测 / 官方"),
+            "count": s.get("score", "—"),
+        }
         for s in c.get("strengths", [])[:3]
         if s.get("point")
     ]
     neg = [
-        {"text": w.get("point", ""), "source": "G2/Reddit/社区抱怨", "count": "—"}
+        {
+            "text": w.get("point", ""),
+            "source": w.get("source", "") or c.get("url", ""),
+            "source_label": w.get("source_label", "G2 / 社区 / 评测"),
+            "count": w.get("score", "—"),
+        }
         for w in c.get("weaknesses", [])[:3]
         if w.get("point")
     ]
@@ -844,29 +405,309 @@ def _group_competitors_by_stage(competitors):
     return [{"stage": k, "competitors": v} for k, v in groups.items()]
 
 
-def _build_feature_comparison_matrix(competitors):
+# ─────────────────────────────────────────────────────────
+# 内置默认别名库 — 覆盖常见集成/CDP/收件箱场景(零配置启用)
+# 优先级最低,被用户配置和自动检测覆盖
+# ─────────────────────────────────────────────────────────
+_DEFAULT_FEATURE_ALIASES = {
+    "团队收件箱 (Team Inbox)": {
+        "aliases": [
+            "团队收件箱",
+            "团队共享收件箱",
+            "Team Inbox",
+            "Shared Inbox",
+            "协作收件箱",
+            "Agent Inbox",
+            "Multi-Agent Inbox",
+        ],
+        "rationale": "本质都是「多坐席共享同一个对话列表」,各家产品命名不同。",
+    },
+    "对话分配 (Chat Assignment)": {
+        "aliases": [
+            "对话分配",
+            "对话分配规则",
+            "Chat Assignment",
+            "Conversation Routing",
+            "Conversation Assignment",
+        ],
+        "rationale": "把进入的对话按规则分配到坐席(团队/优先级/语言)。",
+    },
+    "REST API 开放接口": {
+        "aliases": ["REST API", "API", "Open API", "RESTful API"],
+        "rationale": "公开 REST 接口供开发者集成。",
+    },
+    "Webhook 事件推送": {
+        "aliases": ["Webhook 双向", "Webhook 事件", "Webhook", "Webhook Events"],
+        "rationale": "新消息/状态变更等事件实时推送到开发者服务器。",
+    },
+    "电商集成 (E-commerce)": {
+        "aliases": [
+            "Shopify 集成",
+            "Shopify 一键连接",
+            "Shopify Inbox",
+            "Shopify 深度",
+            "WooCommerce",
+            "WooCommerce 连接",
+            "WooCommerce 集成",
+            "E-commerce Integration",
+            "Magento Integration",
+        ],
+        "rationale": "对接电商平台同步订单/库存/客户。Shopify/WooCommerce/Magento 三大主流。",
+    },
+    "HubSpot CRM 集成": {
+        "aliases": ["HubSpot 集成", "HubSpot 连接", "HubSpot CRM Integration"],
+        "rationale": "对接 HubSpot 同步 contacts/deals/通讯记录。",
+    },
+    "Zapier 自动化集成": {
+        "aliases": [
+            "Zapier 集成",
+            "Zapier 连接",
+            "Zapier/Make",
+            "Zapier Integration",
+            "Make.com 集成",
+            "Make Integration",
+        ],
+        "rationale": "通过 Zapier/Make.com 连接 5000+ SaaS 工具做自动化。",
+    },
+    "Mailchimp 集成": {
+        "aliases": ["Mailchimp", "Mailchimp 集成", "Mailchimp Integration"],
+        "rationale": "对接 Mailchimp 做邮件营销协同。",
+    },
+    "Instagram 多渠道接入": {
+        "aliases": ["Instagram DM", "Instagram 集成", "Instagram Integration"],
+        "rationale": "把 Instagram Direct Message 接入统一收件箱。",
+    },
+    "Facebook Messenger 接入": {
+        "aliases": [
+            "Facebook Messenger",
+            "Messenger",
+            "FB Messenger",
+            "Facebook Messenger Integration",
+        ],
+        "rationale": "对接 Meta 的 Facebook Messenger 多渠道能力。",
+    },
+    "Telegram 接入": {
+        "aliases": ["Telegram", "Telegram Bot", "Telegram Integration"],
+        "rationale": "对接 Telegram 多渠道能力。",
+    },
+    "WhatsApp Business API": {
+        "aliases": [
+            "WhatsApp Business API",
+            "WhatsApp Business Platform",
+            "WhatsApp Business",
+            "WhatsApp",
+            "WhatsApp API",
+        ],
+        "rationale": "Meta 官方 WhatsApp Business API 直连。",
+    },
+    "Email API": {
+        "aliases": [
+            "Email API",
+            "SendGrid Email",
+            "Transactional Email",
+            "SMTP API",
+            "Email Service",
+        ],
+        "rationale": "事务性 + 营销邮件 API(SendGrid 等)。",
+    },
+    "SMS API": {
+        "aliases": [
+            "Programmable Messaging",
+            "SMS/MMS/RCS",
+            "SMS API",
+            "Programmable SMS",
+            "Messaging API",
+        ],
+        "rationale": "短信/MMS/RCS 统一消息 API。",
+    },
+    "CDP 客户数据平台": {
+        "aliases": [
+            "Segment CDP",
+            "People CDP",
+            "Personas 身份解析",
+            "Identity Resolution",
+            "CDP",
+            "Customer Data Platform",
+        ],
+        "rationale": "跨渠道客户数据平台,统一用户身份与画像。",
+    },
+    "可视化拖拽流程编辑器": {
+        "aliases": [
+            "可视化拖拽流程",
+            "拖拽流程编辑器",
+            "Visual Flow Builder",
+            "Drag-and-Drop Workflow",
+            "Flow Builder",
+        ],
+        "rationale": "零代码拖拽式工作流编辑。",
+    },
+    "行业模板库 (Workflow Templates)": {
+        "aliases": [
+            "模板市场",
+            "工作流模板库",
+            "Workflow Templates",
+            "Template Library",
+            "Template Marketplace",
+        ],
+        "rationale": "预制行业流程模板让用户快速上手。",
+    },
+    "内部备注 (Internal Notes)": {
+        "aliases": [
+            "内部备注",
+            "Internal Notes",
+            "Internal Chat",
+            "@mention",
+            "Team Chat",
+        ],
+        "rationale": "团队成员私下沟通,客户不可见。",
+    },
+    "AI 转人工升级": {
+        "aliases": [
+            "AI 转人工",
+            "AI 智能路由",
+            "Human Handoff",
+            "Agent Handoff",
+            "Escalation to Human",
+        ],
+        "rationale": "AI 检测到复杂问题后自动升级到人工客服。",
+    },
+    "知识库训练 (Knowledge Base Training)": {
+        "aliases": [
+            "AI 知识库训练",
+            "Lyro 知识库训练",
+            "Knowledge Base",
+            "FAQ Training",
+            "Document Training",
+        ],
+        "rationale": "上传文档/FAQ 让 AI 自动学习。",
+    },
+}
+
+
+def _auto_detect_aliases(competitors):
+    """自动检测:同名功能出现在 ≥2 家厂商 → 自动合并到 canonical。
+
+    Returns:
+        dict: 同 feature_aliases 格式
+    """
+    from collections import defaultdict
+
+    name_to_vendors: dict = defaultdict(set)
+    for c in competitors:
+        comp = c.get("name", "")
+        for feat in c.get("feature_catalog", {}).get(comp, []):
+            fname = feat.get("name", "").strip()
+            if fname:
+                name_to_vendors[fname].add(comp)
+
+    auto: dict = {}
+    for name, vendors in name_to_vendors.items():
+        if len(vendors) >= 2:
+            # 同名出现在 2+ 家 → 自动合并
+            vlist = sorted(vendors)
+            auto[name] = {
+                "aliases": [name],
+                "rationale": f'自动检测: "{name}" 在 {len(vendors)} 家厂商出现 — '
+                f"{', '.join(vlist)}。",
+                "_auto_detected": True,
+            }
+    return auto
+
+
+def _merge_alias_layers(user_aliases, auto_aliases, default_aliases):
+    """三层合并:用户 > 自动检测 > 默认库
+
+    用户配置最高优先级,可覆盖其他两层。
+    自动检测发现的别名被记录(_auto_detected=True)。
+    """
+    merged: dict = {}
+    # 第 1 层:默认别名库
+    for canonical, info in default_aliases.items():
+        merged[canonical] = info
+    # 第 2 层:自动检测 — 默认没覆盖的才添加
+    for canonical, info in auto_aliases.items():
+        if canonical not in merged:
+            merged[canonical] = info
+        else:
+            # 自动检测的别名也加入现有 canonical
+            existing_aliases = set(
+                merged[canonical].get("aliases", [])
+                if isinstance(merged[canonical], dict)
+                else [canonical]
+            )
+            new_aliases = info.get("aliases", []) if isinstance(info, dict) else []
+            for a in new_aliases:
+                if a not in existing_aliases:
+                    existing_aliases.add(a)
+                    if isinstance(merged[canonical], dict):
+                        merged[canonical].setdefault("aliases", []).append(a)
+    # 第 3 层:用户配置 — 同 canonical 名合并别名,不覆盖别名清单
+    # 如果用户在默认库已有同名 canonical,合并两边的 aliases
+    for canonical, info in (user_aliases or {}).items():
+        if (
+            canonical in merged
+            and isinstance(merged[canonical], dict)
+            and isinstance(info, dict)
+        ):
+            # 合并 aliases:用户 + 默认(去重)
+            user_aliases_list = info.get("aliases", [])
+            default_aliases_list = merged[canonical].get("aliases", [])
+            merged_aliases = list(
+                dict.fromkeys(user_aliases_list + default_aliases_list)
+            )
+            merged[canonical] = {
+                **merged[canonical],
+                **info,
+                "aliases": merged_aliases,
+            }
+        else:
+            merged[canonical] = info
+    return merged
+
+
+def _build_feature_comparison_matrix(competitors, feature_aliases=None):
     """构造 § 5.2 的厂商对比矩阵。
 
-    返回结构:
-      {
-        "categories": [
-          {
-            "name": "消息 API",
-            "total_features": 4,
-            "coverage": {"Twilio": 4, "WATI": 0, ...},  # 每个竞品在该类的功能数
-            "features": [
-              {"name": "WhatsApp Business API", "competitors": ["Twilio", "Infobip"], ...},
-              ...
-            ]
-          },
-          ...
-        ],
-        "totals_per_competitor": {"Twilio": 18, "WATI": 18, ...},
-        "totals_per_category": {"消息 API": 4, "AI 客服": 3, ...},
-      }
+    Args:
+        competitors: 竞品列表(每个含 feature_catalog)
+        feature_aliases: 同义别名映射,格式:
+            {
+                "canonical_name": {
+                    "aliases": ["alias1", "alias2", ...],  # 含 canonical_name 自身
+                    "rationale": "为什么这些是同一个功能",
+                }
+            }
+            若提供,会把同名/近名功能合并到 canonical_name,并记录每家厂商的实际叫法。
+
+    自动合并能力(三层优先级):
+      1. **用户配置的 feature_aliases**(最高优先级)
+      2. **自动检测**:同名功能在 ≥2 家厂商出现 → 自动合并
+      3. **内置默认别名库**:覆盖常见场景(集成/CDP/收件箱 等)
     """
+
+    # ── 自动检测阶段 ──
+    auto_detected = _auto_detect_aliases(competitors)
+    # ── 合并默认 + 自动 + 用户(用户最高优先级) ──
+    effective_aliases = _merge_alias_layers(
+        user_aliases=feature_aliases,
+        auto_aliases=auto_detected,
+        default_aliases=_DEFAULT_FEATURE_ALIASES,
+    )
+    feature_aliases = effective_aliases  # 后续逻辑直接使用合并后的
+    # 解析 aliases → 反向索引: alias_text_lower → (canonical_name, rationale)
+    alias_index: dict = {}
+    if feature_aliases:
+        for canonical, info in feature_aliases.items():
+            rationale = info.get("rationale", "") if isinstance(info, dict) else ""
+            for alias in (
+                info.get("aliases", []) if isinstance(info, dict) else [canonical]
+            ):
+                key = alias.strip().lower()
+                if key:
+                    alias_index[key] = (canonical, rationale)
+
     # 收集所有 category 和 feature(只遍历一次,避免重复计数)
-    cat_features = {}  # cat -> list of {name, desc, _comps:[], _ref}
+    cat_features = {}  # cat -> list of merged feature dict
     cat_coverage = {}  # cat -> {competitor_name: count}
     totals_per_competitor = {}
 
@@ -876,29 +717,66 @@ def _build_feature_comparison_matrix(competitors):
         totals_per_competitor[comp_name] = len(feats)
 
         for feat in feats:
-            cat = feat.get("category", "其他")
+            cat = feat.get("category") or "其他"
             fname = feat.get("name", "")
             fdesc = feat.get("desc", "")
             fref = feat.get("_ref", 0)
 
-            # 累计 coverage
-            cat_coverage.setdefault(cat, {})
-            cat_coverage[cat][comp_name] = cat_coverage[cat].get(comp_name, 0) + 1
+            # 查 alias 表:用 canonical_name 作为合并键
+            lookup = alias_index.get(fname.strip().lower())
+            if lookup:
+                canonical_name, rationale = lookup
+            else:
+                canonical_name, rationale = fname, ""
 
-            # 加入 feature 列表(去重:同 category 同 name 合并 comps)
             cat_features.setdefault(cat, [])
+            # 累计 coverage(每个厂商每个 canonical 功能只算 1 次)
+            cat_coverage.setdefault(cat, {})
+            already_in_canonical = any(
+                ex["name"] == canonical_name and comp_name in ex["_comps"]
+                for ex in cat_features[cat]
+            )
+            if not already_in_canonical:
+                cat_coverage[cat][comp_name] = cat_coverage[cat].get(comp_name, 0) + 1
+
+            # 合并:同 category 同 canonical_name 合并 comps
             existing = None
             for ex in cat_features[cat]:
-                if ex["name"] == fname:
+                if ex["name"] == canonical_name:
                     existing = ex
                     break
             if existing is None:
                 cat_features[cat].append(
-                    {"name": fname, "desc": fdesc, "_comps": [comp_name], "_ref": fref}
+                    {
+                        "name": canonical_name,
+                        "desc": fdesc,
+                        "_comps": [comp_name],
+                        "_display_names": (
+                            {comp_name: fname} if fname != canonical_name else {}
+                        ),
+                        "_rationale": rationale,
+                        "_ref": fref,
+                        # 记录每家厂商自己的来源 URL (在 normalize 中转为 _ref)
+                        "_vendor_sources": {comp_name: feat.get("source", "") or ""},
+                        # 记录每家厂商自己的原始描述 —— 防误判:用户可对比确认同义
+                        "_vendor_descs": {comp_name: feat.get("desc", "") or ""},
+                    }
                 )
             else:
                 if comp_name not in existing["_comps"]:
                     existing["_comps"].append(comp_name)
+                if fname != canonical_name:
+                    existing.setdefault("_display_names", {})[comp_name] = fname
+                if rationale and not existing.get("_rationale"):
+                    existing["_rationale"] = rationale
+                # 累计各家来源 URL (同名同 category 不同厂商可能用不同 source)
+                if feat.get("source"):
+                    existing.setdefault("_vendor_sources", {})[comp_name] = feat[
+                        "source"
+                    ]
+                # 累计各家原始描述
+                if feat.get("desc"):
+                    existing.setdefault("_vendor_descs", {})[comp_name] = feat["desc"]
 
     categories = []
     for cat_name in sorted(cat_features.keys()):
@@ -922,6 +800,52 @@ def _build_feature_comparison_matrix(competitors):
 
     totals_per_category = {c["name"]: c["total_features"] for c in categories}
 
+    # ── 跨类别合并 ──
+    # 当某功能被 alias 合并后,可能因为各家把功能归在不同的 category
+    # (例如 WATI 把 AI 放在「AI 客服」,Respond.io 把同类放在「AI」),
+    # 导致同一个 canonical 功能在矩阵里出现多行。这里按 canonical name 全局合并,
+    # 保留首次出现的 category 作为合并后的归属。
+    if feature_aliases:
+        global_index: dict = {}  # canonical_name -> (category, feat_obj)
+        # 先建立首次出现索引(同类别按列表顺序,跨类别按 categories 列表顺序)
+        for cat in categories:
+            for f in list(cat["features"]):  # snapshot 以避免修改迭代器
+                canon = f["name"]
+                if canon in global_index:
+                    prev_cat, prev_feat = global_index[canon]
+                    if prev_cat == cat["name"]:
+                        continue  # 同类别已在前面循环处理过
+                    # 跨类别:合并到首次出现的 category,标记为待删除
+                    for comp in f["_comps"]:
+                        if comp not in prev_feat["_comps"]:
+                            prev_feat["_comps"].append(comp)
+                    for comp, dn in (f.get("_display_names") or {}).items():
+                        prev_feat.setdefault("_display_names", {})[comp] = dn
+                    if f.get("_rationale") and not prev_feat.get("_rationale"):
+                        prev_feat["_rationale"] = f["_rationale"]
+                    # 合并各家来源
+                    for comp, src in (f.get("_vendor_sources") or {}).items():
+                        if src:
+                            prev_feat.setdefault("_vendor_sources", {})[comp] = src
+                    for comp, d in (f.get("_vendor_descs") or {}).items():
+                        if d:
+                            prev_feat.setdefault("_vendor_descs", {})[comp] = d
+                    f["_to_remove"] = True
+                else:
+                    global_index[canon] = (cat["name"], f)
+        # 移除标记待删除的项
+        for cat in categories:
+            cat["features"] = [f for f in cat["features"] if not f.get("_to_remove")]
+        # 重新统计 total_features / coverage
+        for cat in categories:
+            cat["total_features"] = len(cat["features"])
+            new_cov = {}
+            for f in cat["features"]:
+                for comp in f["_comps"]:
+                    new_cov[comp] = new_cov.get(comp, 0) + 1
+            cat["coverage"] = new_cov
+        totals_per_category = {c["name"]: c["total_features"] for c in categories}
+
     return {
         "categories": categories,
         "totals_per_competitor": totals_per_competitor,
@@ -930,37 +854,69 @@ def _build_feature_comparison_matrix(competitors):
     }
 
 
-def _find_unique_features(competitors):
-    """每家独有的功能(其他家都没有)。"""
-    # 反向索引:每个 feature 名 → 提供者列表
-    feat_to_comps = {}
+def _find_unique_features(competitors, feature_aliases=None):
+    """每家独有的功能(其他家都没有)。
+
+    通过 feature_aliases 把同义功能先合并到 canonical_name,再判断独家性,
+    避免「团队收件箱」与「团队共享收件箱」被误判为两家都独家。
+
+    Returns:
+        dict: 形如 {vendor_name: [unique_feature, ...]}。
+              每个 unique_feature 含 name / category / desc / _ref / _owner / _source。
+    """
+    # 与 _build_feature_comparison_matrix 一致:三层合并
+    auto_detected = _auto_detect_aliases(competitors)
+    effective = _merge_alias_layers(
+        user_aliases=feature_aliases,
+        auto_aliases=auto_detected,
+        default_aliases=_DEFAULT_FEATURE_ALIASES,
+    )
+    feature_aliases = effective
+
+    alias_index: dict = {}
+    for canonical, info in (feature_aliases or {}).items():
+        for alias in info.get("aliases", []) if isinstance(info, dict) else [canonical]:
+            key = alias.strip().lower()
+            if key:
+                alias_index[key] = canonical
+
+    def _canon(name: str) -> str:
+        return alias_index.get(name.strip().lower(), name)
+
+    # 反向索引:每个 canonical(feature, category) → 提供者列表
+    feat_to_comps: dict = {}
     for c in competitors:
         comp = c["name"]
         for feat in c.get("feature_catalog", {}).get(comp, []):
-            key = (feat.get("name", "").lower(), feat.get("category", ""))
-            feat_to_comps.setdefault(key, []).append(comp)
+            canon = _canon(feat.get("name", ""))
+            key = (canon.lower(), feat.get("category", ""))
+            if comp not in feat_to_comps.setdefault(key, []):
+                feat_to_comps[key].append(comp)
 
     result = {}
     for c in competitors:
         comp = c["name"]
         unique = []
         for feat in c.get("feature_catalog", {}).get(comp, []):
-            key = (feat.get("name", "").lower(), feat.get("category", ""))
+            canon = _canon(feat.get("name", ""))
+            key = (canon.lower(), feat.get("category", ""))
             if len(feat_to_comps.get(key, [])) == 1:
                 unique.append(
                     {
-                        "name": feat.get("name", ""),
+                        "name": canon,
                         "category": feat.get("category", ""),
                         "desc": feat.get("desc", ""),
                         "_ref": feat.get("_ref", 0),
+                        "_owner": comp,  # 这条独家功能属于这家
+                        "_source": feat.get("source", ""),  # 原始来源 URL
                     }
                 )
         result[comp] = unique
     return result
 
 
-def _derive_data_growth(competitors, opportunities):
-    """从 competitors.scores.momentum + opportunities 派生数据增长。"""
+def _derive_data_growth(competitors):
+    """从 competitors.scores.momentum 派生数据增长。"""
     if not competitors:
         return {"overall": "—", "summary": "—", "key_growth_points": []}
     avg_mom = sum(c["scores"].get("momentum", 0) for c in competitors) / len(
@@ -1016,9 +972,10 @@ def _render_sources_html(sources_by_kind):
     parts = []
     for group in sources_by_kind:
         kind = group["kind"]
+        label = kind_label.get(kind) or kind
         parts.append(
             f'<h3 class="sub-head">{html.escape(kind_icon.get(kind, "📎"))} '
-            f"{html.escape(kind_label.get(kind, kind))} "
+            f"{html.escape(label)} "
             f'<span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">'
             f"{group['count']} 条</span></h3>"
         )
@@ -1070,45 +1027,106 @@ def _render_section5_2_html(matrix, unique_features):
     )
     out.append("</div>")
 
-    # 主对比矩阵
+    # 主对比矩阵 — 5.2.1 标题列窄(180px)、功能列详细、通俗解释
     out.append(
-        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">✓=支持 —=不支持 · 颜色越深=支持者越多</span></h4>'
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵</h4>'
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.7;">'
+        "<strong>行 = 功能</strong>(共 "
+        f"{sum(c['total_features'] for c in cats)}"
+        " 个),<strong>列 = 竞品</strong>(6 家)。"
+        "✓=支持 / —=不支持。<strong>颜色越深=支持者越多</strong>(独家功能高亮 ⭐)。"
+        '<strong style="color:var(--accent);">每个 ✓ 旁边的 [N] 是该厂商自己的来源证据</strong>,可点击跳转到文末原始来源。'
+        "</p>"
+        '<div style="background:var(--bg-soft); border-left:3px solid var(--warn); padding:0.65rem 0.9rem; border-radius:6px; margin-bottom:1rem; font-size:0.78rem; line-height:1.6; color:var(--fg-soft);">'
+        '<strong style="color:var(--warn);">📖 怎么读:</strong> 同义功能(如「团队收件箱」/「团队共享收件箱」)已自动合并为 canonical,但 <strong style="color:var(--bad);">不同能力的同名功能</strong>(如「意图识别」/「智能路由」/「升级转人工」)会保留为多行 —— 鼠标悬停查看各家原始描述,确认是否真同义。'
+        "</div>"
     )
     out.append(
-        '<div class="feat-matrix-wrap"><table class="feat-matrix"><thead><tr><th style="text-align:left;">功能类别 / 功能</th>'
+        '<div class="feat-matrix-wrap"><table class="feat-matrix"><thead><tr><th style="text-align:left;">功能 / Feature</th>'
     )
     for cn in comp_names:
-        out.append(f"<th>{html.escape(cn)}</th>")
+        short_name = cn.replace(".io", "")
+        out.append(f"<th>{html.escape(short_name)}</th>")
     out.append("</tr></thead><tbody>")
 
     for cat in cats:
         for f in cat["features"]:
             comps_list = f.get("_comps", [])
             n = len(comps_list)
-            out.append("<tr>")
+            is_unique = n == 1
+            tr_class = ' class="unique-feature"' if is_unique else ""
+            out.append(f"<tr{tr_class}>")
             desc = f.get("desc", "") or ""
+            display_names = f.get("_display_names") or {}
+            vendor_descs = f.get("_vendor_descs") or {}
+            rationale = f.get("_rationale", "")
+            # ── 别名 chip 行(各家叫法 + 原始描述对比 — 防误判) ──
+            aliases_html = ""
+            if display_names or (
+                len(vendor_descs) > 1 and len(set(vendor_descs.values())) > 1
+            ):
+                chips = "".join(
+                    f'<span class="alias-chip"><strong>{html.escape(comp)}</strong> 「{html.escape(dn)}」</span>'
+                    for comp, dn in display_names.items()
+                )
+                # 各家原始描述对比表(可展开)
+                if len(vendor_descs) > 1 and len(set(vendor_descs.values())) > 1:
+                    desc_compare = '<div class="vendor-desc-compare">'
+                    for comp, d in sorted(vendor_descs.items()):
+                        desc_compare += (
+                            f'<div class="vdc-row"><span class="vdc-name">{html.escape(comp)}</span>'
+                            f'<span class="vdc-desc">{html.escape(d)}</span></div>'
+                        )
+                    desc_compare += "</div>"
+                    aliases_html = (
+                        f'<div class="feat-aliases">{chips}{desc_compare}</div>'
+                    )
+                    tooltip_text = html.escape(
+                        rationale or "对比各家原始描述确认是否真同义"
+                    )
+                else:
+                    aliases_html = f'<div class="feat-aliases">{chips}</div>'
+                    tooltip_text = html.escape(rationale or "各厂商叫法不同")
+                # 把 tooltip 加到外层 td（render 后整体处理）
+                if aliases_html and aliases_html.startswith("<div"):
+                    # 替换 title 让 hover 显示各家描述
+                    aliases_html = aliases_html.replace(
+                        '<div class="feat-aliases">',
+                        f'<div class="feat-aliases" title="{tooltip_text}">',
+                        1,
+                    )
+            # ── 功能行 ──
+            ref_html = (
+                f'<a href="#src-{f.get("_ref", 0)}" class="ref">{f["_ref"]}</a>'
+                if f.get("_ref")
+                else ""
+            )
+            desc_html = (
+                f'<div class="feat-desc">{html.escape(desc)}</div>' if desc else ""
+            )
             out.append(
-                f'<td title="{html.escape(desc)}"><strong>{html.escape(f["name"])}</strong>'
-                + (
-                    f'<br><span style="color:var(--fg-mute); font-size:0.78rem; font-weight:400;">{html.escape(desc)}</span>'
-                    if desc
-                    else ""
-                )
-                + (
-                    f'<a href="#src-{f.get("_ref", 0)}" class="ref">{f["_ref"]}</a>'
-                    if f.get("_ref")
-                    else ""
-                )
-                + "</td>"
+                f'<td title="{html.escape(desc)}">'
+                f'<div class="feat-name-line"><strong>{html.escape(f["name"])}</strong>{ref_html}</div>'
+                f"{desc_html}{aliases_html}"
+                f"</td>"
             )
             for cn in comp_names:
                 if cn in comps_list:
                     cls = f"feature-cell share-{min(n, 6)}"
+                    # 该厂商自己的来源 [N]
+                    vrefs = f.get("_vendor_refs") or {}
+                    vref = vrefs.get(cn, 0)
+                    ref_html = (
+                        f'<a href="#src-{vref}" class="cell-ref">{vref}</a>'
+                        if vref
+                        else ""
+                    )
                     out.append(
-                        f'<td class="{cls}" title="{n}/{n_vendors} 家支持">✓</td>'
+                        f'<td class="{cls}" title="{n}/{n_vendors} 家支持 · {cn} 来源 [{vref or "?"}]">'
+                        f'<span class="cell-mark">✓</span>{ref_html}</td>'
                     )
                 else:
-                    out.append('<td class="feature-cell" style="opacity:0.25;">—</td>')
+                    out.append('<td class="feature-cell" style="opacity:0.18;">—</td>')
             out.append("</tr>")
 
     # 总数行
@@ -1149,8 +1167,40 @@ def _render_section5_2_html(matrix, unique_features):
                 if f.get("desc")
                 else ""
             )
+            # 别名提示行 + 各家描述对比(防误判)
+            display_names = f.get("_display_names") or {}
+            vendor_descs = f.get("_vendor_descs") or {}
+            rationale = f.get("_rationale", "")
+            alias_html = ""
+            if display_names or (
+                len(vendor_descs) > 1 and len(set(vendor_descs.values())) > 1
+            ):
+                chips = " · ".join(
+                    f'<span style="display:inline-block; background:var(--bg-soft); padding:0.05rem 0.45rem; '
+                    f'border-radius:3px; font-size:0.72rem; margin:0.05rem 0.15rem 0.05rem 0;">'
+                    f"<strong>{html.escape(comp)}</strong> 叫「{html.escape(dn)}」</span>"
+                    for comp, dn in display_names.items()
+                )
+                # 各家原始描述对比
+                desc_compare = ""
+                if len(vendor_descs) > 1 and len(set(vendor_descs.values())) > 1:
+                    desc_compare = (
+                        '<div class="vendor-desc-compare" style="margin-top:0.4rem;">'
+                    )
+                    desc_compare += '<div style="font-size:0.72rem; color:var(--accent); font-weight:600; margin-bottom:0.2rem;">📋 各家原始描述（请确认是否真同义）：</div>'
+                    for comp, d in sorted(vendor_descs.items()):
+                        desc_compare += (
+                            f'<div class="vdc-row"><span class="vdc-name">{html.escape(comp)}</span>'
+                            f'<span class="vdc-desc">{html.escape(d)}</span></div>'
+                        )
+                    desc_compare += "</div>"
+                tooltip = html.escape(rationale or "请对比各家原始描述确认")
+                alias_html = (
+                    f'<div class="feat-aliases" title="{tooltip}" '
+                    f'style="margin-top:0.15rem; line-height:1.7;">{chips}{desc_compare}</div>'
+                )
             out.append(
-                f'<div class="feat-name">{star}{html.escape(f["name"])}{ref_html}</div>{desc_html}'
+                f'<div class="feat-name">{star}{html.escape(f["name"])}{ref_html}</div>{desc_html}{alias_html}'
             )
             out.append("</div><div class='feat-comps'>")
             for cp in comps_list:
@@ -1162,9 +1212,11 @@ def _render_section5_2_html(matrix, unique_features):
             out.append("</div></div>")
         out.append("</div>")
 
-    # 独家功能面板
+    # 独家功能面板 —— 每条带 owner vendor + [N] 内部证据 + ↗ 原文 URL + 通俗讲解 + 原始描述
     out.append(
-        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 5.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点</span></h4>'
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 5.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点(每条带 owner + [N] 内部证据 + ↗ 原文 + 通俗讲解)</span></h4>'
+        '<p style="font-size:0.78rem; color:var(--fg-mute); margin-bottom:1rem; line-height:1.6;">'
+        '每条独家功能都标记 <code>owner</code> 厂商 + <span class="ref">N</span> 内部证据编号 + ↗ 原文 URL。</p>'
     )
     out.append('<div class="cluster-comp-grid">')
     for idx, (c_name, uniques) in enumerate(unique_features.items()):
@@ -1176,171 +1228,73 @@ def _render_section5_2_html(matrix, unique_features):
             f'<div class="cc-name">{html.escape(c_name[:2])} · {html.escape(c_name)}</div>'
         )
         out.append(
-            f'<div style="font-size:0.78rem; color:var(--fg-mute); margin-bottom:0.5rem;">{len(uniques)} 个独家功能</div>'
+            f'<div style="font-size:0.78rem; color:var(--accent); margin-bottom:0.5rem; font-weight:600;">⭐ {len(uniques)} 个独家功能(其他家都没有)</div>'
         )
-        for u in uniques[:8]:
+        for u in uniques:
+            owner = u.get("_owner", c_name)
+            ref_n = u.get("_ref", 0)
+            source_url = u.get("_source", "")
+            desc = u.get("desc", "") or ""
+            cat = u.get("category", "") or ""
+            # ── 通俗讲解:根据 category 自动补一句用途 ──
+            plain = {
+                "消息 API": "用于程序化发送/接收 WhatsApp 消息(开发者集成场景)",
+                "收件箱": "客服团队共用一个对话视图,提升响应效率",
+                "AI": "用 AI 自动化处理客户对话,降低人工成本",
+                "AI 客服": "用 AI 自动回复客户,降本增效",
+                "工作流": "拖拉拽配置业务流程,无需代码",
+                "营销": "营销自动化(广播 / 模板群发)",
+                "营销自动化": "营销自动化(广播 / 模板群发)",
+                "分析": "数据洞察(响应时间 / 转化率 / KPI 仪表盘)",
+                "电商集成": "对接 Shopify 等电商平台,同步订单/库存",
+                "合规与安全": "SOC2 / HIPAA / GDPR 等合规认证",
+                "客户数据": "客户画像 + 标签 + 行为追踪",
+                "广告集成": "对接 Meta/Google 广告平台,做归因",
+                "集成": "与第三方 SaaS 工具打通(CRM / Helpdesk 等)",
+                "联络中心": "全渠道联络中心(语音 + 消息 + 邮件)",
+                "开发者": "面向开发者的 SDK / API / Webhook",
+                "基础设施": "底层架构(消息路由 / 数据中台)",
+                "多渠道": "统一管理多个渠道(WhatsApp/IG/Messenger/邮件)",
+                "多语言": "支持多语言客服",
+                "Help Desk": "工单系统 + 帮助中心",
+                "增长工具": "增长黑客工具(裂变 / 邀请)",
+            }.get(cat, "面向企业用户的差异化能力")
+            cat_html = (
+                f'<span style="background:var(--accent-soft); color:var(--accent); padding:0.05rem 0.45rem; border-radius:3px; font-size:0.7rem; font-weight:600; margin-right:0.4rem;">{html.escape(cat)}</span>'
+                if cat
+                else ""
+            )
             ref_html = (
-                f'<a href="#src-{u.get("_ref", 0)}" class="ref">{u["_ref"]}</a>'
-                if u.get("_ref")
+                f'<a href="#src-{ref_n}" class="ref" title="文末对应证据">证据 {ref_n}</a>'
+                if ref_n
+                else '<span style="color:var(--bad); font-size:0.72rem;">⚠ 无来源</span>'
+            )
+            verify_html = (
+                f'<a href="{html.escape(source_url)}" target="_blank" rel="noopener" class="tsr-verify" title="点击访问 {html.escape(owner)} 官方页面验证">↗ 原文</a>'
+                if source_url
+                else ""
+            )
+            plain_html = (
+                f'<div style="font-size:0.75rem; color:var(--info); margin-top:0.25rem; line-height:1.5;">📖 <strong>怎么用:</strong>{html.escape(plain)}</div>'
+                if plain
+                else ""
+            )
+            desc_html = (
+                f'<div style="font-size:0.75rem; color:var(--fg-mute); margin-top:0.15rem; line-height:1.5;"><strong>官方描述:</strong>{html.escape(desc)}</div>'
+                if desc
                 else ""
             )
             out.append(
-                f'<div style="font-size:0.82rem; padding:0.2rem 0; color:var(--fg-soft);">⭐ {html.escape(u["name"])}{ref_html}</div>'
-            )
-        if len(uniques) > 8:
-            out.append(
-                f'<div style="font-size:0.75rem; color:var(--fg-mute); margin-top:0.3rem;">…还有 {len(uniques) - 8} 个</div>'
+                f'<div class="unique-feature-row">'
+                f'<div class="ufr-head">'
+                f'<span class="ufr-name">⭐ {html.escape(u["name"])}</span>'
+                f'<span class="ufr-meta">{cat_html}<span class="ufr-owner">📌 {html.escape(owner)}</span></span>'
+                f"</div>"
+                f'<div class="ufr-evidence">{ref_html}{verify_html}</div>'
+                f"{plain_html}{desc_html}"
+                f"</div>"
             )
         out.append("</div>")
-    out.append("</div>")
-
-    return "\n".join(out)
-
-
-def _render_section2_html(clusters, competitors_ranked):
-    """预渲染 § 2 同类厂商聚类 + 评分条 + 术语表。"""
-    out = []
-
-    # 同类厂商聚类
-    out.append(
-        f'<h3 class="sub-head">2.0 同类厂商聚类 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{len(clusters)} 个细分赛道 · 同类放一起便于对比</span></h3>'
-    )
-    out.append(
-        '<p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家头部竞品按<strong>市场定位 + 业务模式</strong>分组。<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">同色边框 = 同一赛道</span>,可以直接对比同类玩家的差异。</p>'
-    )
-
-    for idx, cluster in enumerate(clusters):
-        border_color = f"var(--data-{idx % 6 + 1})"
-        out.append(
-            f'<div class="segment-cluster" style="border-left-color: {border_color};">'
-        )
-        out.append(
-            f'<div class="cluster-head"><h4>🏷 {html.escape(cluster["segment"])}</h4>'
-        )
-        out.append(
-            f'<span class="count">{len(cluster["competitors"])} 家 · {html.escape(cluster.get("segment_desc", ""))}</span></div>'
-        )
-        if cluster.get("segment_desc"):
-            out.append(
-                f'<p class="cluster-desc">{html.escape(cluster["segment_desc"])}</p>'
-            )
-        out.append('<div class="cluster-comp-grid">')
-        for c in cluster["competitors"]:
-            sc = c.get("scores", {})
-            avg = sum(sc.values()) / max(len(sc), 1) if sc else 0
-            avg = round(avg, 1)
-            out.append(
-                f'<div class="cluster-comp-card" style="border-top-color: {border_color};">'
-            )
-            out.append(
-                f'<div class="cc-name"><a href="{html.escape(c.get("url", "#"))}" target="_blank" style="color: var(--fg); border: 0;">{html.escape(c.get("icon", "") or c["name"][:2])} · {html.escape(c["name"])}</a></div>'
-            )
-            out.append(
-                f'<div class="cc-tagline">「{html.escape(c.get("tagline", ""))}」</div>'
-            )
-            out.append('<div class="cc-stats">')
-            out.append(
-                f'<span class="cc-stat">阶段 <strong>{html.escape(c.get("stage", "未知"))}</strong></span>'
-            )
-            out.append(
-                f'<span class="cc-stat">成立 <strong>{html.escape(str(c.get("founded", "—")))}</strong></span>'
-            )
-            out.append(
-                f'<span class="cc-stat">总人数 <strong>{html.escape(str(c.get("team_size", "—")))}</strong></span>'
-            )
-            out.append(f'<span class="cc-stat">综合分 <strong>{avg}/10</strong></span>')
-            out.append(
-                f'<span class="cc-stat">💰 {html.escape(c.get("pricing", "—"))}</span>'
-            )
-            out.append("</div>")
-            if c.get("target_users"):
-                out.append(
-                    '<div style="margin-top:0.5rem; font-size:0.75rem; color:var(--fg-mute);">🎯 目标用户: '
-                )
-                chips = "".join(
-                    f'<span style="display:inline-block; padding:0.05rem 0.4rem; margin:0.1rem 0.2rem 0.1rem 0; background:var(--bg-elev); border-radius:4px; color:var(--fg-soft);">{html.escape(u)}</span>'
-                    for u in c["target_users"]
-                )
-                out.append(chips + "</div>")
-            if c.get("url"):
-                out.append(
-                    f'<div style="margin-top:0.4rem; font-size:0.78rem;"><a href="{html.escape(c["url"])}" target="_blank" style="color:var(--info);">↗ {html.escape(c["url"])}</a></div>'
-                )
-            out.append("</div>")
-        out.append("</div></div>")
-
-    # 综合评分条
-    out.append('<h3 class="sub-head">2.0.1 6 家竞品综合实力可视化</h3>')
-    out.append(
-        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 1rem;">综合分 = 6 个评分维度的平均分。颜色越红 = 越领先,<span class="score-bar-tier tier-领先">领先</span> <span class="score-bar-tier tier-中坚">中坚</span> <span class="score-bar-tier tier-跟随">跟随</span>。</p>'
-    )
-    for c in competitors_ranked:
-        tier = c.get("tier", "")
-        tier_cls = {"领先": "tier-领先", "中坚": "tier-中坚"}.get(tier, "tier-跟随")
-        out.append('<div class="score-visual-bar" style="margin-bottom:0.5rem;">')
-        out.append(
-            f'<div class="label" style="font-weight:700;">{html.escape(c["name"])}</div>'
-        )
-        out.append(
-            f'<div class="track"><div class="fill" style="width: {c["avg"] * 10}%;"></div></div>'
-        )
-        out.append(
-            f'<div class="val">{c["avg"]}/10 <span class="score-bar-tier {tier_cls}">{html.escape(tier)}</span></div>'
-        )
-        out.append("</div>")
-
-    # 术语表
-    glossary = [
-        (
-            "BSP",
-            "Business Solution Provider,WhatsApp 官方授权的中间商。中小公司要找他们才能拿到 WhatsApp API(就像旅行社代理机票)。",
-        ),
-        (
-            "SaaS",
-            "Software as a Service,按月付费的在线软件,不用自己装服务器。WATI、Respond.io 都属此类。",
-        ),
-        (
-            "CTWA 广告",
-            "Click-to-WhatsApp Ads,Meta 出的新型广告。用户在 Instagram/Facebook 点广告,直接跳到 WhatsApp 对话。转化率比传统广告高 3x。",
-        ),
-        (
-            "CDP",
-            "Customer Data Platform,客户数据平台。打通用户在多个渠道的数据,知道同一客户在不同渠道的所有行为。",
-        ),
-        (
-            "momentum",
-            "增长势头。综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。",
-        ),
-        (
-            "API",
-            "Application Programming Interface,程序之间的「数据服务员」。可以问它要数据或让它干活。",
-        ),
-        (
-            "Webhook",
-            "「反向 API」。当某事件发生时,服务器主动推送通知给你。比轮询省资源。",
-        ),
-        (
-            "Shopify 集成",
-            "和 Shopify 电商平台无缝对接。可以同步订单、库存、客户,实现 WhatsApp 订单通知。",
-        ),
-        (
-            "SLA",
-            "Service Level Agreement,服务等级协议。99.9% SLA 表示一年最多 8 小时停机。",
-        ),
-        (
-            "SOC2 / HIPAA",
-            "国际合规认证。SOC2 = 企业数据安全;HIPAA = 美国医疗数据合规。大客户采购必备。",
-        ),
-    ]
-    out.append('<h3 class="sub-head">2.0.2 专业术语速查(小白友好)</h3>')
-    out.append(
-        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 0.5rem;">第一次看这些词不知道啥意思?这里通俗解释 ↓</p>'
-    )
-    out.append('<div class="glossary-grid">')
-    for term, explain in glossary:
-        out.append(
-            f'<div class="glossary-item"><span class="term">{html.escape(term)}</span><div class="explain">{html.escape(explain)}</div></div>'
-        )
     out.append("</div>")
 
     return "\n".join(out)
@@ -1377,6 +1331,172 @@ def normalize(data: dict) -> dict:
     data.setdefault("recommendations", [])
     data.setdefault("background", "")
     data.setdefault("goals", [])
+
+    # ── 提前定义 _add_source + 收集 sources ──
+    # 这样下面 inspiration_points / swot / 等派生都能拿到 _ref
+    sources: list = []
+    source_idx: dict = {}
+
+    def _add_source(url: str, kind: str, claim: str, competitor: str = "") -> int:
+        if not url:
+            return 0
+        if url in source_idx:
+            return source_idx[url]
+        source_idx[url] = len(sources) + 1
+        sources.append(
+            {
+                "idx": len(sources) + 1,
+                "url": url,
+                "kind": kind,
+                "claim": claim[:80] if claim else "",
+                "competitor": competitor,
+                "verified": (
+                    "user"
+                    if any(d in url for d in ("g2.com", "reddit.com", "crunchbase.com"))
+                    else "bot"
+                ),
+            }
+        )
+        return source_idx[url]
+
+    # 1. background / executive_summary 等顶层 source 列表
+    for src_list_key in ["background_sources", "executive_summary_sources"]:
+        for src in data.get(src_list_key, []):
+            _add_source(src.get("source", ""), "narrative", src.get("claim", ""), "")
+
+    # 2. 每个 competitor 的字段 (tagline/founded/pricing etc.)
+    for c in data["competitors"]:
+        comp = c.get("name", "")
+        for field in [
+            "tagline",
+            "founded",
+            "stage",
+            "headquarters",
+            "funding",
+            "team_size",
+            "pricing",
+            "target_users",
+            "core_features",
+            "differentiators",
+            "tech_signals",
+            "scores",
+        ]:
+            url = c.get(field + "_source", "")
+            if url:
+                idx = _add_source(url, "competitor_meta", f"{comp} · {field}", comp)
+                c.setdefault("_refs", {})[field] = idx
+        # strengths / weaknesses: 给每条加 _ref(包含 URL 提取)
+        for st in c.get("strengths", []):
+            url = st.get("source", "")
+            ev = st.get("evidence", "")
+            if not url and ev:
+                m = re.search(r"https?://[^\s\)]+", ev)
+                url = m.group(0).rstrip(".,;:") if m else ""
+            if url:
+                idx = _add_source(url, "strength", st.get("point", ""), comp)
+                st["_ref"] = idx
+        for w in c.get("weaknesses", []):
+            url = w.get("source", "")
+            ev = w.get("evidence", "")
+            if not url and ev:
+                m = re.search(r"https?://[^\s\)]+", ev)
+                url = m.group(0).rstrip(".,;:") if m else ""
+            if url:
+                idx = _add_source(url, "weakness", w.get("point", ""), comp)
+                w["_ref"] = idx
+
+    # 3. feature_catalog 每项带 source
+    for c in data["competitors"]:
+        comp = c.get("name", "")
+        for feat in c.get("feature_catalog", {}).get(comp, []):
+            url = feat.get("source", "")
+            if url:
+                idx = _add_source(
+                    url,
+                    "feature",
+                    f"{feat.get('name', '')} ({feat.get('category', '')})",
+                    comp,
+                )
+                feat["_ref"] = idx
+
+    # 4. market_segments
+    for seg in data.get("market_segments", []):
+        url = seg.get("source", "")
+        if url:
+            idx = _add_source(url, "market_segment", seg.get("label", ""), "")
+            seg["_ref"] = idx
+
+    # 5. gaps
+    for g in data.get("gaps", []):
+        url = g.get("source", "")
+        if url:
+            idx = _add_source(url, "gap", g.get("gap", "")[:60], "")
+            g["_ref"] = idx
+
+    # 6. opportunities + validation_sources
+    for o in data.get("opportunities", []):
+        url = o.get("source", "")
+        if url:
+            idx = _add_source(url, "opportunity", o.get("title", ""), "")
+            o["_ref"] = idx
+        for vs in o.get("validation_sources", []):
+            _add_source(vs, "opportunity_validation", o.get("title", ""), "")
+
+    # 7. other_competitors
+    for oc in data.get("other_competitors", []):
+        url = oc.get("source", "") or oc.get("url", "")
+        if url:
+            idx = _add_source(
+                url, "other_competitor", oc.get("name", ""), oc.get("name", "")
+            )
+            oc["_ref"] = idx
+
+    # 8. tech_signals / differentiators / user_feedback enrichment
+    for c in data["competitors"]:
+        comp_url = c.get("url", "")
+        for fld in ("tech_signals", "differentiators"):
+            items = c.get(fld, [])
+            enriched = []
+            for it in items:
+                if isinstance(it, str):
+                    enriched.append(
+                        {
+                            "name": it,
+                            "source": c.get(fld + "_source", "") or comp_url,
+                        }
+                    )
+                elif isinstance(it, dict):
+                    src = it.get("source") or c.get(fld + "_source", "") or comp_url
+                    enriched.append({"name": it.get("name", ""), "source": src})
+                else:
+                    enriched.append({"name": str(it), "source": comp_url})
+            for e in enriched:
+                if e["source"]:
+                    e["_ref"] = _add_source(
+                        e["source"],
+                        "tech_signal" if fld == "tech_signals" else "differentiator",
+                        e["name"][:50],
+                        c.get("name", ""),
+                    )
+            c[fld] = enriched
+
+        # user_feedback: 给 positive/negative 项加 _ref
+        fb = c.get("_user_feedback_meta") or c.get("user_feedback")
+        if not isinstance(fb, dict):
+            fb = _derive_user_feedback(c)
+        for polarity in ("positive", "negative"):
+            for item in fb.get(polarity, []):
+                src = item.get("source_url") or item.get("source") or ""
+                if not src or src in ("G2/Reddit/官网评测", "G2/Reddit/社区抱怨", "—"):
+                    src = comp_url
+                if src:
+                    item["_ref"] = _add_source(
+                        src,
+                        "user_feedback",
+                        item.get("text", "")[:60],
+                        c.get("name", ""),
+                    )
+        c["_user_feedback_enriched"] = fb
 
     # ===== 竞品：基础字段补全 + scores 校准 =====
     for c in data["competitors"]:
@@ -1426,6 +1546,13 @@ def normalize(data: dict) -> dict:
     # ===== 派生：飞书模板所需字段 =====
     data["inspiration_points"] = _derive_inspiration_points(data["competitors"])
     data["opportunity_points"] = _derive_opportunity_points(data["competitors"])
+    # 同时按竞品分组,供 §2.4 / §2.5 按厂商查阅
+    data["inspiration_by_competitor"] = _group_inspiration_by_competitor(
+        data["inspiration_points"], data["competitors"]
+    )
+    data["opportunity_by_competitor"] = _group_opportunity_by_competitor(
+        data["opportunity_points"], data["competitors"]
+    )
 
     # ─────────── 同类厂商聚类(用于 § 2 结论与建议) ───────────
     # 按 "主要功能类别" 聚类,让同类厂商放一起
@@ -1444,7 +1571,7 @@ def normalize(data: dict) -> dict:
         c["name"]: _derive_commercial_strategies(c) for c in data["competitors"]
     }
     data["product_overview"] = {
-        c["name"]: _derive_product_overview(c) for c in data["competitors"]
+        c["name"]: _derive_product_overview() for c in data["competitors"]
     }
     data["visual_signals"] = {
         c["name"]: _derive_visual_signals(c) for c in data["competitors"]
@@ -1452,26 +1579,56 @@ def normalize(data: dict) -> dict:
     data["user_feedback"] = {
         c["name"]: _derive_user_feedback(c) for c in data["competitors"]
     }
-    data["data_growth"] = _derive_data_growth(
-        data["competitors"], data["opportunities"]
-    )
+    data["data_growth"] = _derive_data_growth(data["competitors"])
 
     # ─────────── § 5.2 功能全集 · 厂商对比矩阵 ───────────
     # 把所有竞品的功能汇集成一个大矩阵:
     #   横轴:每个 category,纵轴:每个 feature,格子:各竞品是否支持
+    # feature_aliases: 可选,把同义功能合并到 canonical_name(团队收件箱 vs 团队共享收件箱)
+    aliases = data.get("feature_aliases") or {}
     data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
-        data["competitors"]
+        data["competitors"], aliases
     )
+    # 把每家厂商自己的来源 URL 转为 [N] 编号,用于 §5.2.1 单元格内显示
+    for cat in data["feature_comparison_matrix"]["categories"]:
+        for f in cat["features"]:
+            vrefs = {}
+            for comp, url in (f.get("_vendor_sources") or {}).items():
+                if url:
+                    vrefs[comp] = _add_source(
+                        url, "feature", f"{f['name']} @ {comp}", comp
+                    )
+            if vrefs:
+                f["_vendor_refs"] = vrefs
     # 每家独有功能清单(其他家都没有的功能)
-    data["unique_features_by_competitor"] = _find_unique_features(data["competitors"])
-    # 预渲染 § 5.2 矩阵 HTML(避免模板嵌套循环 quadratic)
+    data["unique_features_by_competitor"] = _find_unique_features(
+        data["competitors"], aliases
+    )
+
+    # ─────────── 派生:6 家总分排名(领先/中坚/跟随) ───────────
+    comp_total = []
+    for c in data["competitors"]:
+        sc = c["scores"]
+        valid = [v for v in sc.values() if isinstance(v, (int, float))]
+        avg = sum(valid) / max(len(valid), 1)
+        comp_total.append({"name": c["name"], "avg": round(avg, 1), "scores": sc})
+    comp_total.sort(key=lambda x: x["avg"], reverse=True)
+    if comp_total:
+        top = comp_total[0]["avg"]
+        for c in comp_total:
+            if c["avg"] >= top * 0.9:
+                c["tier"] = "领先"
+            elif c["avg"] >= top * 0.7:
+                c["tier"] = "中坚"
+            else:
+                c["tier"] = "跟随"
+    data["competitors_ranked"] = comp_total
+    data["leader"] = comp_total[0]["name"] if comp_total else "—"
+    data["leader_avg"] = comp_total[0]["avg"] if comp_total else 0
+
+    # 预渲染 § 5.2 矩阵 HTML（避免模板嵌套循环 quadratic 性能）
     data["section5_2_html"] = _render_section5_2_html(
         data["feature_comparison_matrix"], data["unique_features_by_competitor"]
-    )
-    # 预渲染 § 2 同类聚类 + 评分条 + 术语表
-    data["section2_html"] = _render_section2_html(
-        data["competitors_by_segment"],
-        data["competitors_ranked"],
     )
 
     # 派生指标
@@ -1484,7 +1641,8 @@ def normalize(data: dict) -> dict:
         totals = []
         for c in data["competitors"]:
             sc = c["scores"]
-            avg = sum(sc.values()) / max(len(sc), 1)
+            valid = [v for v in sc.values() if isinstance(v, (int, float))]
+            avg = sum(valid) / max(len(valid), 1)
             totals.append((c["name"], avg))
         if totals:
             avg_all = sum(t for _, t in totals) / len(totals)
@@ -1501,9 +1659,8 @@ def normalize(data: dict) -> dict:
             key=lambda g: sev_order.get(g.get("severity", "low"), 0),
             reverse=True,
         )
-        data["top_gap"] = sorted_gaps[0]["gap"][:18] + (
-            "…" if len(sorted_gaps[0]["gap"]) > 18 else ""
-        )
+        top_gap_text = sorted_gaps[0].get("gap") or "—"
+        data["top_gap"] = _truncate_with_ellipsis(top_gap_text, 18)
     else:
         data["top_gap"] = "—"
 
@@ -1516,9 +1673,8 @@ def normalize(data: dict) -> dict:
             else 0,
             reverse=True,
         )
-        data["top_opportunity"] = sorted_opps[0]["title"][:18] + (
-            "…" if len(sorted_opps[0]["title"]) > 18 else ""
-        )
+        top_opp_title = sorted_opps[0].get("title") or "—"
+        data["top_opportunity"] = _truncate_with_ellipsis(top_opp_title, 18)
     else:
         data["top_opportunity"] = "—"
 
@@ -1609,22 +1765,7 @@ def normalize(data: dict) -> dict:
     data["score_table"] = score_table
 
     # 2. 竞品总分排名 —— 综合分(6 维均值)排序 + 标签(领先/跟随/落后)
-    comp_total = []
-    for c in data["competitors"]:
-        sc = c["scores"]
-        avg = sum(sc.values()) / max(len(sc), 1)
-        comp_total.append({"name": c["name"], "avg": round(avg, 1), "scores": sc})
-    comp_total.sort(key=lambda x: x["avg"], reverse=True)
-    if comp_total:
-        top = comp_total[0]["avg"]
-        for c in comp_total:
-            if c["avg"] >= top * 0.9:
-                c["tier"] = "领先"
-            elif c["avg"] >= top * 0.7:
-                c["tier"] = "中坚"
-            else:
-                c["tier"] = "跟随"
-    data["competitors_ranked"] = comp_total
+    # 已在上面派生,这里跳过
 
     # 3. 成立年份时间线 —— 按 founded 升序
     timeline = []
@@ -1686,14 +1827,27 @@ def normalize(data: dict) -> dict:
     data["user_overlap"] = user_overlap
 
     # 6. 技术栈信号汇总 —— 每个竞品 tech_signals + 全行业聚类
+    # 注意:tech_signals 在 Phase 1A 后是 list[{name, source, _ref}],兼容旧 list[str]
     tech_clusters: dict = {}
     for c in data["competitors"]:
         for t in c.get("tech_signals", []):
-            key = t.strip()
-            tech_clusters.setdefault(key, []).append(c["name"])
+            if isinstance(t, dict):
+                key = t.get("name", "")
+                ref = t.get("_ref", 0)
+            else:
+                key = t
+                ref = 0
+            key = key.strip()
+            tech_clusters.setdefault(key, {"adopters": [], "ref": ref})
+            tech_clusters[key]["adopters"].append(c["name"])
     tech_top = sorted(
         [
-            {"signal": k, "adopters": v, "count": len(v)}
+            {
+                "signal": k,
+                "adopters": v["adopters"],
+                "count": len(v["adopters"]),
+                "_ref": v["ref"],
+            }
             for k, v in tech_clusters.items()
         ],
         key=lambda x: x["count"],
@@ -1705,6 +1859,8 @@ def normalize(data: dict) -> dict:
     }
 
     # 7. SWOT —— 每家基于 strengths/weaknesses/tech_signals
+    # 注意:tech_signals / differentiators 仍可能是 list[str] (Phase 1A 后才会变 dict),
+    # 这里直接引用,source/_ref 由下面的 enrichment 阶段统一处理。
     swot_per_competitor = []
     for c in data["competitors"]:
         strengths = c.get("strengths", [])[:3]
@@ -1730,134 +1886,58 @@ def normalize(data: dict) -> dict:
         )
     data["swot_per_competitor"] = swot_per_competitor
 
-    # ─────────── 全局引用系统 ───────────
-    # 收集所有 evidence / source URL → 统一编号
-    sources = []  # [{idx, url, kind, claim, competitor}]
-    source_idx = {}  # url -> idx
-
-    def _add_source(url: str, kind: str, claim: str, competitor: str = "") -> int:
-        """添加一个来源，返回 idx。已存在的 URL 复用同一个 idx。"""
-        if not url:
-            return 0
-        if url in source_idx:
-            return source_idx[url]
-        source_idx[url] = len(sources) + 1
-        sources.append(
-            {
-                "idx": len(sources) + 1,
-                "url": url,
-                "kind": kind,
-                "claim": claim[:80] if claim else "",
-                "competitor": competitor,
-                "verified": (
-                    "user"
-                    if any(d in url for d in ("g2.com", "reddit.com", "crunchbase.com"))
-                    else "bot"
-                ),
-            }
-        )
-        return source_idx[url]
-
-    # 1. background / executive_summary 等顶层 source 列表
-    for src_list_key in ["background_sources", "executive_summary_sources"]:
-        for src in data.get(src_list_key, []):
-            _add_source(src.get("source", ""), "narrative", src.get("claim", ""), "")
-
-    # 2. 每个 competitor 的字段（tagline / founded / pricing / etc.）
+    # 7.5 ★ 先 enrichment (tech_signals/differentiators 变 dict + 收集 _ref)
+    # 因为 SWOT 引用的是 c.tech_signals / c.differentiators,必须先 enrichment 再被引用
     for c in data["competitors"]:
-        comp = c["name"]
-        for field in [
-            "tagline",
-            "founded",
-            "stage",
-            "headquarters",
-            "funding",
-            "team_size",
-            "pricing",
-            "target_users",
-            "core_features",
-            "differentiators",
-            "tech_signals",
-            "scores",
-        ]:
-            url_field = field + "_source"
-            url = c.get(url_field, "")
-            if url:
-                idx = _add_source(url, "competitor_meta", f"{comp} · {field}", comp)
-                c.setdefault("_refs", {})[field] = idx
-            # 同时把 strengths/weaknesses 的 source 也加
-        for st in c.get("strengths", []):
-            url = st.get("source", "")
-            ev = st.get("evidence", "")
-            if not url and ev:
-                import re as _re
+        comp_url = c.get("url", "")
+        for fld in ("tech_signals", "differentiators"):
+            items = c.get(fld, [])
+            enriched = []
+            for it in items:
+                if isinstance(it, str):
+                    enriched.append(
+                        {
+                            "name": it,
+                            "source": c.get(fld + "_source", "") or comp_url,
+                        }
+                    )
+                elif isinstance(it, dict):
+                    src = it.get("source") or c.get(fld + "_source", "") or comp_url
+                    enriched.append({"name": it.get("name", ""), "source": src})
+                else:
+                    enriched.append({"name": str(it), "source": comp_url})
+            for e in enriched:
+                if e["source"]:
+                    e["_ref"] = _add_source(
+                        e["source"],
+                        "tech_signal" if fld == "tech_signals" else "differentiator",
+                        e["name"][:50],
+                        c["name"],
+                    )
+            c[fld] = enriched
 
-                m = _re.search(r"https?://[^\s\)]+", ev)
-                url = m.group(0).rstrip(".,;:") if m else ""
-            if url:
-                idx = _add_source(url, "strength", st.get("point", ""), comp)
-                st["_ref"] = idx
-        for w in c.get("weaknesses", []):
-            url = w.get("source", "")
-            ev = w.get("evidence", "")
-            if not url and ev:
-                import re as _re
+        # user_feedback: 给 positive/negative 项加 _ref
+        fb = c.get("_user_feedback_meta") or c.get("user_feedback")
+        if not isinstance(fb, dict):
+            fb = _derive_user_feedback(c)
+        for polarity in ("positive", "negative"):
+            for item in fb.get(polarity, []):
+                src = item.get("source_url") or item.get("source") or ""
+                if not src or src in ("G2/Reddit/官网评测", "G2/Reddit/社区抱怨", "—"):
+                    src = comp_url
+                if src:
+                    item["_ref"] = _add_source(
+                        src,
+                        "user_feedback",
+                        item.get("text", "")[:60],
+                        c["name"],
+                    )
+        c["_user_feedback_enriched"] = fb
 
-                m = _re.search(r"https?://[^\s\)]+", ev)
-                url = m.group(0).rstrip(".,;:") if m else ""
-            if url:
-                idx = _add_source(url, "weakness", w.get("point", ""), comp)
-                w["_ref"] = idx
-
-    # 3. feature_catalog 每项带 source
-    for c in data["competitors"]:
-        comp = c["name"]
-        for feat in c.get("feature_catalog", {}).get(comp, []):
-            url = feat.get("source", "")
-            if url:
-                idx = _add_source(
-                    url,
-                    "feature",
-                    f"{feat.get('name', '')} ({feat.get('category', '')})",
-                    comp,
-                )
-                feat["_ref"] = idx
-
-    # 4. market_segments 每条带 source
-    for seg in data.get("market_segments", []):
-        url = seg.get("source", "")
-        if url:
-            idx = _add_source(url, "market_segment", seg.get("label", ""), "")
-            seg["_ref"] = idx
-
-    # 5. gaps 每条带 source
-    for g in data.get("gaps", []):
-        url = g.get("source", "")
-        if url:
-            idx = _add_source(url, "gap", g.get("gap", "")[:60], "")
-            g["_ref"] = idx
-
-    # 6. opportunities 每条带 source + validation_sources
-    for o in data.get("opportunities", []):
-        url = o.get("source", "")
-        if url:
-            idx = _add_source(url, "opportunity", o.get("title", ""), "")
-            o["_ref"] = idx
-        for vs in o.get("validation_sources", []):
-            _add_source(vs, "opportunity_validation", o.get("title", ""), "")
-
-    # 7. other_competitors (§ 8) 每条带 source
-    for oc in data.get("other_competitors", []):
-        url = oc.get("source", "") or oc.get("url", "")
-        if url:
-            idx = _add_source(
-                url, "other_competitor", oc.get("name", ""), oc.get("name", "")
-            )
-            oc["_ref"] = idx
+    # ─────────── 全局引用系统(sources 已在开头收集完毕) ───────────
 
     data["sources"] = sources
     data["source_count"] = len(sources)
-    # 统计可被 bot 访问的 URL 占比
     bot_verified = sum(1 for s in sources if s.get("verified") == "bot")
     data["source_bot_verified_count"] = bot_verified
     data["source_user_verified_count"] = len(sources) - bot_verified
@@ -2005,33 +2085,44 @@ def main():
     ap.add_argument("--output", required=True, help="输出 HTML 路径")
     ap.add_argument("--template", default=str(DEFAULT_TEMPLATE), help="模板路径")
     ap.add_argument("--no-check", action="store_true", help="跳过自检")
+    ap.add_argument("--verbose", "-v", action="store_true", help="输出 DEBUG 级日志")
     args = ap.parse_args()
+
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled")
 
     in_path = Path(args.input)
     out_path = Path(args.output)
     tmpl_path = Path(args.template)
 
     if not in_path.exists():
-        print(f"❌ input not found: {in_path}", file=sys.stderr)
+        logger.error("input not found: %s", in_path)
         sys.exit(1)
     if not tmpl_path.exists():
-        print(f"❌ template not found: {tmpl_path}", file=sys.stderr)
+        logger.error("template not found: %s", tmpl_path)
         sys.exit(1)
 
-    data = normalize(json.loads(in_path.read_text(encoding="utf-8")))
+    logger.info("loading JSON: %s", in_path)
+    raw = json.loads(in_path.read_text(encoding="utf-8"))
+    logger.info("normalizing data")
+    data = normalize(raw)
 
+    logger.info("loading template: %s", tmpl_path)
     template = Template(tmpl_path.read_text(encoding="utf-8"))
+    logger.debug("rendering HTML")
     rendered = template.render(data)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered, encoding="utf-8")
-
-    print(f"✓ Rendered: {out_path}")
-    print(f"  · {data['competitor_count']} competitors")
-    print(f"  · {data['opportunity_count']} opportunities")
+    logger.info("wrote %d chars to %s", len(rendered), out_path)
+    logger.info("  · %d competitors", data["competitor_count"])
+    logger.info("  · %d opportunities", data["opportunity_count"])
+    logger.info("  · %d sources", data["source_count"])
 
     if not args.no_check:
-        self_check(data, rendered)
+        ok = self_check(data, rendered)
+        sys.exit(0 if ok else 2)
 
 
 if __name__ == "__main__":

@@ -7,11 +7,11 @@
 **`/youzi <主题>` → 自动挖顶尖竞品 → 深度分析 → 颠覆性机会清单 → 精美 HTML 报告**
 
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
-![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)
-![Python](https://img.shields.io/badge/Python-stdlib_only-3776AB.svg)
+
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet.svg)
 
-[🚀 快速入门](快速入门.md) · [📦 安装说明](安装说明.md) · [🌱 小白入门](小白入门.md) · [📘 使用进阶](使用进阶.md) · [⚙️ SKILL](SKILL.md)
+[📦 安装说明](安装说明.md) · [📖 使用手册](使用手册.md) · [⚙️ SKILL](SKILL.md)
 
 </div>
 
@@ -49,7 +49,7 @@
 | 📈 | **6 维评分对比** | 评分矩阵 + 奖牌 + 综合分 + 领先/中坚/跟随分级 |
 | 🌗 | **主题感知** | 浅色 / 深色 / 跟随系统 |
 | 📱 | **响应式** | 桌面 / 平板 / 手机 |
-| 🚀 | **零依赖** | 纯 Python 标准库渲染(无 jinja2 / npm) |
+| 🛠️ | **单第三方包** | 渲染仅需 `jinja2`(已加入安装说明) |
 
 ---
 
@@ -58,12 +58,10 @@
 ```
 youzi/
 ├── 📦 安装说明.md           # 安装指南(系统要求 + 7爬虫 + 验证 + 卸载)
-├── 🚀 快速入门.md           # 5 分钟跑通(最少命令)
-├── 🌱 小白入门.md           # 完全新手版(详细步骤 + GUI 操作)
-├── 📘 使用进阶.md           # 使用手册 + CLI flags + 进阶技巧 + FAQ
+├── 📖 使用手册.md           # 使用手册(上手 + 进阶 + FAQ + 排错)
 ├── 👋 README.md             # 你正在看(项目总览)
 ├── ⭐ SKILL.md              # Claude 触发入口(给 Claude 看)
-├── 🔧 render.py             # 零依赖 HTML 渲染器 + normalize() + 全局引用
+├── 🔧 render.py             # Jinja2 渲染器 + normalize() + 全局引用
 ├── 🎨 templates/report.html # HTML 模板(飞书 9 章结构)
 ├── 🕸️ adapters/             # 7 个爬虫 adapter + 注册表 + 并行合并
 │   ├── firecrawl_scraper.py    ⭐ 商业 96% 覆盖
@@ -85,7 +83,6 @@ youzi/
 └── 📦 examples/             # 示例数据
     ├── online-collab-demo.json
     ├── whatsapp-advertising-demo.json
-    └── sample-report.html
 ```
 
 ---
@@ -94,20 +91,17 @@ youzi/
 
 | 📄 文档 | 👤 适合谁 | ⏱️ 时间 |
 |---|---|---|
-| [🚀 快速入门.md](快速入门.md) | 🟢 想 5 分钟跑起来 · 老用户 · 只想看命令 | 2 分钟 |
 | [📦 安装说明.md](安装说明.md) | 🟢 第一次安装 · 想知道装哪些依赖 | 5 分钟 |
-| [🌱 小白入门.md](小白入门.md) | 🟢 完全新手 · 不懂 git/Python/终端 | 10 分钟 |
-| [📘 使用进阶.md](使用进阶.md) | 🟡 进阶用户 · CLI flags · 配置 · 排错 | 15 分钟 |
+| [📖 使用手册.md](使用手册.md) | 🟢 任何人 · 4 大块(上手/使用/进阶/排错) | 15 分钟 |
 | [⚙️ SKILL.md](SKILL.md) | 🔴 Claude 触发入口(不是给人读的) | 5 分钟 |
 | [references/crawl-strategy.md](references/crawl-strategy.md) | 🔴 爬虫策略详解 | 10 分钟 |
 | [references/analysis-framework.md](references/analysis-framework.md) | 🔴 13 字段提取框架 | 10 分钟 |
-| [examples/sample-report.html](examples/sample-report.html) | 🌈 所有人 · 看效果 | — |
+| [examples/whatsapp-advertising-demo.json](examples/whatsapp-advertising-demo.json) | 🌈 67 KB 真实数据 · 含 117 功能 + 15 § 8 玩家 | — |
 
 **怎么选**:
-- 装好就上手 → [快速入门.md](快速入门.md)
-- 装都还没装 → [安装说明.md](安装说明.md)
-- 啥都不会 → [小白入门.md](小白入门.md)
-- 已经用过想深入 → [使用进阶.md](使用进阶.md)
+- 还没装 → [📦 安装说明.md](安装说明.md)
+- 装好想用 → [📖 使用手册.md § 1-3](使用手册.md)
+- 已用想深入 → [📖 使用手册.md § 7-10](使用手册.md)
 
 ---
 

@@ -220,3 +220,11 @@ __marimo__/
 .claude
 .idea
 .serena
+
+# 运行时产物(render_v2 跑出来的报告 + 爬虫临时数据)
+/02-raw/
+/01-competitors-list.json
+/03-analysis.json
+/report.html
+*_report.html
+*-report.html

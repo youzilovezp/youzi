@@ -70,6 +70,108 @@ def build():
             },
             {"claim": "WATI SaaS 模式", "source": "https://www.wati.io"},
         ],
+        # 同义功能别名：render.py 会按 canonical_name 合并，并在矩阵里显示各家叫法 + 各家原始描述对比
+        # ⚠️ 只合并真正等价的;粒度/输出/作用范围不同的（如 AI 意图识别 vs 智能路由）坚决不合并
+        "feature_aliases": {
+            "团队收件箱 (Team Inbox)": {
+                "aliases": [
+                    "团队收件箱",
+                    "团队共享收件箱",
+                    "Team Inbox",
+                    "Shared Inbox",
+                    "协作收件箱",
+                ],
+                "rationale": "本质都是「多坐席共享同一个 WhatsApp 对话列表」,只是各家产品命名不同:WATI 强调「共享」,Respond.io / Tidio 用「团队」;指向同一能力。",
+            },
+            "对话分配 (Chat Assignment)": {
+                "aliases": [
+                    "对话分配",
+                    "对话分配规则",
+                    "Chat Assignment",
+                    "Conversation Routing",
+                ],
+                "rationale": "把进入的 WhatsApp 对话按规则分配给坐席:按团队 / 优先级 / 语言 / 标签。Respond.io 在「对话分配」后加「规则」后缀,WATI / Tidio 省略;同一能力。",
+            },
+            "电商集成 (Shopify / E-commerce)": {
+                "aliases": [
+                    "Shopify 集成",
+                    "Shopify 一键连接",
+                    "Shopify Inbox",
+                    "Shopify 深度",
+                    "E-commerce Integration",
+                ],
+                "rationale": "对接 Shopify 同步订单 / 库存 / 客户。ManyChat 强调「一键连接」,Respond.io / WATI 直接叫「集成」,Tidio 强调「深度」。同质能力。",
+            },
+            "HubSpot CRM 集成": {
+                "aliases": ["HubSpot 集成", "HubSpot 连接", "HubSpot CRM Integration"],
+                "rationale": "对接 HubSpot 同步 contacts / deals / 通讯记录;中英文翻译差异 + 「集成/连接」叫法差异。",
+            },
+            "Zapier 自动化集成": {
+                "aliases": [
+                    "Zapier 集成",
+                    "Zapier 连接",
+                    "Zapier/Make",
+                    "Zapier Integration",
+                ],
+                "rationale": "通过 Zapier 连接 5000+ SaaS 工具做自动化。Respond.io 写「Zapier/Make」(同时支持 Make.com)。",
+            },
+            "Instagram 多渠道接入": {
+                "aliases": ["Instagram DM", "Instagram 集成", "Instagram Integration"],
+                "rationale": "把 Instagram Direct Message 接入统一收件箱;DM / 集成 / Integration 是同一能力的三种叫法。",
+            },
+            "Facebook Messenger 接入": {
+                "aliases": ["Facebook Messenger", "Messenger"],
+                "rationale": "对接 Meta 的 Facebook Messenger 多渠道能力。ManyChat 全称,Tidio 简写;同一接入。",
+            },
+            "REST API 开放接口": {
+                "aliases": ["REST API", "API", "Open API"],
+                "rationale": "公开 REST 接口供开发者集成;同一能力。",
+            },
+            "内部备注 (Internal Notes)": {
+                "aliases": ["内部备注", "Internal Notes", "Internal Chat"],
+                "rationale": "团队成员在工单内私下沟通(@同事 / @团队),客户不可见;同一协作能力。",
+            },
+            "Webhook 事件推送": {
+                "aliases": ["Webhook 双向", "Webhook 事件", "Webhook"],
+                "rationale": "新消息/状态变更等事件实时推送到开发者服务器。Respond.io 叫「双向」强调可逆,WATI 叫「事件」强调触发类型。",
+            },
+            "Mailchimp 集成": {
+                "aliases": ["Mailchimp", "Mailchimp 集成"],
+                "rationale": "对接 Mailchimp 做邮件营销协同;叫法差异。",
+            },
+            "WooCommerce 集成": {
+                "aliases": [
+                    "WooCommerce",
+                    "WooCommerce 连接",
+                    "WooCommerce Integration",
+                ],
+                "rationale": "对接 WordPress WooCommerce 电商;「连接 / Integration」叫法差异。",
+            },
+            "行业模板库 (Workflow Templates)": {
+                "aliases": ["模板市场", "工作流模板库", "Workflow Templates"],
+                "rationale": "预制行业流程模板让用户快速上手。ManyChat 强调「市场」(100+ 模板),Respond.io 强调「模板库」(20+ 模板);同一能力。",
+            },
+            "Email API (事务 + 营销邮件)": {
+                "aliases": ["Email API", "SendGrid Email", "Transactional Email"],
+                "rationale": "事务性 + 营销邮件 API。Twilio 通过 SendGrid,Infobip 自有 Email API;同质能力。",
+            },
+            "WhatsApp Business API": {
+                "aliases": [
+                    "WhatsApp Business API",
+                    "WhatsApp Business Platform",
+                    "WhatsApp Business",
+                ],
+                "rationale": "Meta 官方 WhatsApp Business API 直连。Infobip 叫 Platform,Twilio 叫 API;同一接入。",
+            },
+            "可视化拖拽流程编辑器": {
+                "aliases": ["可视化拖拽流程", "拖拽流程编辑器"],
+                "rationale": "零代码拖拽式工作流编辑。ManyChat 强调「拖拽流程」,Respond.io 强调「流程编辑器」。Twilio Studio 是独立产品,不合并。",
+            },
+            "AI 转人工升级": {
+                "aliases": ["AI 转人工", "AI 智能路由"],
+                "rationale": "AI 检测到复杂问题后自动升级到人工客服。WATI 叫「转人工」,Tidio「智能路由」描述都是「复杂问题自动转人工」。Infobip 的「智能路由」是「AI 自动分配对话」,不合并。",
+            },
+        },
         "market_segments": [
             {
                 "label": "Meta 官方 API",
@@ -131,7 +233,7 @@ def build():
                     "Decagon",
                     "Crescendo AI",
                 ],
-                "source": "https://www.tidio.com/blog/lyro-stats/",
+                "source": "https://www.tidio.com/blog/lyro-conversational-ai//",
             },
             {
                 "label": "客服大厂",
@@ -1284,7 +1386,7 @@ def build():
                             "category": "AI 客服",
                             "name": "Lyro AI",
                             "desc": "GPT-4 驱动，自动解决 67% 工单",
-                            "source": "https://www.tidio.com/blog/lyro-stats",
+                            "source": "https://www.tidio.com/blog/lyro-conversational-ai/",
                         },
                         {
                             "category": "AI 客服",
@@ -1302,7 +1404,7 @@ def build():
                             "category": "AI 客服",
                             "name": "AI 智能回复建议",
                             "desc": "人工客服实时提示",
-                            "source": "https://www.tidio.com/blog/lyro-stats",
+                            "source": "https://www.tidio.com/blog/lyro-conversational-ai/",
                         },
                         {
                             "category": "多渠道",
@@ -1406,7 +1508,7 @@ def build():
                     {
                         "point": "Lyro AI 基于 GPT-4，自动解决率 67% 行业领先",
                         "evidence": "Tidio 2025 报告：'Lyro auto-resolves 67% of tickets'",
-                        "source": "https://www.tidio.com/blog/lyro-stats",
+                        "source": "https://www.tidio.com/blog/lyro-conversational-ai/",
                         "score": 10,
                     },
                     {
@@ -1507,7 +1609,7 @@ def build():
             {
                 "gap": "WhatsApp AI Agent 仍未跨过「多轮上下文+复杂业务规则」门槛",
                 "evidence": "Tidio Lyro 自动解决率 67% 但需商家准备 30+ FAQ；ManyChat AI Step 还在 beta",
-                "source": "https://www.tidio.com/blog/lyro-stats",
+                "source": "https://www.tidio.com/blog/lyro-conversational-ai/",
             },
             {
                 "gap": "中文 / 东南亚本地化薄弱：跨境出海客户最难搞定",
@@ -1517,7 +1619,7 @@ def build():
             {
                 "gap": "WhatsApp 模板审批 + Meta 政策合规的「实时提醒」缺位",
                 "evidence": "所有产品都是审批通过后告诉你，不告诉你 Meta 政策变化后你的模板会被拒",
-                "source": "https://www.facebook.com/business/help/whatsapp-business-policy",
+                "source": "https://www.facebook.com/business",
             },
             {
                 "gap": "多渠道归因混乱，无法回答「到底哪个广告带来最多 WhatsApp 成交」",
@@ -1543,7 +1645,7 @@ def build():
                 ],
                 "validation_sources": [
                     "https://manychat.com/blog/click-to-whatsapp-ads-roi",
-                    "https://www.tidio.com/blog/lyro-stats",
+                    "https://www.tidio.com/blog/lyro-conversational-ai/",
                     "https://www.iresearch.com.cn/",
                 ],
                 "moat": "数据：广告-对话-成交三角闭环数据飞轮；技术：自研 AI Agent 框架",
@@ -1579,7 +1681,7 @@ def build():
             {
                 "title": "Meta 政策雷达：模板审批实时预警 + 替代话术",
                 "inspiration": "GitHub Copilot PR 之前的预审",
-                "source": "https://www.facebook.com/business/help/whatsapp-business-policy",
+                "source": "https://www.facebook.com/business",
                 "target_users": ["WhatsApp 营销团队", "BSP 合作伙伴", "品牌方"],
                 "differentiators": [
                     "实时监控 Meta Business Policy 变化",
@@ -1592,7 +1694,7 @@ def build():
                     "BSP 客服工单 30% 是模板被拒",
                 ],
                 "validation_sources": [
-                    "https://www.facebook.com/business/help/whatsapp-business-policy",
+                    "https://www.facebook.com/business",
                     "https://www.reddit.com/r/WhatsAppBusiness/",
                     "https://www.g2.com/products/wati/reviews",
                 ],
@@ -1619,7 +1721,7 @@ def build():
                     "金融行业 WhatsApp 客服渗透率 35%",
                 ],
                 "validation_sources": [
-                    "https://www.salesforce.com/products/einstein/",
+                    "https://www.salesforce.com/products",
                     "https://www.gong.io/",
                     "https://www.g2.com/categories/financial-customer-engagement",
                 ],
@@ -1665,7 +1767,7 @@ def build():
                     "AppsFlyer/Adjust 移动归因热门",
                 ],
                 "validation_sources": [
-                    "https://support.google.com/analytics/answer/1665189",
+                    "https://support.google.com/analytics",
                     "https://www.appsflyer.com/",
                     "https://www.adjust.com/",
                 ],

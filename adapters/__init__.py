@@ -43,6 +43,11 @@ def _build_adapter_registry():
         readability_scraper,
         markdownify_scraper,
         playwright_scraper,
+        # 新增的 4 个主流爬虫(Scrapy/Jina/html2text/requests-html)
+        scrapy_scraper,
+        jina_scraper,
+        html2text_scraper,
+        requests_html_scraper,
     )
 
     return {
@@ -54,6 +59,10 @@ def _build_adapter_registry():
         "readability": (readability_scraper, False, False, False),
         "markdownify": (markdownify_scraper, False, False, False),
         "playwright": (playwright_scraper, True, True, True),
+        "scrapy": (scrapy_scraper, False, False, False),
+        "jina": (jina_scraper, False, False, False),
+        "html2text": (html2text_scraper, False, False, False),
+        "requests_html": (requests_html_scraper, False, False, False),
     }
 
 
