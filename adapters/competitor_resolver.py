@@ -4,7 +4,7 @@ Competitor Resolver — 竞品名称 → URL + 爬取路径解析
 
 支持两种模式:
 1. 内置映射表（最可靠，无需网络）
-2. WebSearch 回退（处理未知名称）
+2. 域名直通（名称形如域名/URL 时构造 base/features|pricing|docs 猜测路径，confidence 0.4 —— 输出端需提示人工核对）
 
 输入: 竞品名称字符串 ("ycloud", "wati", "Sleekflow" 等,大小写不敏感)
 输出: {

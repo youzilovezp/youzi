@@ -845,7 +845,7 @@ class TestHonestPricingSource(unittest.TestCase):
                                  "tiers": []},
             "site_title": "X — tool",
         }
-        entry, warnings = _build_competitor_entry(scraped)
+        entry, warnings, _claims = _build_competitor_entry(scraped)
         self.assertEqual(entry["pricing_source"], "")
         self.assertFalse(entry["pricing_verified"])
 
@@ -877,7 +877,7 @@ class TestCompanyFieldAttribution(unittest.TestCase):
             "pricing": ("# Pricing\nFounded in 2019 by ex-Googlers\n$59/mo",
                         "https://x.com/pricing"),
         })
-        entry, _ = _build_competitor_entry(scraped)
+        entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "2019")
         self.assertEqual(entry["founded_source"], "https://x.com/pricing")
         self.assertIn("2019", entry["founded_quote"])
@@ -889,7 +889,7 @@ class TestCompanyFieldAttribution(unittest.TestCase):
             "about": ("# About\nFounded in 2015, headquartered in Kuala Lumpur",
                       "https://x.com/about"),
         })
-        entry, _ = _build_competitor_entry(scraped)
+        entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "2015")  # about 优先
         self.assertEqual(entry["founded_source"], "https://x.com/about")
         self.assertEqual(entry["headquarters"], "Kuala Lumpur")
@@ -900,7 +900,7 @@ class TestCompanyFieldAttribution(unittest.TestCase):
         scraped = self._scrape({
             "home": ("# X\nnothing useful", "https://x.com"),
         })
-        entry, _ = _build_competitor_entry(scraped)
+        entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "—")
         self.assertEqual(entry["founded_source"], "")
         self.assertEqual(entry["founded_quote"], "")
@@ -919,7 +919,7 @@ class TestCompanyFieldAttribution(unittest.TestCase):
             # features 页返回了一个无法归因的候选功能(slug 派生形态)
             "features": ("- Slug Derived Feature Nine\n", ""),
         })
-        entry, _ = _build_competitor_entry(scraped)
+        entry, _, _ = _build_competitor_entry(scraped)
         names = {f["name"] for f in entry["feature_catalog"]["X"]}
         self.assertTrue(names)  # 有功能被提取
         self.assertIn("Team Inbox for shared conversations", names)
@@ -928,6 +928,124 @@ class TestCompanyFieldAttribution(unittest.TestCase):
                 self.assertEqual(f["source"], "https://x.com")
             else:
                 self.assertEqual(f["source"], "")
+
+
+class TestManifestEmission(unittest.TestCase):
+    """F8: crawl_and_build 落盘 claims-manifest.json + engines.json。"""
+
+    def test_manifest_and_engines_written(self):
+        import tempfile
+        from scripts import crawl_competitors as cc
+
+        def fake_scrape_one(resolved, timeout=30, max_chars=25000):
+            url = resolved["url"]
+            return {
+                "name": resolved["canonical_name"], "url": url,
+                "pricing_source": "", "tagline_source": url,
+                "founded_source": "", "team_size_source": "",
+                "headquarters_source": "",
+                "raw_markdown": {
+                    "home": "# WATI\nWhatsApp API platform for teams",
+                    "pricing": "# Pricing\nGrowth $59/mo",
+                },
+                "page_urls": {"home": url,
+                              "pricing": url + "/pricing"},
+                "pricing_evidence": {
+                    "pricing": "Growth · $59 (/mo)", "verified": True,
+                    "engines": ["playwright", "crawl4ai"],
+                    "source_url": url + "/pricing",
+                    "scraped_at": "2026-08-26 00:00 UTC",
+                    "vote_detail": [{"line": "Growth $59/mo",
+                                     "engines": ["playwright", "crawl4ai"],
+                                     "independent_votes": 2}],
+                    "tiers": [{"name": "Growth", "price": "$59",
+                               "billing_period": "/mo", "features": [],
+                               "source_url": url + "/pricing"}],
+                },
+                "site_title": "WATI — WhatsApp API",
+                "_manifest": {
+                    "fetched": {
+                        url: {"status": "ok", "engines": {
+                            "playwright": {"ok": True, "chars": 500,
+                                           "content_hash": "h1"},
+                        }, "fetched_at": "2026-08-26 00:00 UTC"},
+                        url + "/pricing": {"status": "ok", "engines": {
+                            "playwright": {"ok": True, "chars": 400,
+                                           "content_hash": "h2"},
+                            "crawl4ai": {"ok": True, "chars": 380,
+                                         "content_hash": "h3"},
+                        }, "fetched_at": "2026-08-26 00:00 UTC"},
+                    },
+                    "engines_by_url": {
+                        url: {"playwright": "# WATI md"},
+                        url + "/pricing": {
+                            "playwright": "# Pricing\nGrowth $59/mo",
+                            "crawl4ai": "# Plans\nGrowth $59 /mo"},
+                    },
+                    "failures": [],
+                },
+            }
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "03-analysis.json"
+            with mock.patch.object(cc, "_scrape_one", fake_scrape_one), \
+                 mock.patch.object(cc, "resolve_competitors",
+                                   return_value={"wati": {
+                                       "canonical_name": "WATI",
+                                       "url": "https://www.wati.io",
+                                       "confidence": 0.95,
+                                       "source": "builtin"}}):
+                analysis = cc.crawl_and_build(
+                    ["wati"], "WhatsApp 赛道",
+                    manifest_path=Path(d) / "claims-manifest.json",
+                    raw_dir=Path(d) / "02-raw",
+                )
+            self.assertTrue((Path(d) / "claims-manifest.json").exists())
+            self.assertTrue((Path(d) / "02-raw" / "WATI.engines.json").exists())
+
+            manifest = json.loads(
+                (Path(d) / "claims-manifest.json").read_text(encoding="utf-8"))
+            self.assertIn("https://www.wati.io", manifest["fetched"])
+            # 定价 vote 行 claim 必须带 quote + 两引擎
+            pricing_claims = [c for c in manifest["claims"]
+                              if "pricing_vote_detail" in c["field"]]
+            self.assertTrue(pricing_claims)
+            self.assertEqual(pricing_claims[0]["quote"], "Growth $59/mo")
+            self.assertEqual(sorted(pricing_claims[0]["verified_by"]),
+                             ["crawl4ai", "playwright"])
+
+            engines = json.loads(
+                (Path(d) / "02-raw" / "WATI.engines.json").read_text(encoding="utf-8"))
+            self.assertIn("Growth $59/mo",
+                          engines["https://www.wati.io/pricing"]["playwright"])
+
+
+class TestRunYouziFailures(unittest.TestCase):
+    """F6: run_youzi step2 失败不再静默 —— 写入 manifest.failures。"""
+
+    def test_failure_manifest_written(self):
+        import tempfile
+        import adapters
+        from scripts import run_youzi
+
+        with tempfile.TemporaryDirectory() as d:
+            raw = Path(d) / "02-raw"
+            with mock.patch.object(
+                adapters, "scrape_smart", side_effect=RuntimeError("boom"),
+            ):
+                results, failures = run_youzi.step2_crawl(
+                    ["https://dead.example.com"], raw)
+            self.assertEqual(results, {})
+            self.assertEqual(len(failures), 1)
+            self.assertEqual(failures[0]["url"], "https://dead.example.com")
+            mpath = raw.parent / "claims-manifest.json"
+            self.assertTrue(mpath.exists())
+            manifest = json.loads(mpath.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["failures"][0]["url"],
+                             "https://dead.example.com")
+            self.assertEqual(
+                manifest["fetched"]["https://dead.example.com"]["status"],
+                "failed")
 
 
 if __name__ == "__main__":

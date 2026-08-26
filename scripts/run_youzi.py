@@ -33,11 +33,17 @@ sys.path.insert(0, str(REPO))
 
 
 def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
-    """Step 2: 并行爬取 — 13 爬虫智能合并"""
+    """Step 2: 并行爬取 — 13 爬虫智能合并。
+
+    F6:失败不再静默 —— 返回 (results, failures) 并落盘部分
+    claims-manifest.json(fetched + failures)+ 各 URL 引擎原文
+    (<name>.engines.json),供 verify.py 与人工排查。
+    """
     from adapters import scrape_smart
 
     raw_dir.mkdir(parents=True, exist_ok=True)
-    results = {}
+    results, failures = {}, []
+    fetched = {}
     print(f"\n📡 Step 2 · 并行爬取 {len(competitor_urls)} 个竞品\n")
     for url in competitor_urls:
         name = (
@@ -52,6 +58,11 @@ def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
             r = scrape_smart(url, max_chars=max_chars, timeout=timeout)
         except Exception as e:
             print(f"  [{name}] ❌ {type(e).__name__}: {e}")
+            failures.append({"competitor": name, "url": url,
+                             "kind": "home", "error": f"{type(e).__name__}: {e}"})
+            fetched[url] = {"status": "failed", "engines": {},
+                            "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC",
+                                                        time.gmtime())}
             continue
         dt = time.time() - t0
         scrapers = r.get("scraper", "?").split("+") if r.get("scraper") else []
@@ -77,7 +88,45 @@ def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
         out_file.write_text(header + r.get("markdown", ""), encoding="utf-8")
         results[name] = r
 
-    return results
+        # F8 引擎原文 + fetched 记录(与 crawl_competitors._content_hash 同算法)
+        import hashlib as _hl
+        engines_md, engines_meta = {}, {}
+        for x in (r.get("all_results") or []):
+            if x.get("scraper") and x.get("success") and x.get("markdown"):
+                engines_md[x["scraper"]] = x["markdown"][:50000]
+                engines_meta[x["scraper"]] = {
+                    "ok": True, "chars": len(x["markdown"]),
+                    "content_hash": _hl.sha256(
+                        " ".join(x["markdown"].split()).encode("utf-8")
+                    ).hexdigest()[:16],
+                }
+        (raw_dir / f"{name}.engines.json").write_text(
+            json.dumps({url: engines_md}, ensure_ascii=False, indent=1),
+            encoding="utf-8",
+        )
+        fetched[url] = {
+            "status": "ok" if r.get("success") and r.get("markdown") else "failed",
+            "engines": engines_meta,
+            "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+        }
+        if fetched[url]["status"] == "failed":
+            failures.append({"competitor": name, "url": url,
+                             "kind": "home", "error": "all engines empty/failed"})
+
+    manifest = {
+        "run": {"topic": "",
+                "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+                "pipeline_version": "2.0"},
+        "fetched": fetched, "claims": [], "failures": failures,
+    }
+    (raw_dir.parent / "claims-manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    if failures:
+        print(f"\n  ⚠ {len(failures)} 个 URL 爬取失败(已记录到 "
+              f"{raw_dir.parent / 'claims-manifest.json'}):")
+        for f in failures:
+            print(f"    - [{f['competitor']}] {f['url']}: {f['error']}")
+    return results, failures
 
 
 def step4_render(analysis_path, output_path, template_path=None):
@@ -172,7 +221,8 @@ def main():
         urls = [u.strip() for u in args.competitors.split(",") if u.strip()]
         # 默认在当前目录下创建 02-raw
         raw_dir = Path(args.raw_dir) if args.raw_dir else Path.cwd() / "02-raw"
-        step2_crawl(urls, raw_dir, max_chars=args.max_chars, timeout=args.timeout)
+        _results, _failures = step2_crawl(
+            urls, raw_dir, max_chars=args.max_chars, timeout=args.timeout)
         if args.crawl_only:
             print(f"\n✅ Step 2 完成，原始数据落盘到: {raw_dir}")
             return

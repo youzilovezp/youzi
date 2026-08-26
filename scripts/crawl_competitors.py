@@ -1660,6 +1660,9 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
         "headquarters_source": "",
         "raw_markdown": {},
         "page_urls": {"home": resolved["url"]},
+        # F8 证据包:本轮抓取记录 + 各引擎原文 + 失败清单
+        # (verify.py G1/G2/G3 的消费对象,落盘到 claims-manifest.json)
+        "_manifest": {"fetched": {}, "engines_by_url": {}, "failures": []},
     }
 
     def _crawl_page(kind: str, url: str) -> str:
@@ -1674,6 +1677,22 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             r = scrape_smart(url, max_chars=page_max, timeout=timeout)
             dt = time.time() - t0
             md = r.get("markdown", "") if r.get("success") else ""
+            # F8 证据包:本轮抓取记录(状态 + 各引擎指纹)+ 引擎原文
+            m_ent = {
+                "status": "ok" if (r.get("success") and r.get("markdown")) else "failed",
+                "engines": {},
+                "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+            }
+            for x in (r.get("all_results") or []):
+                if x.get("scraper") and x.get("success") and x.get("markdown"):
+                    m_ent["engines"][x["scraper"]] = {
+                        "ok": True, "chars": len(x["markdown"]),
+                        "content_hash": _content_hash(x["markdown"]),
+                    }
+                    result["_manifest"]["engines_by_url"].setdefault(
+                        url, {}
+                    )[x["scraper"]] = x["markdown"][:50000]
+            result["_manifest"]["fetched"][url] = m_ent
             if kind == "pricing":
                 result["pricing_evidence"] = _extract_pricing_evidence(r, url)
                 # 各引擎的定价页原文都保留 —— 套餐功能清单常只在某一个
@@ -1728,6 +1747,17 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                                     (result.get("pricing_evidence") or {}).get("vote_detail") or []
                                 ):
                                     result["pricing_evidence"] = new_ev
+                            # F8:rescue 的 playwright 原文也进证据包 ——
+                            # vote 行可能出自 rescue 引擎,G2 要能回查
+                            result["_manifest"]["fetched"].setdefault(url, {}).setdefault(
+                                "engines", {}
+                            )["playwright"] = {
+                                "ok": True, "chars": len(pm),
+                                "content_hash": _content_hash(pm),
+                            }
+                            result["_manifest"]["engines_by_url"].setdefault(
+                                url, {}
+                            )["playwright"] = pm[:50000]
                 except Exception:
                     pass
             # 定价来源只在真正拿到内容时记录(历史缺陷:抓取失败也写 source,
@@ -1751,6 +1781,16 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             return md
         except Exception as e:
             print(f"    [{resolved['canonical_name']}] {kind:8s} FAIL: {e}")
+            # F8:失败必须留痕(verify G4:静默吞掉的失败 = 报告缺口无解释)
+            result["_manifest"]["fetched"][url] = {
+                "status": "failed", "engines": {},
+                "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+            }
+            result["_manifest"]["failures"].append({
+                "competitor": resolved["canonical_name"],
+                "url": url, "kind": kind.replace("*", "").rstrip("?"),
+                "error": f"{type(e).__name__}: {e}",
+            })
             return ""
 
     # 1) home 先爬
@@ -1979,11 +2019,12 @@ def _derive_moat_evidence(home_md: str, about_md: str, pricing_md: str,
     return out[:3]
 
 
-def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
+def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str], List[Dict]]:
     """从 scrape 结果构建 13 字段 competitor entry。
 
     Returns:
-        (entry, warnings): 竞品数据 + 爬取质量警告
+        (entry, warnings, claims): 竞品数据 + 爬取质量警告 + 可验证断言清单
+        (claims 是 verify.py G1/G2 的消费对象,写入 claims-manifest.json)
     """
     name = scraped["name"]
     home_md = scraped["raw_markdown"].get("home", "")
@@ -2268,7 +2309,47 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
     if not warnings:
         warnings.append("✓ 全部页面爬取成功,启发式提取 OK")
 
-    return entry, warnings
+    # F8 claims:本竞品全部可验证断言(verify.py G1/G2 的消费对象)
+    claims = []
+
+    def _claim(field, value, source_url, quote="", engine="", verified_by=None,
+               from_cache=False, scraped_at=""):
+        claims.append({
+            "field": f"competitors[{idx}].{field}", "value": str(value),
+            "source_url": source_url, "quote": (quote or "")[:120],
+            "engine": engine, "verified_by": verified_by or [],
+            "from_cache": from_cache, "scraped_at": scraped_at,
+        })
+
+    _purl = entry.get("pricing_source") or ""
+    _psat = entry.get("pricing_scraped_at") or ""
+    for j, t in enumerate(entry.get("pricing_tiers") or []):
+        if t.get("price") and "未能提取" not in str(t.get("price")):
+            _claim(f"pricing_tiers[{j}].price", t["price"],
+                   t.get("source_url") or _purl, quote="", scraped_at=_psat,
+                   verified_by=entry.get("pricing_engines") or [],
+                   from_cache=bool(entry.get("pricing_from_cache")))
+    for k, v in enumerate(entry.get("pricing_vote_detail") or []):
+        _claim(f"pricing_vote_detail[{k}].line", v.get("line", ""),
+               _purl, quote=v.get("line", ""), scraped_at=_psat,
+               verified_by=v.get("engines") or [],
+               from_cache=bool(entry.get("pricing_from_cache")))
+    for key in ("gtm_evidence", "moat_evidence"):
+        for k, ev in enumerate(entry.get(key) or []):
+            _claim(f"{key}[{k}]", ev.get("name", ""), ev.get("source", ""),
+                   quote=ev.get("quote", ""))
+    for k, s in enumerate(entry.get("strengths") or []):
+        m = re.search(r'官网原文:\s*"(.+?)"', s.get("evidence") or "")
+        _claim(f"strengths[{k}]", s.get("point", ""), s.get("source", ""),
+               quote=m.group(1) if m else "")
+    if entry.get("tagline") and entry["tagline"] != "—":
+        _claim("tagline", entry["tagline"], entry.get("tagline_source", ""),
+               quote=entry["tagline"])
+    for fld in ("founded", "headquarters", "team_size"):
+        if entry.get(fld) and entry[fld] != "—":
+            _claim(fld, entry[fld], entry.get(f"{fld}_source", ""),
+                   quote=entry.get(f"{fld}_quote", ""))
+    return entry, warnings, claims
 
 
 def _auto_detect_feature_aliases(competitors):
@@ -2294,8 +2375,14 @@ def _auto_detect_feature_aliases(competitors):
     return aliases
 
 
-def crawl_and_build(names: List[str], topic: str, timeout: int = 30) -> Dict:
-    """主入口:接收名称列表,返回完整分析 JSON。"""
+def crawl_and_build(names: List[str], topic: str, timeout: int = 30,
+                    manifest_path=None, raw_dir=None) -> Dict:
+    """主入口:接收名称列表,返回完整分析 JSON。
+
+    manifest_path/raw_dir 给定时,F8 证据包(claims-manifest.json +
+    02-raw/<name>.engines.json)同步落盘,供 verify.py 验证。
+    """
+    run_started_at = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
     print(f"🔍 解析 {len(names)} 个竞品名称...")
     resolved = resolve_competitors(names)
 
@@ -2316,15 +2403,29 @@ def crawl_and_build(names: List[str], topic: str, timeout: int = 30) -> Dict:
     print(f"\n🌐 并行爬取 {len(found)} 个竞品...")
     competitors = []
     all_warnings = []
-    for name in found:
+    all_claims = []
+    manifest_fetched: Dict = {}
+    manifest_engines: Dict = {}
+    manifest_failures: List[Dict] = []
+    for ci, name in enumerate(found):
         info = resolved[name]
         print(f"\n  📡 抓取 {name} ({info['url']})")
+        # F7:domain-guess 解析置信度低(0.4),显式提示人工核对
+        if info.get("source") != "builtin":
+            print(f"     ⚠ URL 为域名猜测(confidence={info.get('confidence')}),请核对")
         scraped = _scrape_one(info, timeout=timeout)
-        entry, warnings = _build_competitor_entry(scraped)
+        entry, warnings, claims = _build_competitor_entry(scraped, idx=ci)
+        entry["url_resolution"] = info.get("source", "")
         competitors.append(entry)
+        all_claims.extend(claims)
         for w in warnings:
             print(f"     ⚠ {w}")
             all_warnings.append(f"[{name}] {w}")
+        # 合并该竞品的证据包记录(同 URL 后写覆盖)
+        m = scraped.get("_manifest") or {}
+        manifest_fetched.update(m.get("fetched") or {})
+        manifest_failures.extend(m.get("failures") or [])
+        manifest_engines[name] = m.get("engines_by_url") or {}
 
     # 自动检测别名
     auto_aliases = _auto_detect_feature_aliases(competitors)
@@ -2368,6 +2469,33 @@ def crawl_and_build(names: List[str], topic: str, timeout: int = 30) -> Dict:
         f"\n✅ 完成: {len(competitors)} 家竞品,自动检测到 {len(auto_aliases)} 组同义合并,"
         f"生成 {len(gaps)} 条空白、{len(opportunities)} 个机会"
     )
+
+    # F8 证据包落盘(analysis 的每条可验证断言 + 本轮全部抓取记录)
+    if manifest_path:
+        manifest = {
+            "run": {
+                "topic": topic,
+                "started_at": run_started_at,
+                "finished_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+                "pipeline_version": "2.0",
+            },
+            "fetched": manifest_fetched,
+            "claims": all_claims,
+            "failures": manifest_failures,
+        }
+        mpath = Path(manifest_path)
+        mpath.parent.mkdir(parents=True, exist_ok=True)
+        mpath.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+        if raw_dir:
+            rd = Path(raw_dir)
+            rd.mkdir(parents=True, exist_ok=True)
+            for name_key, engines_by_url in manifest_engines.items():
+                safe = re.sub(r"[^\w.-]", "_", name_key)
+                (rd / f"{safe}.engines.json").write_text(
+                    json.dumps(engines_by_url, ensure_ascii=False, indent=1),
+                    encoding="utf-8")
+        print(f"💾 证据包: {mpath}")
     return analysis
 
 
@@ -2519,13 +2647,22 @@ def main():
         print("✗ --competitors 为空")
         sys.exit(1)
 
-    analysis = crawl_and_build(names, args.topic, timeout=args.timeout)
-
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+    analysis = crawl_and_build(
+        names, args.topic, timeout=args.timeout,
+        manifest_path=out.parent / "claims-manifest.json",
+        raw_dir=out.parent / "02-raw",
+    )
+
     out.write_text(json.dumps(analysis, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n💾 已写入: {out}")
     print(f"   下一步: python3 render.py --input {out} --output report.html")
+    print(
+        f"   验证:   python3 verify.py --analysis {out} "
+        f"--manifest {out.parent / 'claims-manifest.json'} "
+        f"--raw-dir {out.parent / '02-raw'}"
+    )
 
 
 if __name__ == "__main__":
