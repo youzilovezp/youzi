@@ -1066,13 +1066,22 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
             return False
     elif len(t) < min_len or len(t) > 80:
         return False
-    # 未剥净的 markdown 链接语法(乱码主因:"[Explorar](https://...)" 整条显示)
-    if re.search(r"\[[^\]]*\]\(https?://", t):
+    # 未剥净的 markdown 链接语法(乱码主因:"[Explorar](https://...)" 整条显示;
+    # 截断副本形态 "(ht" / "[ Biblioteca"(多语言导航被引擎截断的残骸 ——
+    # 真实事故:WATI 独家功能列表混入 "Customers Blogs [Chatbot Library](ht")
+    if (
+        re.search(r"\[[^\]]*\]\(https?://", t)
+        or re.search(r"\]\(\w{0,8}$", t)
+        or re.search(r"\[[^\]]*$", t)
+        or t.startswith("!")  # "!Broadcast" 图片否定语法残留
+    ):
         return False
     # cookie/GDPR 同意横幅菜单("Manage options"/"Manage {vendor\count} vendors" 事故)
     if re.match(r"^manage\s+(options|services|vendors|preferences|consent)", t, re.I):
         return False
     if re.search(r"\{[^}]*\\[a-z][^}]*\}", t):  # 未渲染 JS 模板变量 {vendor\count}
+        return False
+    if re.search(r"\{[a-z][a-z0-9_]*\}", t, re.I):  # {vendorcount} 等驼峰模板变量
         return False
     if re.search(r"accept\s+(all|cookies)|cookie\s+preferences|do\s+not\s+sell|privacy\s+choices|opt-out", t, re.I):
         return False
@@ -1415,7 +1424,11 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
     }
     out, seen = [], set()
     for raw in markdown.split("\n"):
-        t = raw.strip().strip("*_`#> ").strip()
+        # 先剥列表标记再剥强调符号 —— strip("*_`#> ") 不含 "-",而
+        # crawl4ai 副本的套餐功能常是 "- Single User Plan included"
+        # 形态,不剥 "-" 会被 t[0].isupper() 全杀(真实事故:WATI 20 个
+        # 套餐功能无来源的另一半根因)
+        t = raw.strip().lstrip("-").strip().strip("*_`#> ").strip()
         # markdown 链接融合碎片("Route Leads](/lead-distribution)" —— 嵌套
         # 图片链接的残骸):剥出纯文本部分;剥不干净(含 ]( 或 /) 的丢弃
         if "](" in t:
@@ -1455,7 +1468,17 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         if len(_camel) >= 3 and _camel[-1] in _camel[:-1]:
             continue
         if not _is_real_feature(t) and not (
-            len(words) >= 2 and all(w[0].isupper() or w in ("&", "and", "of", "for") for w in words)
+            # 名词短语形态:套餐卡功能清单常是 "Dedicated number connection
+            # assistance"/"Single User Plan included" 这类无动作词的 Title Case
+            # —— 前置过滤器(套餐名/CTA/周期/导航/驼峰融合)已挡住绝大多数
+            # 垃圾,这里对"≥2 词且每词首字母大写"放行(真实事故:WATI 套餐
+            # 功能因 "included" 小写被动作词表全杀)
+            len(words) >= 2
+            and all(w[0].isupper() or w in ("&", "and", "of", "for") for w in words)
+        ) and not re.fullmatch(
+            r"[A-Z][A-Za-z]*(?:\s+[A-Za-z(&]+)*"
+            r"(?:\s+included|enabled|assistance|support|management|connectivity)?$",
+            t,
         ):
             continue
         key = t.lower()
@@ -2075,10 +2098,17 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     # 逐条归因:功能文本在哪个页面出现,source 就指向哪个页面的 URL
     # (历史缺陷:全部归到 features 页/首页 —— 从 pricing 页提取的功能
     # 指向了 404 的 features URL,读者点开找不到证据)
+    pricing_url = scraped.get("page_urls", {}).get("pricing") or ""
+    # 5.2.3 出处修复:功能提取自「全引擎并集」(pricing_all_markdowns),
+    # 归因也必须 grep 全引擎副本 —— 只查 merged 稿(=primary 引擎)时,
+    # 只存在于副本的套餐功能(真实事故:WATI 53 个功能 20 个无来源)全部落空
+    pricing_blob_all = "\n".join(
+        [pricing_md] + list(scraped.get("pricing_all_markdowns") or [])
+    )
     page_candidates = [
         (feat_md, scraped.get("page_urls", {}).get("features") or ""),
         (home_md, scraped["url"]),
-        (pricing_md, scraped.get("page_urls", {}).get("pricing") or ""),
+        (pricing_blob_all, pricing_url),
         (docs_md, scraped.get("page_urls", {}).get("docs") or ""),
     ]
     enriched_features = []
@@ -2189,7 +2219,8 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         re.I,
     )
     _addon_rx = re.compile(
-        r"additional\s+users?\s*(?:@|at)\s*\$?\d|/user/(?![\w-])|加购用户|额外坐席",
+        # markdown 强调形态 "_$24_" 也要命中(WATI 事故:addon note 整条丢失)
+        r"additional\s+users?\s*(?:@|at)\s*_?\$?\s?\d|/user/(?![\w-])|加购用户|额外坐席",
         re.I,
     )
     _main_price_lines = "\n".join(

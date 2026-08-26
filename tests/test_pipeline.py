@@ -1048,6 +1048,78 @@ class TestRunYouziFailures(unittest.TestCase):
                 "failed")
 
 
+class TestFeatureAttributionAllEngines(unittest.TestCase):
+    """5.2.3 出处修复:归因必须 grep 全引擎副本,不能只查主引擎合并稿。
+
+    真实事故:WATI 53 个功能 20 个「无来源」—— 功能提取自全引擎并集,
+    归因却只 grep merged md(=primary 引擎),只存在于副本的功能全部落空。
+    """
+
+    def _scrape(self):
+        return {
+            "name": "X", "url": "https://x.com",
+            "pricing_source": "https://x.com/pricing",
+            "tagline_source": "https://x.com",
+            "founded_source": "", "team_size_source": "",
+            "headquarters_source": "",
+            "raw_markdown": {
+                # merged 定价稿(=primary)不含该功能
+                "home": "# X\n\n## Features\n\n- Team Inbox for shared chats\n\nwhy\n",
+                "pricing": "# Pricing\nGrowth $59/mo\nPro $119/mo\n",
+                "features": "", "about": "", "docs": "",
+            },
+            "page_urls": {"home": "https://x.com",
+                          "pricing": "https://x.com/pricing"},
+            "pricing_evidence": {"pricing": "—", "verified": False,
+                                 "engines": [], "source_url": "",
+                                 "scraped_at": "", "vote_detail": [],
+                                 "tiers": []},
+            # 副本(crawl4ai)里才有 "Single User Plan"(套餐卡功能清单)
+            "pricing_all_markdowns": [
+                "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n"
+            ],
+            "_manifest": {"fetched": {}, "engines_by_url": {
+                "https://x.com/pricing": {
+                    "crawl4ai": "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n",
+                },
+            }, "failures": []},
+            "site_title": "X — tool",
+        }
+
+    def test_engine_only_feature_attributed_to_page(self):
+        from scripts.crawl_competitors import _build_competitor_entry
+        entry, _, _ = _build_competitor_entry(self._scrape())
+        by_name = {f["name"]: f["source"] for f in entry["feature_catalog"]["X"]}
+        # 只存在于副本引擎的套餐功能 → 归因到定价页
+        self.assertEqual(by_name.get("Single User Plan included"),
+                         "https://x.com/pricing")
+        # merged 里的功能照旧归因
+        self.assertEqual(by_name.get("Team Inbox for shared chats"),
+                         "https://x.com")
+
+    def test_junk_shapes_rejected(self):
+        from scripts.crawl_competitors import _is_real_feature
+        # 真实事故样本(WATI 2026-08-26)
+        self.assertFalse(_is_real_feature("Manage {vendorcount} vendors"))
+        self.assertFalse(_is_real_feature("Customers Blogs [Chatbot Library](ht"))
+        self.assertFalse(_is_real_feature("Clientes Blogs [ Biblioteca de Chatbo"))
+        # 正常功能不受影响
+        self.assertTrue(_is_real_feature("Shared Team Inbox"))
+        self.assertTrue(_is_real_feature("Broadcasts to send updates at scale"))
+
+    def test_addon_note_with_markdown_emphasis(self):
+        """加购价带 markdown 强调(_$24_)也要识别 —— WATI 事故:addon note 为空。"""
+        from scripts.crawl_competitors import _build_competitor_entry
+        scraped = self._scrape()
+        scraped["raw_markdown"]["pricing"] = (
+            "# Pricing\nmonth _billed annually_\n"
+            "_5_ Users Included Additional Users @ _$24_ /user/month\n"
+            "Growth $59/mo\n"
+        )
+        entry, _, _ = _build_competitor_entry(scraped)
+        self.assertTrue(entry.get("pricing_addon_note"))
+
+
 if __name__ == "__main__":
     # 默认 verbose 模式
     unittest.main(verbosity=2)
