@@ -1636,73 +1636,12 @@
 
     {# 核心结论框已移除 —— 让后续 9 章内容自己说话 #}
 
-    {# ──── 同类厂商聚类(按市场细分) ──── #}
-    <h3 class="sub-head">2.1 同类厂商聚类 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{competitors_by_segment|length}} 个细分赛道 · 同类放一起便于对比</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家头部竞品按<strong>市场定位 + 业务模式</strong>分组。<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">同色边框 = 同一赛道</span>,可以直接对比同类玩家的差异。</p>
-
-    {% for cluster in competitors_by_segment %}
-    <div class="segment-cluster" style="border-left-color: var(--data-{{loop.index0 % 6 + 1}});">
-      <div class="cluster-head">
-        <h4>🏷 {{cluster.segment}}</h4>
-        <span class="count">{{cluster.competitors|length}} 家</span>
-      </div>
-      {% if cluster.segment_desc %}
-      <p class="cluster-desc">{{cluster.segment_desc}}</p>
-      {% endif %}
-      <div class="cluster-comp-grid">
-        {% for c in cluster.competitors %}
-        <div class="cluster-comp-card" style="border-top-color: var(--data-{{loop.index0 % 6 + 1}});">
-          <div class="cc-name">
-            <a href="{{c.url}}" target="_blank" style="color: var(--fg); border: 0;">{{c.name}}</a>
-            {% if c._refs.tagline %}<a href="#src-{{c._refs.tagline}}" class="ref" style="margin-left:0.3rem;">{{c._refs.tagline}}</a>{% endif %}
-          </div>
-          <div class="cc-tagline">「{{c.tagline}}」</div>
-          <div class="cc-stats">
-            <span class="cc-stat">成立 <strong>{{c.founded}}</strong></span>
-            {% if c.team_size and c.team_size != '—' %}<span class="cc-stat">团队 <strong>{{c.team_size}}</strong></span>{% endif %}
-            <span class="cc-stat">💰 {{commercial_strategies[c.name].pricing_display|default('—')|truncate(60)}}</span>
-          </div>
-          <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--fg-mute);">
-            🎯 目标用户:
-            {% for u in c.target_users %}<span style="display:inline-block; padding:0.05rem 0.4rem; margin:0.1rem 0.2rem 0.1rem 0; background:var(--bg-elev); border-radius:4px; color:var(--fg-soft);">{{u}}</span>{% endfor %}
-          </div>
-          <div style="margin-top:0.4rem; font-size:0.78rem;">
-            <a href="{{c.url}}" target="_blank" style="color:var(--info);">↗ {{c.url|default('')}}</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-
-    {# ──── 评分可视化(小白友好的可视化条) ──── #}
-    <h3 class="sub-head">2.2 6 家竞品综合实力可视化 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">综合分 = 6 维均值 · 后面 Δ 是与行业均值的差</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 1rem;">
-      一句话:条越长 = 综合实力越强。绿色数字 = 高于行业平均,红色 = 低于平均。
-      <span class="score-bar-tier tier-领先">领先</span> <span class="score-bar-tier tier-中坚">中坚</span> <span class="score-bar-tier tier-跟随">跟随</span> = 三档分布。
-    </p>
-    {% for c in competitors_ranked %}
-    {% set delta = (c.avg - avg_maturity)|round(2) %}
-    {% set delta_str = ('+' ~ delta) if delta >= 0 else (delta|string) %}
-    <div class="score-visual-bar" style="margin-bottom:0.5rem;">
-      <div class="label" style="font-weight:700; min-width:110px;">{{c.name}}</div>
-      <div class="track" style="position:relative;">
-        <div class="fill" style="width: {{c.avg * 10}}%;"></div>
-        <!-- 行业平均线 -->
-        <div style="position:absolute; left: {{avg_maturity * 10}}%; top:-4px; bottom:-4px; width:2px; background:var(--fg); opacity:0.6;" title="行业平均 {{avg_maturity}}/10"></div>
-      </div>
-      <div class="val" style="min-width:180px; font-size:0.85rem;">
-        <strong>{{c.avg}}/10</strong>
-        <span style="font-size:0.72rem; margin-left:0.3rem; color:{% if delta > 0 %}var(--good){% elif delta < 0 %}var(--bad){% else %}var(--fg-mute){% endif %};">
-          (Δ {{ delta_str }})
-        </span>
-        <span class="score-bar-tier tier-{{c.tier}}">{{c.tier}}</span>
-      </div>
-    </div>
-    {% endfor %}
+    {# 2.1 同类厂商聚类 / 2.2 综合实力可视化 已移除(2026-08-26):
+       聚类依赖 stage、可视化依赖 scores,脚本管线两者都是占位值
+       ("—" / 全 5 分),渲染出来的分组和排名是伪信息 —— 无数据不展示 #}
 
     {# ──── 通俗术语表(小白友好) ──── #}
-    <h3 class="sub-head">2.3 专业术语速查</h3>
+    <h3 class="sub-head">2.1 专业术语速查</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 0.5rem;">第一次看这些词不知道啥意思?这里通俗解释 ↓</p>
     <div class="glossary-grid">
       {% for g in glossary %}
@@ -1710,7 +1649,7 @@
       {% endfor %}
     </div>
 
-    <h3 class="sub-head">2.4 启发点（按竞品分组 · 每家可借鉴的实践）</h3>
+    <h3 class="sub-head">2.2 启发点（按竞品分组 · 每家可借鉴的实践）</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       每家竞品的优点合并呈现（不再按角度切分）—— 直接按厂商查阅,后面 [N] 角标跳转来源证据。
     </p>
@@ -1741,7 +1680,7 @@
     {% endif %}
     {% endfor %}
 
-    <h3 class="sub-head">2.5 机会点（按竞品分组 · 每家的弱点 = 我们的差异化机会）</h3>
+    <h3 class="sub-head">2.3 机会点（按竞品分组 · 每家的弱点 = 我们的差异化机会）</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       每家竞品的不足合并呈现 —— 直接看哪个细分是我们的差异化机会入口。
     </p>
@@ -1772,7 +1711,7 @@
     {% endif %}
     {% endfor %}
 
-    <h3 class="sub-head">2.6 SWOT 全图（每家竞品 × 4 维度） <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">带 [N] 来源</span></h3>
+    <h3 class="sub-head">2.4 SWOT 全图（每家竞品 × 4 维度） <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">带 [N] 来源</span></h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.6rem;">每家竞品的内部优势 / 弱点 + 外部机会 / 技术信号 + 目标用户 + 核心功能 + 定价模式 一览。所有结论带 <span class="ref">N</span> 出处，可点击跳转 Sources。</p>
     <div class="swot-grid">
       {% for s in swot_per_competitor %}
@@ -1847,7 +1786,7 @@
       {% endfor %}
     </div>
 
-    <h3 class="sub-head">2.7 Top 3 颠覆性机会 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按 disrupt_score 排序</span></h3>
+    <h3 class="sub-head">2.5 Top 3 颠覆性机会 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按 disrupt_score 排序</span></h3>
     <div class="opp-cards">
       {% for o in top_opportunities %}
       <div class="opp-card">
