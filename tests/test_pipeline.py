@@ -850,6 +850,86 @@ class TestHonestPricingSource(unittest.TestCase):
         self.assertFalse(entry["pricing_verified"])
 
 
+class TestCompanyFieldAttribution(unittest.TestCase):
+    """F3: founded/HQ/team 来源指向真正命中该值的页面(行级归属)。"""
+
+    def _scrape(self, pages):
+        return {
+            "name": "X", "url": "https://x.com",
+            "pricing_source": "", "tagline_source": "https://x.com",
+            "founded_source": "", "team_size_source": "",
+            "headquarters_source": "",
+            "raw_markdown": {k: md for k, (md, _) in pages.items()},
+            "page_urls": {k: u for k, (_, u) in pages.items()},
+            "pricing_evidence": {"pricing": "—", "verified": False,
+                                 "engines": [], "source_url": "",
+                                 "scraped_at": "", "vote_detail": [],
+                                 "tiers": []},
+            "site_title": "X — tool",
+        }
+
+    def test_year_on_pricing_page_attributed_there(self):
+        """年份在 pricing 页命中 → founded_source 指向 pricing 页而非官网。"""
+        from scripts.crawl_competitors import _build_competitor_entry
+        scraped = self._scrape({
+            "home": ("# X\nTool for teams", "https://x.com"),
+            "about": ("", ""),
+            "pricing": ("# Pricing\nFounded in 2019 by ex-Googlers\n$59/mo",
+                        "https://x.com/pricing"),
+        })
+        entry, _ = _build_competitor_entry(scraped)
+        self.assertEqual(entry["founded"], "2019")
+        self.assertEqual(entry["founded_source"], "https://x.com/pricing")
+        self.assertIn("2019", entry["founded_quote"])
+
+    def test_about_page_priority(self):
+        from scripts.crawl_competitors import _build_competitor_entry
+        scraped = self._scrape({
+            "home": ("# X\nFounded in 2020", "https://x.com"),
+            "about": ("# About\nFounded in 2015, headquartered in Kuala Lumpur",
+                      "https://x.com/about"),
+        })
+        entry, _ = _build_competitor_entry(scraped)
+        self.assertEqual(entry["founded"], "2015")  # about 优先
+        self.assertEqual(entry["founded_source"], "https://x.com/about")
+        self.assertEqual(entry["headquarters"], "Kuala Lumpur")
+        self.assertEqual(entry["headquarters_source"], "https://x.com/about")
+
+    def test_not_found_keeps_empty_source(self):
+        from scripts.crawl_competitors import _build_competitor_entry
+        scraped = self._scrape({
+            "home": ("# X\nnothing useful", "https://x.com"),
+        })
+        entry, _ = _build_competitor_entry(scraped)
+        self.assertEqual(entry["founded"], "—")
+        self.assertEqual(entry["founded_source"], "")
+        self.assertEqual(entry["founded_quote"], "")
+
+    def test_feature_without_evidence_has_empty_source(self):
+        """F4: 定位不到出处的功能,source 留空而不是挂 default 页。"""
+        from scripts.crawl_competitors import _build_competitor_entry
+        md_home = (
+            "# X\n\n## Features\n\n"
+            "- Team Inbox for shared conversations\n"
+            "- Broadcasts to send updates at scale\n\n"
+            "## Why teams pick X\n\nManage every customer chat in one place.\n"
+        )
+        scraped = self._scrape({
+            "home": (md_home, "https://x.com"),
+            # features 页返回了一个无法归因的候选功能(slug 派生形态)
+            "features": ("- Slug Derived Feature Nine\n", ""),
+        })
+        entry, _ = _build_competitor_entry(scraped)
+        names = {f["name"] for f in entry["feature_catalog"]["X"]}
+        self.assertTrue(names)  # 有功能被提取
+        self.assertIn("Team Inbox for shared conversations", names)
+        for f in entry["feature_catalog"]["X"]:
+            if f["name"] in md_home:
+                self.assertEqual(f["source"], "https://x.com")
+            else:
+                self.assertEqual(f["source"], "")
+
+
 if __name__ == "__main__":
     # 默认 verbose 模式
     unittest.main(verbosity=2)

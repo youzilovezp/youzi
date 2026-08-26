@@ -869,6 +869,38 @@ def _extract_team_size(markdown: str) -> str:
     return "—"
 
 
+# F3 行级归属:founded/HQ/team 命中行的上下文特征(找 quote 用)
+_COMPANY_CTX_RX = {
+    "founded": re.compile(
+        r"founded|established|launched|成立于|创立于|\b(19|20)\d{2}\b", re.I),
+    "headquarters": re.compile(
+        r"headquartered|based in|总部|位于|address", re.I),
+    "team_size": re.compile(r"employees|people|团队|员工|人", re.I),
+}
+
+
+def _extract_company_field(pages, extractor, ctx_rx):
+    """逐页跑 extractor,返回 (value, url, quote) —— 行级归属。
+
+    历史缺陷:来源只标到「about 页或官网」页级 —— 年份在定价页命中
+    也被标成官网来源,读者点开首页找不到任何公司信息。
+    pages: [(markdown, url)] 按优先级排序(about 先,home 次之)。
+    """
+    for md, url in pages:
+        if not md or not url:
+            continue
+        val = extractor(md)
+        if val and val != "—":
+            quote = ""
+            for line in md.split("\n"):
+                t = line.strip().strip("*_`#> ")
+                if 3 <= len(t) <= 160 and ctx_rx.search(t):
+                    quote = t[:120]
+                    break
+            return val, url, quote
+    return "", "", ""
+
+
 # cookie/GDPR 同意横幅 + meta 标题 + 隐私/版权页脚 —— SPA 站正文提取最常见的伪 tagline
 # (真实事故:WATI tagline = "The technical storage or access is necessary for
 #  the legitimate purpose...",Respond.io tagline = "Do Not Sell or Share My
@@ -1993,10 +2025,6 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         (pricing_md, scraped.get("page_urls", {}).get("pricing") or ""),
         (docs_md, scraped.get("page_urls", {}).get("docs") or ""),
     ]
-    default_src = next(
-        (u for md, u in page_candidates if md and not _looks_like_only_js_or_404(md)),
-        scraped["url"],
-    )
     enriched_features = []
     for f in page_features:
         ftxt = (f.get("name") or "").strip()
@@ -2005,7 +2033,9 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
             if md and u and ftxt and ftxt[:30] in md:
                 src = u
                 break
-        enriched_features.append({**f, "source": src or default_src})
+        # F4:定位不到出处 → source 留空(render 已兼容空 source),
+        # 不再默认挂 default_src —— 挂错页比不挂更误导
+        enriched_features.append({**f, "source": src})
 
     # 构造本地 c 字典,用于 _derive_*_from_features 类函数
     c = {
@@ -2015,10 +2045,18 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         "feature_catalog": {name: enriched_features},
     }
 
-    # 公司信息提取优先用 about 页(专门含 founded/HQ/团队规模),
-    # 找不到时才退回全站拼接
-    all_md = home_md + "\n" + feat_md + "\n" + pricing_md
-    company_md = about_md if about_md and not _looks_like_only_js_or_404(about_md) else all_md
+    # F3 公司信息行级归属:about 页优先,逐页提取并记录命中页 + quote
+    # (历史缺陷:页级归属 —— 定价页命中的年份被标成官网来源)
+    company_pages = [
+        (md, u)
+        for md, u in (
+            (about_md, scraped.get("page_urls", {}).get("about") or ""),
+            (home_md, scraped["url"]),
+            (feat_md, scraped.get("page_urls", {}).get("features") or ""),
+            (pricing_md, scraped.get("page_urls", {}).get("pricing") or ""),
+        )
+        if md and u
+    ]
 
     warnings = []
 
@@ -2046,9 +2084,12 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         tagline = site_desc
     else:
         tagline = _extract_tagline(home_md)
-    founded = _extract_founded(company_md) or _extract_founded(all_md)
-    location = _extract_location(company_md) or _extract_location(all_md)
-    team_size = _extract_team_size(company_md) or _extract_team_size(all_md)
+    founded, founded_src, founded_quote = _extract_company_field(
+        company_pages, _extract_founded, _COMPANY_CTX_RX["founded"])
+    location, hq_src, hq_quote = _extract_company_field(
+        company_pages, _extract_location, _COMPANY_CTX_RX["headquarters"])
+    team_size, team_src, team_quote = _extract_company_field(
+        company_pages, _extract_team_size, _COMPANY_CTX_RX["team_size"])
     pricing = _extract_price(pricing_md) or _extract_price(home_md)
 
     # 定价:优先用跨引擎投票结果(带验证标记 + 来源 + 时间戳)
@@ -2108,10 +2149,13 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         "name": name,
         "url": scraped["url"],
         "tagline": tagline or "—",
-        "founded": founded,
+        "founded": founded or "—",
+        "founded_quote": founded_quote,
         "stage": "—",
-        "headquarters": location,
-        "team_size": team_size,
+        "headquarters": location or "—",
+        "headquarters_quote": hq_quote,
+        "team_size": team_size or "—",
+        "team_size_quote": team_quote,
         "funding": "—",
         "pricing": pricing,
         "pricing_verified": bool(pricing_ev.get("verified")),
@@ -2216,9 +2260,10 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         if entry.get(k):
             entry[f"{k}_source"] = scraped.get(f"{k}_source", scraped["url"])
     entry["tagline_source"] = scraped.get("tagline_source", scraped["url"])
-    entry["founded_source"] = scraped.get("founded_source", scraped["url"])
-    entry["headquarters_source"] = scraped.get("headquarters_source", scraped["url"])
-    entry["team_size_source"] = scraped.get("team_size_source", scraped["url"])
+    # F3:公司信息来源 = 行级归属的命中页(抓不到就是空,不再兜底官网)
+    entry["founded_source"] = founded_src
+    entry["headquarters_source"] = hq_src
+    entry["team_size_source"] = team_src
 
     if not warnings:
         warnings.append("✓ 全部页面爬取成功,启发式提取 OK")
