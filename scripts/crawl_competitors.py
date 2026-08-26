@@ -1612,6 +1612,10 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
             t,
         ):
             continue
+        # 垃圾黑名单同样管束套餐提取通道(真实事故:定价页 CTA 状态标签
+        # "View Demo"/"Current plan"/"About Cookies" 经此通道混进独家功能)
+        if t.lower() in _JUNK_FEATURE_EXACT_LC:
+            continue
         key = t.lower()
         if key not in seen:
             seen.add(key)
