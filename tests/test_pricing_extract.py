@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.crawl_competitors import (  # noqa: E402
+    _cache_fresh,
+    _content_hash,
     _detect_currency,
     _extract_price,
     _extract_price_lines,
@@ -353,6 +355,73 @@ class TestCitationRefactor(unittest.TestCase):
             self.assertIn("GTM", by_idx[e["_ref"]]["claim"])
         for e in a["moat_evidence"]:
             self.assertIn("护城河", by_idx[e["_ref"]]["claim"])
+
+
+class TestCacheTTL(unittest.TestCase):
+    """F1: 14 天 TTL 此前定义了但从未生效 —— 过期缓存必须视为 miss。"""
+
+    def test_fresh_cache(self):
+        import time as _t
+        ts = _t.strftime("%Y-%m-%d %H:%M UTC", _t.gmtime())
+        self.assertTrue(_cache_fresh({"scraped_at": ts}))
+
+    def test_stale_cache(self):
+        self.assertFalse(_cache_fresh({"scraped_at": "2026-01-01 00:00 UTC"}))
+
+    def test_garbage_timestamp(self):
+        self.assertFalse(_cache_fresh({"scraped_at": "???"}))
+        self.assertFalse(_cache_fresh({}))
+
+
+def _mk_result(engine_mds: dict) -> dict:
+    """构造 scrape_smart 形态的 result:engine → markdown。"""
+    return {
+        "success": bool(engine_mds),
+        "all_results": [
+            {"scraper": e, "success": True, "markdown": md}
+            for e, md in engine_mds.items()
+        ],
+    }
+
+
+class TestEngineIndependence(unittest.TestCase):
+    """F5: 两引擎内容哈希相同(同一反爬变体)不得交叉验证。"""
+
+    PRICING_MD_A = "# Pricing\nGrowth $59/mo\nPro $119/mo\n"
+    PRICING_MD_B = "# Plans\nGrowth $59 /mo\nPro $119 /mo\n"
+
+    def test_identical_content_not_verified(self):
+        ev = _extract_pricing_evidence(
+            _mk_result({"playwright": self.PRICING_MD_A,
+                        "crawl4ai": self.PRICING_MD_A}),  # 完全相同 = 变体互证
+            "https://x.com/pricing",
+        )
+        self.assertFalse(ev["verified"])
+        self.assertEqual(ev["vote_detail"][0]["independent_votes"], 1)
+
+    def test_different_content_verified(self):
+        ev = _extract_pricing_evidence(
+            _mk_result({"playwright": self.PRICING_MD_A,
+                        "crawl4ai": self.PRICING_MD_B}),
+            "https://x.com/pricing",
+        )
+        self.assertTrue(ev["verified"])
+        self.assertEqual(ev["vote_detail"][0]["independent_votes"], 2)
+
+    def test_source_url_empty_when_no_evidence(self):
+        """F2: 全引擎无价格行时 source_url 必须为空(不得让 404 URL 当来源)。"""
+        ev = _extract_pricing_evidence(
+            _mk_result({"playwright": "nothing here",
+                        "crawl4ai": "no prices"}),
+            "https://x.com/pricing-404",
+        )
+        self.assertEqual(ev["source_url"], "")
+
+    def test_content_hash_stable(self):
+        h1 = _content_hash("a  b\nc")
+        h2 = _content_hash("a b   c")
+        self.assertEqual(h1, h2)
+        self.assertNotEqual(h1, _content_hash("different"))
 
 
 if __name__ == "__main__":

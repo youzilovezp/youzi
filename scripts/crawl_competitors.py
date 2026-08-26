@@ -537,6 +537,13 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
             if lines:
                 per_engine[r.get("scraper", "?")] = lines
 
+    # F5 引擎独立性:按引擎原文内容哈希判定 —— 名称不同的两个引擎若拿到
+    # 逐字相同的内容(同一反爬/区域变体),只是一次取证,不是交叉验证
+    engine_hash = {}
+    for r in (scrape_result.get("all_results") or []):
+        if r.get("success") and r.get("markdown"):
+            engine_hash[r.get("scraper", "?")] = _content_hash(r["markdown"])
+
     # 按 token 组聚类行:key = 行内全部价格 token 的有序元组
     clusters: Dict[tuple, Dict] = {}
     token_engines: Dict[str, set] = {}
@@ -556,6 +563,9 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
                 tuple(toks), {"line": pline["line"], "len": len(pline["line"]), "engines": set(), "parts": pline}
             )
             ent["engines"].add(eng)
+            ent.setdefault("hashes", set()).add(
+                engine_hash.get(eng) or f"no-md:{eng}"
+            )
             # 代表行选择:信息量优先(套餐名 > 计费周期),然后取短
             # —— "Growth $59 (billed annually)" 完胜裸 "$59"
             def _rep_key(s: str):
@@ -650,8 +660,12 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         pricing.append(dl)
         used += len(dl) + 3
     pricing = " / ".join(pricing) if pricing else "—"
-    max_votes = max((len(e["engines"]) for e in picked), default=0)
-    verified = max_votes >= 2
+    # verified 按「内容独立引擎数」:同一变体页被 N 个引擎复述仍只有 1 票
+    # (历史缺陷:仅数引擎名个数,反爬变体页被双引擎抓到 = 错价被交叉"验证")
+    max_indep = max(
+        (len(e.get("hashes") or e["engines"]) for e in picked), default=0
+    )
+    verified = max_indep >= 2
     engines = sorted({e for ent in picked for e in ent["engines"]})
 
     # 结构化 tiers(套餐名/价格/周期 来自证据行的原始部件,render 直接用,
@@ -699,8 +713,8 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
     # 无公开价格时的套餐名降级:很多站(尤其中国 SaaS)有套餐结构但
     # 不公示数字(Meebot:专业版/企业版/定制版)—— 输出套餐名 + "价格未公开",
     # 比 "—" 有信息量且完全诚实
+    plan_names = []
     if not picked:
-        plan_names = []
         for r in (scrape_result.get("all_results") or []):
             if not (r.get("success") and r.get("markdown")):
                 continue
@@ -730,10 +744,13 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         "pricing": pricing,
         "verified": verified,
         "engines": engines,
-        "source_url": pricing_url,
+        # F2:无任何证据(0 价格行且无套餐名)时 source 留空 —— 未抓到的
+        # 页面不能当来源(404 URL 当 pricing_source 的事故)
+        "source_url": pricing_url if (per_engine or plan_names) else "",
         "scraped_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
         "vote_detail": [
-            {"line": e["line"], "engines": sorted(e["engines"])}
+            {"line": e["line"], "engines": sorted(e["engines"]),
+             "independent_votes": len(e.get("hashes") or e["engines"])}
             for e in picked
         ],
         "tiers": tiers,
@@ -747,6 +764,18 @@ _PRICING_CACHE_PATH = ROOT / "storage" / "pricing-cache.json"
 _PRICING_CACHE_TTL_DAYS = 14
 
 
+def _content_hash(md: str) -> str:
+    """引擎原文的内容指纹(空白归一化后 SHA-256 前 16 位)。
+
+    用途:①manifest.fetched 记录(G3 独立性判定);②定价投票的引擎
+    独立性(F5)—— 两引擎拿到同一反爬变体页时指纹相同,不算交叉验证。
+    """
+    import hashlib
+    return hashlib.sha256(
+        re.sub(r"\s+", " ", (md or "")).encode("utf-8")
+    ).hexdigest()[:16]
+
+
 def _load_pricing_cache() -> Dict:
     try:
         return json.loads(_PRICING_CACHE_PATH.read_text(encoding="utf-8"))
@@ -755,13 +784,32 @@ def _load_pricing_cache() -> Dict:
 
 
 def _save_pricing_cache(cache: Dict) -> None:
+    # 原子写(tmp+rename):避免并发运行读到半截 JSON 被静默判损坏
+    import os
     try:
         _PRICING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _PRICING_CACHE_PATH.write_text(
+        tmp = _PRICING_CACHE_PATH.with_suffix(".json.tmp")
+        tmp.write_text(
             json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8"
         )
+        os.replace(tmp, _PRICING_CACHE_PATH)
     except Exception:
         pass
+
+
+def _cache_fresh(cached: Dict) -> bool:
+    """缓存是否仍在 TTL 内(scraped_at 距今 ≤14 天)。
+
+    历史缺陷:_PRICING_CACHE_TTL_DAYS 定义后从未被引用,陈旧缓存
+    永久有效 —— verified 定价可能是数月前的价格。
+    """
+    import calendar
+    try:
+        ts = time.strptime((cached or {}).get("scraped_at", ""), "%Y-%m-%d %H:%M UTC")
+        age_days = (time.time() - calendar.timegm(ts)) / 86400.0
+    except (ValueError, OverflowError):
+        return False
+    return 0 <= age_days <= _PRICING_CACHE_TTL_DAYS
 
 
 def _has_real_prices(tiers: list) -> bool:
@@ -1749,8 +1797,8 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                 result["page_urls"][kind] = cand
             if md and not _looks_like_only_js_or_404(md):
                 break
-        if kind == "pricing" and not result.get("pricing_source"):
-            result["pricing_source"] = guess or disc or ""
+        # F2:定价全失败时不再回填猜测 URL —— 未抓到的页面不能当来源
+        # (历史缺陷:guess/disc 404 时 pricing_source 指向死链)
         result["raw_markdown"][kind] = md
 
     # about 页来源标记(founded/hq/team 提取证据)
@@ -2012,7 +2060,8 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         # 全引擎 0 价格行:反爬/区域变体页。回退上次成功抓取的缓存
         # (≤14 天,带原时间戳如实标注)—— 消除运行间不稳定
         cached = _pcache.get(_ckey)
-        if cached and _has_real_prices(cached.get("tiers")):
+        # F1: TTL 生效 —— 过期缓存视为 miss(此前永不过期,陈旧价永久 verified)
+        if cached and _has_real_prices(cached.get("tiers")) and _cache_fresh(cached):
             pricing_ev = dict(cached)
             _pricing_starved_note = (
                 f"本次爬取遇反爬/区域变体页,定价为上次成功抓取"
@@ -2066,6 +2115,8 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
         "funding": "—",
         "pricing": pricing,
         "pricing_verified": bool(pricing_ev.get("verified")),
+        # 定价是否来自缓存回退(反爬 starved 时)—— 报告端如实展示
+        "pricing_from_cache": bool(_pricing_starved_note and pricing_ev.get("verified")),
         # per-user 计价检测:respond.io "Additional Users at $" / 官网
         # "per user/month" —— 缺了 /user 语义,$79/month 就是错的
         "pricing_unit": "per user" if _PER_USER else "",
@@ -2089,7 +2140,14 @@ def _build_competitor_entry(scraped: Dict) -> Tuple[Dict, List[str]]:
             for t in pricing_ev.get("tiers", [])
         ],
         "pricing_engines": pricing_ev.get("engines", []),
-        "pricing_source": pricing_ev.get("source_url") or scraped.get("pricing_source", scraped["url"]),
+        # F2:定价来源优先投票证据的 source_url;稀松回退(_extract_price
+        # 从首页提到价)时如实指向首页;两者皆无 → 空(绝不用猜测 URL 兜底)
+        "pricing_source": (
+            pricing_ev.get("source_url")
+            or (scraped["url"]
+                if (pricing != "—" and not pricing_ev.get("pricing")
+                    and _extract_price(pricing_md)) else "")
+        ),
         "pricing_scraped_at": pricing_ev.get("scraped_at", ""),
         "pricing_vote_detail": pricing_ev.get("vote_detail", []),
         **(

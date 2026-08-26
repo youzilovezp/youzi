@@ -19,6 +19,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock  # noqa: F401 — Task 8+ 使用
 
 # 把工程根目录加入 sys.path
 ROOT = Path(__file__).resolve().parent.parent
@@ -820,6 +821,33 @@ class TestNoFabrication(unittest.TestCase):
         with contextlib.redirect_stdout(buf):
             ok = self_check(data, html_with_fabrication)
         self.assertFalse(ok)
+
+
+class TestHonestPricingSource(unittest.TestCase):
+    """F2: 定价证据为空时,entry 不得用猜测 URL 充当 pricing_source。"""
+
+    def test_no_evidence_no_source(self):
+        from scripts.crawl_competitors import _build_competitor_entry
+        scraped = {
+            "name": "X", "url": "https://x.com",
+            "pricing_source": "",  # _scrape_one 修复后失败时保持 ""
+            "tagline_source": "https://x.com",
+            "founded_source": "", "team_size_source": "",
+            "headquarters_source": "",
+            "raw_markdown": {
+                "home": "# X\nTool for teams",
+                "pricing": "",  # 定价页全失败
+            },
+            "page_urls": {"home": "https://x.com"},
+            "pricing_evidence": {"pricing": "—", "verified": False,
+                                 "engines": [], "source_url": "",
+                                 "scraped_at": "", "vote_detail": [],
+                                 "tiers": []},
+            "site_title": "X — tool",
+        }
+        entry, warnings = _build_competitor_entry(scraped)
+        self.assertEqual(entry["pricing_source"], "")
+        self.assertFalse(entry["pricing_verified"])
 
 
 if __name__ == "__main__":
