@@ -1,31 +1,21 @@
 {
  "run": {
-  "topic": "WhatsApp BSP 赛道(生产验收)",
-  "started_at": "2026-08-26 07:06 UTC",
-  "finished_at": "2026-08-26 07:07 UTC",
+  "topic": "WhatsApp BSP 赛道",
+  "started_at": "2026-08-26 13:43 UTC",
+  "finished_at": "2026-08-26 13:46 UTC",
   "pipeline_version": "2.0"
  },
  "fetched": {
   "https://www.wati.io": {
    "status": "ok",
    "engines": {
-    "playwright": {
-     "ok": true,
-     "chars": 155191,
-     "content_hash": "14e5e20f0fbe3671"
-    },
-    "crawl4ai": {
-     "ok": true,
-     "chars": 50017,
-     "content_hash": "38bdd5e53f6b3e0a"
-    },
     "trafilatura": {
      "ok": true,
      "chars": 2577,
      "content_hash": "2d313e1785c23332"
     }
    },
-   "fetched_at": "2026-08-26 07:06 UTC"
+   "fetched_at": "2026-08-26 13:44 UTC"
   },
   "https://www.wati.io/pricing": {
    "status": "ok",
@@ -33,20 +23,20 @@
     "playwright": {
      "ok": true,
      "chars": 75000,
-     "content_hash": "d0e6ad0f31d59b6c"
+     "content_hash": "d7bd3aa57ec6daf6"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 75017,
-     "content_hash": "982671d7db61fed9"
+     "content_hash": "7e4d2da76f2705d9"
     },
     "trafilatura": {
      "ok": true,
      "chars": 19756,
-     "content_hash": "429cfb08a8a2edea"
+     "content_hash": "b2c25d5d6a462b66"
     }
    },
-   "fetched_at": "2026-08-26 07:06 UTC"
+   "fetched_at": "2026-08-26 13:45 UTC"
   },
   "https://www.wati.io/product": {
    "status": "ok",
@@ -54,20 +44,20 @@
     "crawl4ai": {
      "ok": true,
      "chars": 50017,
-     "content_hash": "26d09c66285bae7a"
+     "content_hash": "4fd8333daddd19ce"
     },
     "playwright": {
      "ok": true,
      "chars": 155978,
-     "content_hash": "325605549fec39d3"
+     "content_hash": "2482f42c1aa0ff49"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:45 UTC"
   },
   "https://www.wati.io/about": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:45 UTC"
   },
   "https://www.wati.io/about-us": {
    "status": "ok",
@@ -83,12 +73,12 @@
      "content_hash": "933a4470fec5bdc9"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:45 UTC"
   },
   "https://www.wati.io/company": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:45 UTC"
   },
   "https://docs.wati.io": {
    "status": "ok",
@@ -100,11 +90,11 @@
     },
     "crawl4ai": {
      "ok": true,
-     "chars": 25017,
-     "content_hash": "df95dee85d8974c2"
+     "chars": 19715,
+     "content_hash": "c07b878287508012"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io": {
    "status": "ok",
@@ -125,7 +115,7 @@
      "content_hash": "53885dd505543cbb"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io/pricing": {
    "status": "ok",
@@ -146,7 +136,7 @@
      "content_hash": "81db81b97195b63b"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io/features": {
    "status": "ok",
@@ -162,7 +152,7 @@
      "content_hash": "6553a10fec97fb6e"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io/about": {
    "status": "ok",
@@ -178,7 +168,7 @@
      "content_hash": "1f8515a9d0e5cd0d"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io/about-us": {
    "status": "ok",
@@ -194,7 +184,7 @@
      "content_hash": "1f8515a9d0e5cd0d"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://respond.io/company": {
    "status": "failed",
@@ -205,15 +195,15 @@
      "content_hash": "29d949149e18ca20"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com": {
    "status": "ok",
    "engines": {
     "playwright": {
      "ok": true,
-     "chars": 95865,
-     "content_hash": "9154d97e9dd0aee4"
+     "chars": 94104,
+     "content_hash": "3275937591903b76"
     },
     "crawl4ai": {
      "ok": true,
@@ -226,15 +216,15 @@
      "content_hash": "39f60b8d44d5d494"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com/pricing": {
    "status": "ok",
    "engines": {
     "playwright": {
      "ok": true,
-     "chars": 88057,
-     "content_hash": "756a32207b4199b1"
+     "chars": 86306,
+     "content_hash": "ca581de02df541f1"
     },
     "crawl4ai": {
      "ok": true,
@@ -247,7 +237,7 @@
      "content_hash": "e2fabeb8767a9865"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com/features": {
    "status": "ok",
@@ -263,7 +253,7 @@
      "content_hash": "2cc308ab767767f1"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com/about": {
    "status": "ok",
@@ -279,7 +269,7 @@
      "content_hash": "43be93392d56b75d"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com/about-us": {
    "status": "ok",
@@ -295,12 +285,12 @@
      "content_hash": "43be93392d56b75d"
     }
    },
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   },
   "https://www.ycloud.com/company": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 07:07 UTC"
+   "fetched_at": "2026-08-26 13:46 UTC"
   }
  },
  "claims": [
@@ -333,8 +323,8 @@
   {
    "field": "competitors[0].gtm_evidence[0]",
    "value": "官网展示合作伙伴/渠道体系",
-   "source_url": "https://www.wati.io",
-   "quote": "[Partners](https://www.wati.io/)",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h",
    "engine": "",
    "verified_by": [],
    "from_cache": false,
@@ -345,16 +335,6 @@
    "value": "公开客户规模(见引文)",
    "source_url": "https://www.wati.io/about-us",
    "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[0].moat_evidence[1]",
-   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-   "source_url": "https://www.wati.io",
-   "quote": "![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa",
    "engine": "",
    "verified_by": [],
    "from_cache": false,
@@ -372,19 +352,9 @@
   },
   {
    "field": "competitors[0].strengths[1]",
-   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-   "source_url": "https://www.wati.io",
-   "quote": "![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[0].strengths[2]",
    "value": "官网展示合作伙伴/渠道体系",
-   "source_url": "https://www.wati.io",
-   "quote": "[Partners](https://www.wati.io/)",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h",
    "engine": "",
    "verified_by": [],
    "from_cache": false,
@@ -413,7 +383,7 @@
   {
    "field": "competitors[0].headquarters",
    "value": "on your interests",
-   "source_url": "https://www.wati.io",
+   "source_url": "https://www.wati.io/product",
    "quote": "",
    "engine": "",
    "verified_by": [],
@@ -431,7 +401,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[1].price",
@@ -444,7 +414,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[2].price",
@@ -457,7 +427,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[3].price",
@@ -470,7 +440,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[4].price",
@@ -483,7 +453,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[0].line",
@@ -496,7 +466,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[1].line",
@@ -509,7 +479,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[2].line",
@@ -522,7 +492,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[3].line",
@@ -535,7 +505,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[4].line",
@@ -548,7 +518,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[1].gtm_evidence[0]",
@@ -671,7 +641,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[1].price",
@@ -684,7 +654,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[2].price",
@@ -697,7 +667,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[3].price",
@@ -710,7 +680,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[4].price",
@@ -723,7 +693,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[5].price",
@@ -736,7 +706,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[6].price",
@@ -749,7 +719,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[0].line",
@@ -762,7 +732,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[1].line",
@@ -775,7 +745,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[2].line",
@@ -788,7 +758,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[3].line",
@@ -797,11 +767,10 @@
    "quote": "Billed $0 /yr",
    "engine": "",
    "verified_by": [
-    "crawl4ai",
-    "playwright"
+    "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[4].line",
@@ -813,7 +782,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[5].line",
@@ -825,7 +794,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[6].line",
@@ -837,7 +806,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 07:07 UTC"
+   "scraped_at": "2026-08-26 13:46 UTC"
   },
   {
    "field": "competitors[2].gtm_evidence[0]",

@@ -1,6 +1,6 @@
 {
-  "topic": "WhatsApp BSP 赛道(生产验收)",
-  "subtitle": "WhatsApp BSP 赛道(生产验收) — 基于 3 家竞品实时爬取的深度分析",
+  "topic": "WhatsApp BSP 赛道",
+  "subtitle": "WhatsApp BSP 赛道 — 基于 3 家竞品实时爬取的深度分析",
   "date": "2026-08-26",
   "competitors": [
     {
@@ -19,7 +19,7 @@
       "pricing_verified": true,
       "pricing_from_cache": true,
       "pricing_unit": "",
-      "pricing_addon_note": "",
+      "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
       "pricing_currency": "USD",
       "pricing_tiers": [
         {
@@ -49,48 +49,17 @@
       "pricing_crawl_note": "本次爬取遇反爬/区域变体页,定价为上次成功抓取(2026-08-26 00:00 UTC)的已验证数据,请以官网为准",
       "target_users": [
         "营销团队",
-        "客服中心",
-        "开发者"
+        "客服中心"
       ],
       "core_features": [
-        "Manage {vendorcount} vendors",
-        "Customers Blogs [Chatbot Library](ht",
-        "Clientes Blogs [Biblioteca de Chatbo",
-        "Clientes Blogs [ Biblioteca de Chatb",
-        "!Broadcast Communication"
+        "Wati for Support",
+        "Wati 营销版",
+        "Wati 客服支持",
+        "营销机构",
+        "Wati 客服支援"
       ],
       "feature_catalog": {
         "WATI": [
-          {
-            "category": "其他",
-            "name": "Manage {vendorcount} vendors",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Customers Blogs [Chatbot Library](ht",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Clientes Blogs [Biblioteca de Chatbo",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Clientes Blogs [ Biblioteca de Chatb",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "!Broadcast Communication",
-            "desc": "",
-            "source": ""
-          },
           {
             "category": "其他",
             "name": "Wati for Support",
@@ -219,19 +188,37 @@
           },
           {
             "category": "其他",
-            "name": "Acquire, engage, and qualify",
-            "desc": "",
-            "source": "https://www.wati.io"
-          },
-          {
-            "category": "其他",
             "name": "About Cookies",
             "desc": "",
             "source": "https://www.wati.io/product"
           },
           {
             "category": "其他",
+            "name": "Always active",
+            "desc": "",
+            "source": "https://www.wati.io/product"
+          },
+          {
+            "category": "其他",
             "name": "Analytics",
+            "desc": "",
+            "source": "https://www.wati.io/product"
+          },
+          {
+            "category": "其他",
+            "name": "Confirm my preferences",
+            "desc": "",
+            "source": "https://www.wati.io/product"
+          },
+          {
+            "category": "其他",
+            "name": "View preferences",
+            "desc": "",
+            "source": "https://www.wati.io/product"
+          },
+          {
+            "category": "其他",
+            "name": "Save preferences",
             "desc": "",
             "source": "https://www.wati.io/product"
           },
@@ -267,69 +254,51 @@
           },
           {
             "category": "其他",
-            "name": "Single User Plan",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Self-serve onboarding & support",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Unlimited Broadcasts, Standard rates",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Unlimited Broadcasts, Volume discounts",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Blitz add-on: Send 12k messages/min",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Service Conversation",
+            "name": "Please provide your information",
             "desc": "",
             "source": "https://www.wati.io/pricing"
           },
           {
             "category": "其他",
-            "name": "Business-Initiated Conversation",
+            "name": "Single User Plan",
             "desc": "",
-            "source": ""
-          },
-          {
-            "category": "收件箱",
-            "name": "Shared Team Inbox",
-            "desc": "",
-            "source": ""
+            "source": "https://www.wati.io/pricing"
           },
           {
             "category": "其他",
-            "name": "Chatbot Builder",
+            "name": "Self-serve onboarding & support",
             "desc": "",
-            "source": ""
+            "source": "https://www.wati.io/pricing"
           },
           {
             "category": "其他",
-            "name": "Kotak Masuk Tim Berbagi",
+            "name": "Additional charges apply for messages",
             "desc": "",
-            "source": ""
+            "source": "https://www.wati.io/pricing"
           },
           {
             "category": "其他",
-            "name": "Pembuat Chatbot",
+            "name": "Key features",
             "desc": "",
-            "source": ""
+            "source": "https://www.wati.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Unlimited Broadcasts, Standard rates",
+            "desc": "",
+            "source": "https://www.wati.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Unlimited Broadcasts, Volume discounts",
+            "desc": "",
+            "source": "https://www.wati.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Functional Functional Always active",
+            "desc": "",
+            "source": "https://www.wati.io/product"
           },
           {
             "category": "其他",
@@ -350,34 +319,22 @@
             "source": "https://www.wati.io/product"
           },
           {
+            "category": "其他",
+            "name": "Service Conversation",
+            "desc": "",
+            "source": "https://www.wati.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Business-Initiated Conversation",
+            "desc": "",
+            "source": "https://www.wati.io/pricing"
+          },
+          {
             "category": "收件箱",
             "name": "Shared Team Inbox Chatbot Builder",
             "desc": "",
-            "source": ""
-          },
-          {
-            "category": "开发者",
-            "name": "Contact Management APIs",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "开发者",
-            "name": "Contact Management APIs & Webhooks",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "开发者",
-            "name": "Manajemen Kontak API",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "开发者",
-            "name": "Gestión de contactos API",
-            "desc": "",
-            "source": ""
+            "source": "https://www.wati.io/pricing"
           }
         ]
       },
@@ -389,16 +346,10 @@
           "source": "https://www.wati.io/about-us"
         },
         {
-          "point": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "evidence": "官网原文: \"![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa\"",
-          "score": 0,
-          "source": "https://www.wati.io"
-        },
-        {
           "point": "官网展示合作伙伴/渠道体系",
-          "evidence": "官网原文: \"[Partners](https://www.wati.io/)\"",
+          "evidence": "官网原文: \"description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h\"",
           "score": 0,
-          "source": "https://www.wati.io"
+          "source": "https://www.wati.io/about-us"
         }
       ],
       "weaknesses": [],
@@ -406,8 +357,8 @@
       "gtm_evidence": [
         {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "[Partners](https://www.wati.io/)",
-          "source": "https://www.wati.io"
+          "quote": "description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h",
+          "source": "https://www.wati.io/about-us"
         }
       ],
       "moat_evidence": [
@@ -415,11 +366,6 @@
           "name": "公开客户规模(见引文)",
           "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
           "source": "https://www.wati.io/about-us"
-        },
-        {
-          "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "quote": "![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa",
-          "source": "https://www.wati.io"
         }
       ],
       "tech_signals": [
@@ -451,7 +397,7 @@
       "score_basis": "insufficient_evidence",
       "tagline_source": "https://www.wati.io",
       "founded_source": "https://www.wati.io/about-us",
-      "headquarters_source": "https://www.wati.io",
+      "headquarters_source": "https://www.wati.io/product",
       "team_size_source": "",
       "url_resolution": "builtin"
     },
@@ -515,7 +461,7 @@
         "playwright"
       ],
       "pricing_source": "https://respond.io/pricing",
-      "pricing_scraped_at": "2026-08-26 07:07 UTC",
+      "pricing_scraped_at": "2026-08-26 13:46 UTC",
       "pricing_vote_detail": [
         {
           "line": "starter · $79/month",
@@ -625,6 +571,48 @@
             "source": "https://respond.io"
           },
           {
+            "category": "收件箱",
+            "name": "Team & Custom Inboxes",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Mobile App",
+            "desc": "",
+            "source": "https://respond.io/features"
+          },
+          {
+            "category": "AI 客服",
+            "name": "AI Prompt",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "AI 客服",
+            "name": "AI Assist",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Basic Reports",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Growth Widgets",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Prices are in USD",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
             "category": "AI 客服",
             "name": "AI Credits",
             "desc": "",
@@ -633,6 +621,12 @@
           {
             "category": "其他",
             "name": "Chat & Email",
+            "desc": "",
+            "source": "https://respond.io/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Learn more",
             "desc": "",
             "source": "https://respond.io/pricing"
           },
@@ -704,7 +698,7 @@
           },
           {
             "category": "其他",
-            "name": "Mobile App",
+            "name": "CSAT or NPS Surveys",
             "desc": "",
             "source": "https://respond.io/features"
           },
@@ -739,58 +733,22 @@
             "source": "https://respond.io/features"
           },
           {
-            "category": "消息渠道",
-            "name": "WhatsApp QR Generator",
-            "desc": "",
-            "source": "https://respond.io/features"
-          },
-          {
             "category": "其他",
             "name": "Professional Services",
             "desc": "",
             "source": "https://respond.io/features"
           },
           {
-            "category": "收件箱",
-            "name": "Team & Custom Inboxes",
-            "desc": "",
-            "source": "https://respond.io/pricing"
-          },
-          {
-            "category": "AI 客服",
-            "name": "AI Prompt",
-            "desc": "",
-            "source": "https://respond.io/pricing"
-          },
-          {
-            "category": "AI 客服",
-            "name": "AI Assist",
-            "desc": "",
-            "source": "https://respond.io/pricing"
-          },
-          {
-            "category": "其他",
-            "name": "Basic Reports",
-            "desc": "",
-            "source": "https://respond.io/pricing"
-          },
-          {
-            "category": "其他",
-            "name": "Growth Widgets",
-            "desc": "",
-            "source": "https://respond.io/pricing"
-          },
-          {
             "category": "其他",
             "name": "Broadcasts",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "Workflows automation",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "AI 客服",
@@ -802,49 +760,49 @@
             "category": "其他",
             "name": "Advanced Reports",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "Zapier & Make Integrations",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "开发者",
             "name": "Developer API",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "Multiple Workspaces",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "HTTP Requests in Workflows",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "开发者",
             "name": "Incoming & Outgoing Webhooks",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "Custom Channels",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           },
           {
             "category": "其他",
             "name": "Unlimited Users",
             "desc": "",
-            "source": ""
+            "source": "https://respond.io/pricing"
           }
         ]
       },
@@ -989,7 +947,7 @@
         "playwright"
       ],
       "pricing_source": "https://www.ycloud.com/pricing",
-      "pricing_scraped_at": "2026-08-26 07:07 UTC",
+      "pricing_scraped_at": "2026-08-26 13:46 UTC",
       "pricing_vote_detail": [
         {
           "line": "Pro · $89 /mo",
@@ -1022,10 +980,9 @@
           "line": "Free · Billed $0 /yr (Current plan)",
           "raw_line": "Billed $0 /yr",
           "engines": [
-            "crawl4ai",
-            "playwright"
+            "crawl4ai"
           ],
-          "independent_votes": 2
+          "independent_votes": 1
         },
         {
           "line": "Pro · Billed $1068 /yr (Upgrade to Pro)",
@@ -1164,9 +1121,9 @@
           },
           {
             "category": "其他",
-            "name": "Customer Support",
+            "name": "Frequently asked questions",
             "desc": "",
-            "source": "https://www.ycloud.com"
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "消息渠道",
@@ -1181,6 +1138,24 @@
             "source": "https://www.ycloud.com"
           },
           {
+            "category": "营销",
+            "name": "Campaign",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
+            "name": "Product & Development",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
+            "name": "Customer Service",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
             "category": "其他",
             "name": "Docs and Support",
             "desc": "",
@@ -1188,93 +1163,123 @@
           },
           {
             "category": "其他",
+            "name": "Product Docs",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
+            "name": "Customer Support",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "消息渠道",
+            "name": "WhatsApp Blue Tick",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
+            "name": "View Demo",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
+            "name": "YCloud on Youtube",
+            "desc": "",
+            "source": "https://www.ycloud.com"
+          },
+          {
+            "category": "其他",
             "name": "No Credit Card Required",
             "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "System roles only",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "其他",
             "name": "Self-onboarding",
             "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "其他",
             "name": "Docs, Email support",
             "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Upgrade to Growth",
-            "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "其他",
             "name": "Email & Online support",
             "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Upgrade to Pro",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Current plan",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Upgrade to Growth",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "System and customized roles",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "其他",
             "name": "Assist-onboarding",
             "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "其他",
             "name": "Dedicated account manager",
             "desc": "",
-            "source": ""
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Upgrade to Enterprise",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Permanent storage",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
+          },
+          {
+            "category": "其他",
+            "name": "Compare plans and features",
+            "desc": "",
+            "source": "https://www.ycloud.com/pricing"
           },
           {
             "category": "消息渠道",
             "name": "WhatsApp Template",
             "desc": "",
             "source": "https://www.ycloud.com"
-          },
-          {
-            "category": "消息渠道",
-            "name": "WhatsApp Campaign",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Chatbot Builder",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "消息渠道",
-            "name": "WhatsApp Journey",
-            "desc": "",
-            "source": ""
-          },
-          {
-            "category": "其他",
-            "name": "Contact Management",
-            "desc": "",
-            "source": "https://www.ycloud.com"
-          },
-          {
-            "category": "收件箱",
-            "name": "Shared Team Inbox",
-            "desc": "",
-            "source": "https://www.ycloud.com"
-          },
-          {
-            "category": "开发者",
-            "name": "API & Webhooks",
-            "desc": "",
-            "source": "https://www.ycloud.com"
-          },
-          {
-            "category": "AI 客服",
-            "name": "Generative AI",
-            "desc": "",
-            "source": "https://www.ycloud.com/pricing"
           }
         ]
       },
@@ -1346,22 +1351,7 @@
       "url_resolution": "builtin"
     }
   ],
-  "feature_aliases": {
-    "Shared Team Inbox": {
-      "aliases": [
-        "Shared Team Inbox"
-      ],
-      "rationale": "自动检测: \"Shared Team Inbox\" 在 2 家出现。",
-      "_auto_detected": true
-    },
-    "Chatbot Builder": {
-      "aliases": [
-        "Chatbot Builder"
-      ],
-      "rationale": "自动检测: \"Chatbot Builder\" 在 2 家出现。",
-      "_auto_detected": true
-    }
-  },
+  "feature_aliases": {},
   "market_segments": [
     {
       "label": "其他 / 待识别",
@@ -1442,7 +1432,7 @@
   "opportunities": [],
   "other_competitors": [],
   "executive_summary": "基于 3 家竞品实时爬取:3 条候选市场空白(待 Step 3 复核)。定价 3/3 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
-  "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 133 项核心功能。每个功能条目带来源 URL。",
+  "background": "WhatsApp BSP 赛道 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 136 项核心功能。每个功能条目带来源 URL。",
   "goals": [
     "看清各家功能差异化与共同能力",
     "识别市场空白（所有竞品都没做好的痛点）",
