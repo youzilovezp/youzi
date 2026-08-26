@@ -261,6 +261,28 @@ class TestG2QuoteGrep(unittest.TestCase):
             )
             self.assertEqual(len(_violations_by_gate(rep, "G2")), 1)
 
+    def test_cache_fallback_vote_line_skipped(self):
+        """缓存回退的 vote 行是上一轮证据,本轮原文不可能包含 → 不 grep。
+
+        真实事故:WATI 定价被反爬 starved 回退缓存,G2 拿缓存 vote 行
+        grep 本轮引擎原文必失败 —— 时移证据的新鲜度由 G3 TTL 保证。
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io/pricing"]),
+                _one_comp_analysis(
+                    pricing_source="https://www.wati.io/pricing",
+                    pricing_from_cache=True,
+                    pricing_vote_detail=[{"line": "Growth $59/mo",
+                                          "engines": ["playwright"]}],
+                ),
+                engines={"https://www.wati.io/pricing": {
+                    "playwright": "no such line here"}},
+            )
+            self.assertEqual(len(_violations_by_gate(rep, "G2")), 0)
+
 
 class TestG3PricingIntegrity(unittest.TestCase):
     """G3: verified ⇒ ≥2 内容独立引擎 + 时间戳新鲜 + tiers 非空。"""

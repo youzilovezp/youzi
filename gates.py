@@ -131,11 +131,19 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                         f"competitors[{name}].{key}[{i}].quote",
                         (ev.get("source") or "").strip(), ev["quote"],
                     ))
+        # 定价来自缓存回退(反爬 starved)时,vote 行是上一轮成功运行的证据,
+        # 本轮引擎原文天然不包含 —— 无法也不应 grep(新鲜度由 G3 TTL 保证,
+        # 报告端有 pricing_crawl_note 如实标注)
+        if competitor.get("pricing_from_cache"):
+            continue
         for i, v in enumerate(competitor.get("pricing_vote_detail") or []):
-            if isinstance(v, dict) and v.get("line"):
+            if isinstance(v, dict) and (v.get("raw_line") or v.get("line")):
                 checks.append((
                     f"competitors[{name}].pricing_vote_detail[{i}].line",
-                    (competitor.get("pricing_source") or "").strip(), v["line"],
+                    (competitor.get("pricing_source") or "").strip(),
+                    # raw_line = 引擎逐字原文;line 可能是套餐名前缀融合的
+                    # 合成串(不可 grep)—— 优先 raw_line,旧数据回退 line
+                    v.get("raw_line") or v.get("line"),
                 ))
         for field, url, quote in checks:
             if not url:

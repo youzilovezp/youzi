@@ -298,6 +298,9 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
         line = line.strip()
         if not line or len(line) > 120:
             continue
+        # 逐字原文(引擎 md 的原始行,G2 回查依据)—— 之后的划线剥离/
+        # 套餐名前缀/token 融合都是合成,不可 grep
+        verbatim = line[:120]
         # 划线促销段是旧价(~~$99~~ now $79):整段剥掉,只留现价
         if "~~" in line:
             line = _STRIKETHROUGH_RX.sub(" ", line).strip()
@@ -476,6 +479,7 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             )
             out.append({
                 "line": text[:100],
+                "raw_line": verbatim,
                 "plan": plan,
                 "price": _pv,
                 "period": period,
@@ -749,7 +753,9 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         "source_url": pricing_url if (per_engine or plan_names) else "",
         "scraped_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
         "vote_detail": [
-            {"line": e["line"], "engines": sorted(e["engines"]),
+            {"line": e["line"],
+             "raw_line": (e["parts"].get("raw_line") or e["line"]),
+             "engines": sorted(e["engines"]),
              "independent_votes": len(e.get("hashes") or e["engines"])}
             for e in picked
         ],
@@ -1689,10 +1695,19 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                         "ok": True, "chars": len(x["markdown"]),
                         "content_hash": _content_hash(x["markdown"]),
                     }
+                    # 截断上限 = 该页抓取配额(定价页 3x):硬编码 50000 会切掉
+                    # 长定价页尾部的价格段,G2 回查时 quote 在存储副本里找不到
                     result["_manifest"]["engines_by_url"].setdefault(
                         url, {}
-                    )[x["scraper"]] = x["markdown"][:50000]
+                    )[x["scraper"]] = x["markdown"][:page_max]
             result["_manifest"]["fetched"][url] = m_ent
+            if m_ent["status"] == "failed":
+                # G4:非异常失败(全部引擎空/JS-only)也必须留痕
+                result["_manifest"]["failures"].append({
+                    "competitor": resolved["canonical_name"],
+                    "url": url, "kind": kind.replace("*", "").rstrip("?"),
+                    "error": "all engines failed/empty",
+                })
             if kind == "pricing":
                 result["pricing_evidence"] = _extract_pricing_evidence(r, url)
                 # 各引擎的定价页原文都保留 —— 套餐功能清单常只在某一个
@@ -1757,7 +1772,7 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                             }
                             result["_manifest"]["engines_by_url"].setdefault(
                                 url, {}
-                            )["playwright"] = pm[:50000]
+                            )["playwright"] = pm[:page_max]
                 except Exception:
                     pass
             # 定价来源只在真正拿到内容时记录(历史缺陷:抓取失败也写 source,
@@ -2331,7 +2346,8 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
                    from_cache=bool(entry.get("pricing_from_cache")))
     for k, v in enumerate(entry.get("pricing_vote_detail") or []):
         _claim(f"pricing_vote_detail[{k}].line", v.get("line", ""),
-               _purl, quote=v.get("line", ""), scraped_at=_psat,
+               _purl, quote=v.get("raw_line") or v.get("line", ""),
+               scraped_at=_psat,
                verified_by=v.get("engines") or [],
                from_cache=bool(entry.get("pricing_from_cache")))
     for key in ("gtm_evidence", "moat_evidence"):

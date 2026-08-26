@@ -1,0 +1,969 @@
+{
+ "run": {
+  "topic": "WhatsApp BSP 赛道(生产验收)",
+  "started_at": "2026-08-26 07:06 UTC",
+  "finished_at": "2026-08-26 07:07 UTC",
+  "pipeline_version": "2.0"
+ },
+ "fetched": {
+  "https://www.wati.io": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 155191,
+     "content_hash": "14e5e20f0fbe3671"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "38bdd5e53f6b3e0a"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 2577,
+     "content_hash": "2d313e1785c23332"
+    }
+   },
+   "fetched_at": "2026-08-26 07:06 UTC"
+  },
+  "https://www.wati.io/pricing": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 75000,
+     "content_hash": "d0e6ad0f31d59b6c"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 75017,
+     "content_hash": "982671d7db61fed9"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 19756,
+     "content_hash": "429cfb08a8a2edea"
+    }
+   },
+   "fetched_at": "2026-08-26 07:06 UTC"
+  },
+  "https://www.wati.io/product": {
+   "status": "ok",
+   "engines": {
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "26d09c66285bae7a"
+    },
+    "playwright": {
+     "ok": true,
+     "chars": 155978,
+     "content_hash": "325605549fec39d3"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.wati.io/about": {
+   "status": "failed",
+   "engines": {},
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.wati.io/about-us": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 9207,
+     "content_hash": "f6925f854d25d185"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 6594,
+     "content_hash": "933a4470fec5bdc9"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.wati.io/company": {
+   "status": "failed",
+   "engines": {},
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://docs.wati.io": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 2090,
+     "content_hash": "3ca531ee9cb22092"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 25017,
+     "content_hash": "df95dee85d8974c2"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 142034,
+     "content_hash": "6553a10fec97fb6e"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 34380,
+     "content_hash": "6d179ac20d27d2f9"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 2477,
+     "content_hash": "53885dd505543cbb"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io/pricing": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 116720,
+     "content_hash": "8e62bff2d78ddce5"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 32965,
+     "content_hash": "f8e8801d96281806"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 6017,
+     "content_hash": "81db81b97195b63b"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io/features": {
+   "status": "ok",
+   "engines": {
+    "crawl4ai": {
+     "ok": true,
+     "chars": 34380,
+     "content_hash": "6d179ac20d27d2f9"
+    },
+    "playwright": {
+     "ok": true,
+     "chars": 142034,
+     "content_hash": "6553a10fec97fb6e"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io/about": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 3249,
+     "content_hash": "794c3df095df3b30"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 1392,
+     "content_hash": "1f8515a9d0e5cd0d"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io/about-us": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 3249,
+     "content_hash": "794c3df095df3b30"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 1392,
+     "content_hash": "1f8515a9d0e5cd0d"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://respond.io/company": {
+   "status": "failed",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 24339,
+     "content_hash": "29d949149e18ca20"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 95865,
+     "content_hash": "9154d97e9dd0aee4"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 22514,
+     "content_hash": "9dbbae6a90f56c52"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 1826,
+     "content_hash": "39f60b8d44d5d494"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com/pricing": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 88057,
+     "content_hash": "756a32207b4199b1"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 14932,
+     "content_hash": "aca7bdea82007ce9"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 4148,
+     "content_hash": "e2fabeb8767a9865"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com/features": {
+   "status": "ok",
+   "engines": {
+    "crawl4ai": {
+     "ok": true,
+     "chars": 1,
+     "content_hash": "36a9e7f1c95b82ff"
+    },
+    "playwright": {
+     "ok": true,
+     "chars": 546,
+     "content_hash": "2cc308ab767767f1"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com/about": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 1953,
+     "content_hash": "72f1dfc6c779b5ae"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 184,
+     "content_hash": "43be93392d56b75d"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com/about-us": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 1953,
+     "content_hash": "72f1dfc6c779b5ae"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 184,
+     "content_hash": "43be93392d56b75d"
+    }
+   },
+   "fetched_at": "2026-08-26 07:07 UTC"
+  },
+  "https://www.ycloud.com/company": {
+   "status": "failed",
+   "engines": {},
+   "fetched_at": "2026-08-26 07:07 UTC"
+  }
+ },
+ "claims": [
+  {
+   "field": "competitors[0].pricing_tiers[0].price",
+   "value": "$59",
+   "source_url": "https://www.wati.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "playwright",
+    "crawl4ai"
+   ],
+   "from_cache": true,
+   "scraped_at": "2026-08-26 00:00 UTC"
+  },
+  {
+   "field": "competitors[0].pricing_vote_detail[0].line",
+   "value": "Growth $59/mo",
+   "source_url": "https://www.wati.io/pricing",
+   "quote": "Growth $59/mo",
+   "engine": "",
+   "verified_by": [
+    "playwright",
+    "crawl4ai"
+   ],
+   "from_cache": true,
+   "scraped_at": "2026-08-26 00:00 UTC"
+  },
+  {
+   "field": "competitors[0].gtm_evidence[0]",
+   "value": "官网展示合作伙伴/渠道体系",
+   "source_url": "https://www.wati.io",
+   "quote": "[Partners](https://www.wati.io/)",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].moat_evidence[0]",
+   "value": "公开客户规模(见引文)",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].moat_evidence[1]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://www.wati.io",
+   "quote": "![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].strengths[0]",
+   "value": "公开客户规模(见引文)",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].strengths[1]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://www.wati.io",
+   "quote": "![GDPR](https://www.wati.io/wp-content/uploads/2025/08/compliant-badge1.svg) ![ISO](https://www.wati.io/wp-content/uploa",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].strengths[2]",
+   "value": "官网展示合作伙伴/渠道体系",
+   "source_url": "https://www.wati.io",
+   "quote": "[Partners](https://www.wati.io/)",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].tagline",
+   "value": "Wati | #1 AI-powered customer engagement platform",
+   "source_url": "https://www.wati.io",
+   "quote": "Wati | #1 AI-powered customer engagement platform",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].founded",
+   "value": "2020",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "date: \"2023-05-30\"",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].headquarters",
+   "value": "on your interests",
+   "source_url": "https://www.wati.io",
+   "quote": "",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].pricing_tiers[0].price",
+   "value": "$79",
+   "source_url": "https://respond.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_tiers[1].price",
+   "value": "$948",
+   "source_url": "https://respond.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_tiers[2].price",
+   "value": "$159",
+   "source_url": "https://respond.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_tiers[3].price",
+   "value": "$279",
+   "source_url": "https://respond.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_tiers[4].price",
+   "value": "$3,348",
+   "source_url": "https://respond.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_vote_detail[0].line",
+   "value": "starter · $79/month",
+   "source_url": "https://respond.io/pricing",
+   "quote": "$79/month",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_vote_detail[1].line",
+   "value": "growth · $159/month",
+   "source_url": "https://respond.io/pricing",
+   "quote": "$159/month",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_vote_detail[2].line",
+   "value": "advanced · $279/month",
+   "source_url": "https://respond.io/pricing",
+   "quote": "$279/month",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_vote_detail[3].line",
+   "value": "starter · $1,188 / $948/yr (billed yearly) (Big wins for small teams: Manage convers)",
+   "source_url": "https://respond.io/pricing",
+   "quote": "$1,188 $948/yr (billed yearly)",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].pricing_vote_detail[4].line",
+   "value": "advanced · $4,188 / $3,348/yr (billed yearly) (For tech-savvy teams: Scale with advance)",
+   "source_url": "https://respond.io/pricing",
+   "quote": "$4,188 $3,348/yr (billed yearly)",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[1].gtm_evidence[0]",
+   "value": "官网提供自助免费试用入口",
+   "source_url": "https://respond.io",
+   "quote": "[Talk to Sales](https://respond.io/demo)[Start Free Trial](https://app.respond.io/user/register)",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].gtm_evidence[1]",
+   "value": "官网展示合作伙伴/渠道体系",
+   "source_url": "https://respond.io",
+   "quote": "![Partners](https://assets1-proxy.respond.io/api/v1/image/assets%2F11f7a662b80a4675973850b067c01fa5%2Fb594963fa6ad4f7f97",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].gtm_evidence[2]",
+   "value": "官网面向开发者/API 优先定位",
+   "source_url": "https://respond.io",
+   "quote": "(window,'GTM-N49SZ5V','google\\_tags\\_first\\_party');(function(w,d,s,l){w[l]=w[l]||[];(function(){w[l].push(arguments);})",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].moat_evidence[0]",
+   "value": "公开客户规模(见引文)",
+   "source_url": "https://respond.io",
+   "quote": "10k+ brands trust respond.io",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].moat_evidence[1]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://respond.io",
+   "quote": "![GDPR Compliant](https://assets.respond.io/image/GDPR-compliant.svg)![ISO 27001](https://assets.respond.io/image/ISO-27",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].strengths[0]",
+   "value": "公开客户规模(见引文)",
+   "source_url": "https://respond.io",
+   "quote": "10k+ brands trust respond.io",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].strengths[1]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://respond.io",
+   "quote": "![GDPR Compliant](https://assets.respond.io/image/GDPR-compliant.svg)![ISO 27001](https://assets.respond.io/image/ISO-27",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].strengths[2]",
+   "value": "官网提供自助免费试用入口",
+   "source_url": "https://respond.io",
+   "quote": "[Talk to Sales](https://respond.io/demo)[Start Free Trial](https://app.respond.io/user/register)",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].tagline",
+   "value": "Respond.io | #1 AI-Powered Customer Conversation Management Software",
+   "source_url": "https://respond.io",
+   "quote": "Respond.io | #1 AI-Powered Customer Conversation Management Software",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].founded",
+   "value": "2019",
+   "source_url": "https://respond.io/about",
+   "quote": "date: \"2026-08-25\"",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[1].headquarters",
+   "value": "Kuala Lumpur",
+   "source_url": "https://respond.io/about",
+   "quote": "",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].pricing_tiers[0].price",
+   "value": "$0",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[1].price",
+   "value": "$39",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[2].price",
+   "value": "$468",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[3].price",
+   "value": "$89",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[4].price",
+   "value": "$1068",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[5].price",
+   "value": "$399",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_tiers[6].price",
+   "value": "$4788",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[0].line",
+   "value": "Pro · $89 /mo",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "$89 /mo",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[1].line",
+   "value": "Growth · $39 /mo",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "$39 /mo",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[2].line",
+   "value": "Enterprise · $399 /mo",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "$399 /mo",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[3].line",
+   "value": "Free · Billed $0 /yr (Current plan)",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "Billed $0 /yr",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai",
+    "playwright"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[4].line",
+   "value": "Pro · Billed $1068 /yr (Upgrade to Pro)",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "Billed $1068 /yr",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[5].line",
+   "value": "Growth · Billed $468 /yr (Upgrade to Growth)",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "Billed $468 /yr",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].pricing_vote_detail[6].line",
+   "value": "Enterprise · Billed $4788 /yr (Upgrade to Enterprise)",
+   "source_url": "https://www.ycloud.com/pricing",
+   "quote": "Billed $4788 /yr",
+   "engine": "",
+   "verified_by": [
+    "crawl4ai"
+   ],
+   "from_cache": false,
+   "scraped_at": "2026-08-26 07:07 UTC"
+  },
+  {
+   "field": "competitors[2].gtm_evidence[0]",
+   "value": "官网提供自助免费试用入口",
+   "source_url": "https://www.ycloud.com",
+   "quote": "Try for freeContact sales",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].gtm_evidence[1]",
+   "value": "官网引导联系销售获取报价",
+   "source_url": "https://www.ycloud.com",
+   "quote": "[Contact sales](https://www.ycloud.com/book-a-demo)[Free Trial](https://www.ycloud.com/console/#/entry/register)",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].gtm_evidence[2]",
+   "value": "官网展示合作伙伴/渠道体系",
+   "source_url": "https://www.ycloud.com",
+   "quote": "![YCloud - Stimulating the potential of WhatsApp API | Product Hunt](https://www.ycloud.com/_next/static/media/tiktokPar",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].moat_evidence[0]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://www.ycloud.com",
+   "quote": "Enterprise-grade technology and security, ISO 27001 certified, with 99.99% uptime handling billions of messages monthly.",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].moat_evidence[1]",
+   "value": "Meta 官方合作伙伴/BSP 身份",
+   "source_url": "https://www.ycloud.com",
+   "quote": "YCloud is a Meta Official BSP",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].strengths[0]",
+   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+   "source_url": "https://www.ycloud.com",
+   "quote": "Enterprise-grade technology and security, ISO 27001 certified, with 99.99% uptime handling billions of messages monthly.",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].strengths[1]",
+   "value": "Meta 官方合作伙伴/BSP 身份",
+   "source_url": "https://www.ycloud.com",
+   "quote": "YCloud is a Meta Official BSP",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].strengths[2]",
+   "value": "官网提供自助免费试用入口",
+   "source_url": "https://www.ycloud.com",
+   "quote": "Try for freeContact sales",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].tagline",
+   "value": "Market, Sell & Support with YCloud",
+   "source_url": "https://www.ycloud.com",
+   "quote": "Market, Sell & Support with YCloud",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[2].headquarters",
+   "value": "Singapore",
+   "source_url": "https://www.ycloud.com/about",
+   "quote": "",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  }
+ ],
+ "failures": [
+  {
+   "competitor": "WATI",
+   "url": "https://www.wati.io/about",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  },
+  {
+   "competitor": "WATI",
+   "url": "https://www.wati.io/company",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  },
+  {
+   "competitor": "Respond.io",
+   "url": "https://respond.io/company",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  },
+  {
+   "competitor": "YCloud",
+   "url": "https://www.ycloud.com/company",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  }
+ ]
+}

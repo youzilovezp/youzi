@@ -7,6 +7,7 @@ ponytail: urllib + 串行限速(~1 req/s)足够 —— N1 的对象是几十个 
 
 import html
 import re
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -20,6 +21,14 @@ _UA = (
     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
 
+# python.org 官方构建不带系统 CA(urllib 裸跑 SSL 必失败);requests 系
+# 爬虫自带 certifi —— 有就复用,没有退回系统默认
+try:
+    import certifi
+    _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    _SSL_CTX = None
+
 
 def fetch_url(url: str, timeout: int = 10, retries: int = 1) -> dict:
     """GET 一个 URL,返回 {ok, http_status, final_url, error}。
@@ -30,7 +39,8 @@ def fetch_url(url: str, timeout: int = 10, retries: int = 1) -> dict:
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": _UA})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            kw = {"context": _SSL_CTX} if _SSL_CTX else {}
+            with urllib.request.urlopen(req, timeout=timeout, **kw) as resp:
                 resp.read(65536)  # 只确认可达,不全量下载
                 return {
                     "ok": 200 <= resp.status < 300,
@@ -102,7 +112,8 @@ def run_all(analysis, manifest, rep: Report, sample=None):
                 quote, src = ev["quote"], ev["source"]
                 try:
                     req = urllib.request.Request(src, headers={"User-Agent": _UA})
-                    with urllib.request.urlopen(req, timeout=10) as resp:
+                    kw2 = {"context": _SSL_CTX} if _SSL_CTX else {}
+                    with urllib.request.urlopen(req, timeout=10, **kw2) as resp:
                         body = resp.read(200000).decode("utf-8", "ignore")
                 except Exception:
                     continue  # 可达性已由 N1 报告

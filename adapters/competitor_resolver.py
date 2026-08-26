@@ -34,7 +34,8 @@ _BUILTIN_COMPETITORS: Dict[str, Dict] = {
     "wati": {
         "name": "WATI",
         "url": "https://www.wati.io",
-        "features": "https://www.wati.io/platform/",
+        # 2026-08-26: /platform/ 已 404(N1 门禁捕获)→ 现为 /product → /product-overview/
+        "features": "https://www.wati.io/product",
         "pricing": "https://www.wati.io/pricing",
         "docs": "https://docs.wati.io",
     },

@@ -156,6 +156,7 @@ OUT_DIR = ~/youzi-out/<topic>-<YYYY-MM-DD>/
 4. **定价必须交叉验证**：≥2 个独立引擎看到相同价格 → `pricing_verified: true`；只有 1 个引擎 → `pricing_verified: false`（报告自动显示 ⚠ 未验证徽章）；0 个 → 「未能获取，请核对官网」
 5. strengths / weaknesses / scores / differentiators / tech_signals / gaps / opportunities **全部由你基于证据生成**（脚本不再模板化伪造）—— 每条 strengths/weaknesses 附 `{point, evidence(quote), score, source_url}`
 6. scores 基于证据打分并在报告中可辩护（功能数、集成数、定价结构都是证据）；证据不足的维度给低置信标注
+7. **写 claim**：你从 02-raw 提取/改写的每个字段，同步追加到 `OUT_DIR/claims-manifest.json` 的 `claims` 数组（schema 见 docs/superpowers/specs/2026-08-26-production-quality-loop-design.md §3.1）—— verify.py 会拒收任何没有抓取记录支撑的 source_url 和 grep 不到的 quote
 
 1. `name` — 产品名
 2. `url` — 官网
@@ -203,7 +204,7 @@ python3 ~/.claude/skills/youzi/render.py \
 
 输出路径向用户回显：`✓ Report: ~/youzi-out/<topic>-.../report.html`
 
-### Step 5 · 自检 + 修复
+### Step 5 · 自检 + 验证（双门禁）
 
 `render.py` 退出后会打印**自检报告**，逐项核对：
 
@@ -221,6 +222,21 @@ python3 ~/.claude/skills/youzi/render.py \
 - [ ] 占位符（"待补充"）不得混入启发点/机会点派生板块
 
 任意一项不过 → 定位是数据问题就修 03-analysis.json（补 source/quote），是模板问题就修 `templates/report.html` 或 `render.py`，重跑 Step 4。**绝不允许删掉自检项来"通过"**。
+
+**证据硬门禁（verify.py，与渲染自检同级 —— 不过 = 不交付）：**
+
+```bash
+python3 ~/.claude/skills/youzi/verify.py \
+  --analysis "$OUT_DIR/03-analysis.json" \
+  --manifest "$OUT_DIR/claims-manifest.json" \
+  --raw-dir "$OUT_DIR/02-raw" \
+  --json "$OUT_DIR/verify-report.json"
+```
+
+- exit 2 → 读 verify-report.json 的 `{gate, field, hint}`，修 03-analysis.json 或重爬，再验 —— **修复回路，不是绕过**
+- 离线门禁（必跑，<1s）：G1 来源可回溯 / G2 quote 回查 / G3 定价独立性+TTL / G4 缺失诚实 / G5 反伪造 / G6 URL 卫生
+- 网络复核（可选，慢）：加 `--network --sample 10`（N1 死链硬失败 / N2 quote 漂移警告）
+- 新发现的坏数据形状 → 冻结成离线 fixture 进 tests/（延续 test_pricing_extract.py 模式）
 
 ### Step 6 · 交付
 
@@ -241,6 +257,7 @@ python3 ~/.claude/skills/youzi/render.py \
 - **§5.2 行业标准矩阵**：render.py 内置 `_CANONICAL_FEATURES_WHATSAPP`（28 项 × 10 类），作为权威能力清单；每行附"中文释义+行业意义"，每格 ✓/? 都有 tooltip 证据。可在 analysis.json 用 `feature_canonical.evidence_notes` 手动覆盖自动判定。
 - **可重入**：`OUT_DIR/02-raw/` 是 cache，重跑时 Step 2 跳过已抓的；`OUT_DIR/03-analysis.json` 存在时 `render.py` 直接渲染。
 - **不强制联网**：用户给了本地 JSON 时跳过 Step 1-3。
+- **双门禁交付**：render.py exit 0 且 verify.py exit 0 才算交付；verify-report.json 是修复回路的输入，不是可选日志。
 
 ## 参考文档（必读）
 
