@@ -431,5 +431,63 @@ class TestG6UrlHygiene(unittest.TestCase):
             len([x for x in rep["warnings"] if x["gate"] == "G6"]), 0)
 
 
+class TestNetworkGates(unittest.TestCase):
+    """N1/N2: 全部 mock,不发真实网络请求。"""
+
+    _P = "https://www.wati.io/pricing"
+
+    def _run_network(self, fetch_ret):
+        import tempfile
+        from unittest import mock
+        import network_gates
+        with tempfile.TemporaryDirectory() as d:
+            m = _ok_manifest(urls_ok=["https://www.wati.io", self._P])
+            a = _write(Path(d) / "a.json", _one_comp_analysis(
+                pricing_source=self._P, pricing="x",
+            ))
+            mm = _write(Path(d) / "m.json", m)
+            with mock.patch.object(network_gates, "fetch_url",
+                                   return_value=fetch_ret):
+                return verify_analysis(a, mm, Path(d), network=True)
+
+    def test_n1_dead_url_hard_fail(self):
+        rep = self._run_network({"ok": False, "http_status": 404,
+                                 "final_url": "", "error": "HTTP 404"})
+        v = [x for x in rep["violations"] if x["gate"] == "N1"]
+        self.assertEqual(len(v), 1)
+
+    def test_n1_live_url_passes(self):
+        rep = self._run_network({"ok": True, "http_status": 200,
+                                 "final_url": self._P, "error": ""})
+        self.assertTrue(rep["passed"])
+
+    def test_n1_cross_domain_redirect_warning(self):
+        rep = self._run_network({"ok": True, "http_status": 200,
+                                 "final_url": "https://other-cdn.net/pricing",
+                                 "error": ""})
+        self.assertEqual(
+            len([w for w in rep["warnings"] if w["gate"] == "N1"]), 1)
+
+    def test_sample_limits_urls(self):
+        """--sample 只抽查前 N 个 URL(mock 计数)。"""
+        from unittest import mock
+        import network_gates
+
+        calls = []
+
+        def counting(url, **kw):
+            calls.append(url)
+            return {"ok": True, "http_status": 200, "final_url": url,
+                    "error": ""}
+
+        comp = _one_comp_analysis(pricing_source="https://a.com/p")["competitors"][0]
+        with mock.patch.object(network_gates, "fetch_url",
+                               side_effect=counting):
+            r = network_gates.Report()
+            network_gates.run_all(
+                {"competitors": [comp]}, {"fetched": {}}, r, sample=1)
+        self.assertEqual(len(calls), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
