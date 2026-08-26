@@ -104,5 +104,136 @@ class TestSkeleton(unittest.TestCase):
             self.assertEqual(idx["https://respond.io/pricing"]["firecrawl"], "fc md")
 
 
+def _bundle(tmp: Path, manifest: dict, analysis: dict, engines: dict = None):
+    """构造最小证据包文件并跑验证。"""
+    m = _write(tmp / "m.json", manifest)
+    a = _write(tmp / "a.json", analysis)
+    raw = tmp / "02-raw"
+    if engines is not None:
+        _write(raw / "x.engines.json", engines)
+    return verify_analysis(a, m, raw)
+
+
+def _ok_manifest(urls_ok=(), urls_failed=()):
+    return {
+        "run": {"topic": "t"},
+        "fetched": {
+            **{u: {"status": "ok", "engines": {}} for u in urls_ok},
+            **{u: {"status": "failed", "engines": {}} for u in urls_failed},
+        },
+        "claims": [],
+        "failures": [],
+    }
+
+
+def _one_comp_analysis(**fields):
+    comp = {
+        "name": "WATI", "url": "https://www.wati.io",
+        "tagline": "x", "tagline_source": "",
+        "founded": "—", "founded_source": "",
+        "headquarters": "—", "headquarters_source": "",
+        "team_size": "—", "team_size_source": "",
+        "pricing": "—", "pricing_source": "", "pricing_verified": False,
+        "pricing_tiers": [], "strengths": [], "weaknesses": [],
+        "gtm_evidence": [], "moat_evidence": [], "tech_signals": [],
+    }
+    comp.update(fields)
+    return {"topic": "t", "executive_summary": "x", "competitors": [comp]}
+
+
+def _violations_by_gate(rep: dict, gate: str):
+    return [v for v in rep["violations"] if v["gate"] == gate]
+
+
+class TestG1SourceTraceability(unittest.TestCase):
+    """G1: 分析引用的每个 source_url 必须在本轮成功抓取集合里。"""
+
+    def test_url_not_fetched_is_hard_fail(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io"]),
+                _one_comp_analysis(pricing_source="https://www.wati.io/pricing"),
+            )
+            v = _violations_by_gate(rep, "G1")
+            self.assertEqual(len(v), 1)
+            self.assertIn("pricing_source", v[0]["field"])
+
+    def test_url_fetch_failed_is_hard_fail(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_failed=["https://www.wati.io/pricing"]),
+                _one_comp_analysis(
+                    pricing_tiers=[{
+                        "name": "Growth", "price": "$59",
+                        "billing_period": "/mo", "features": [],
+                        "source_url": "https://www.wati.io/pricing",
+                    }]
+                ),
+            )
+            self.assertEqual(len(_violations_by_gate(rep, "G1")), 1)
+
+    def test_fetched_ok_passes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io/pricing"]),
+                _one_comp_analysis(pricing_source="https://www.wati.io/pricing"),
+            )
+            self.assertTrue(rep["passed"])
+
+
+class TestG2QuoteGrep(unittest.TestCase):
+    """G2: quote 必须在 source_url 的引擎原文中归一化命中。"""
+
+    def test_quote_hit_passes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io"]),
+                _one_comp_analysis(strengths=[{
+                    "point": "p", "evidence": '官网原文: "Trusted by 8000+ teams"',
+                    "score": 0, "source": "https://www.wati.io",
+                }]),
+                engines={"https://www.wati.io": {
+                    "playwright": "Some nav\nTrusted by 8000+  teams\nfooter",
+                }},
+            )
+            self.assertTrue(rep["passed"])
+
+    def test_quote_miss_is_hard_fail(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io"]),
+                _one_comp_analysis(gtm_evidence=[{
+                    "name": "n", "quote": "not in page at all", "source": "https://www.wati.io",
+                }]),
+                engines={"https://www.wati.io": {"playwright": "completely different"}},
+            )
+            v = _violations_by_gate(rep, "G2")
+            self.assertEqual(len(v), 1)
+            self.assertIn("gtm_evidence", v[0]["field"])
+
+    def test_no_engines_recorded_is_fail_not_crash(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rep = _bundle(
+                Path(d),
+                _ok_manifest(urls_ok=["https://www.wati.io"]),
+                _one_comp_analysis(moat_evidence=[{
+                    "name": "n", "quote": "q", "source": "https://www.wati.io",
+                }]),
+                engines={},
+            )
+            self.assertEqual(len(_violations_by_gate(rep, "G2")), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
