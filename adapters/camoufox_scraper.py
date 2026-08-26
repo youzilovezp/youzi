@@ -1,42 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Playwright Adapter for /youzi skill
+Camoufox Adapter for /youzi skill
 
-微软官方浏览器自动化（github.com/microsoft/playwright）
-作为最后的 fallback（需登录/复杂交互场景）。
+Camoufox (github.com/daijro/camoufox) — 基于 Firefox 的隐身浏览器自动化
+反爬能力比 Playwright / Selenium 强 10×：
+- 浏览器指纹随机化（canvas / WebGL / audio / font）
+- TLS 指纹混淆（抵抗 Cloudflare / DataDome / fingerprint.com）
+- 行为模拟（鼠标轨迹 + 滚动模式）
 
-两种使用模式：
-1. 本地 Python 库模式（youzi 自己跑 Playwright）
-2. MCP server 模式（让 Claude Code 通过 MCP 调用）
+适合被 Cloudflare 拦截的竞品站、需要登录的复杂 SPA。
 
-依赖安装：
-    pip install playwright
-    playwright install chromium
+依赖：
+    pip install camoufox
+    camoufox fetch        # 下载 Firefox 二进制
 """
 
 import asyncio
-import os
-import json
-import re as _re
-from typing import Optional
-
-# Next.js/Nuxt 水合脚本、webpack chunk、JSON payload 的行特征
-# (markdownify 的 strip=["script"] 挡不住这些漏到正文)
-_JS_PAYLOAD_LINE_RX = _re.compile(
-    r"self\.\s*_?\_*next_?\w*\s*\.?push|self\.__next_f"
-    r"|\.push\(\s*\[\s*\d|webpackChunk|__NUXT__|{\"@|\\n\\n|\\\\n"
-    r"|^\s*\(self\.|\"sourceMappingURL\"|data:text/javascript",
-    _re.I,
-)
-
-
-def _strip_js_payload_lines(markdown: str) -> str:
-    """删掉 JS payload 行,保留渲染后的可见内容。"""
-    if not markdown:
-        return markdown
-    return "\n".join(
-        ln for ln in markdown.split("\n") if not _JS_PAYLOAD_LINE_RX.search(ln)
-    )
+from typing import Any, Dict, Optional
 
 
 async def _scrape(
@@ -45,32 +25,16 @@ async def _scrape(
     screenshot_path: Optional[str] = None,
     extract_prompt: Optional[str] = None,
     timeout: int = 30000,
-) -> dict:
-    """异步抓取单个 URL（需要登录或复杂交互时用）。
-
-    Args:
-        url: 目标 URL
-        wait_selector: 等待某个 selector 出现再返回（用于 SPA 加载完成）
-        screenshot_path: 保存截图到本地路径
-        extract_prompt: 用 LLM 提取结构化字段
-        timeout: 超时（毫秒）
-
-    Returns:
-        {
-            "html": str,
-            "text": str,
-            "screenshot": str | None,   # 文件路径
-            "extracted": dict | None,
-            "success": bool,
-            "error": str | None,
-        }
-    """
+) -> Dict[str, Any]:
+    """异步抓取单个 URL（高反爬场景 / 隐身需求）。"""
     try:
-        from playwright.async_api import async_playwright
+        # 避免 Pyright 把 AsyncCamoufox 当成模块（camoufox 没装时无法解析）
+        from camoufox.async_api import AsyncCamoufox as _AsyncCamoufox  # type: ignore[import-not-found,misc]
+        AsyncCamoufox = _AsyncCamoufox
     except ImportError:
         return {
             "success": False,
-            "error": "playwright 未安装。运行: pip install playwright && playwright install chromium",
+            "error": "camoufox 未安装。运行: pip install camoufox && camoufox fetch",
             "html": "",
             "text": "",
             "screenshot": None,
@@ -78,18 +42,14 @@ async def _scrape(
         }
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-setuid-sandbox"],
-            )
+        async with AsyncCamoufox(headless=True) as browser:  # type: ignore[call-arg]
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (youzi-playwright/1.0)",
+                user_agent="Mozilla/5.0 (youzi-camoufox/1.0)",
                 viewport={"width": 1920, "height": 1080},
+                # 开启指纹随机化（camoufox 默认就开启）
+                geoip=True,
             )
             page = await context.new_page()
-
-            # 设置超时
             page.set_default_timeout(timeout)
 
             # 访问
@@ -106,7 +66,8 @@ async def _scrape(
             # 提取内容
             html = await page.content()
             text = await page.evaluate("() => document.body.innerText")
-            # 转 markdown(与其他 adapter 一致)— 用 markdownify 降级
+
+            # 转 markdown（与其他 adapter 一致）
             try:
                 import markdownify as _md
 
@@ -114,12 +75,7 @@ async def _scrape(
                     html, heading_style="ATX", strip=["script", "style"]
                 )
             except Exception:
-                markdown = text  # 降级用纯文本
-            # strip 参数挡不住 Next.js 水合脚本漏出(markdownify 已知行为),
-            # 逐行清洗 JS payload —— 否则整份 markdown 被 __next_f 垃圾污染,
-            # 质量分暴跌,playwright 渲染 SPA 的成果被 merge 层错杀
-            # (Meetbot 事故:69 条干净行被 JS 行拖死,primary 落到空爬的引擎)
-            markdown = _strip_js_payload_lines(markdown)
+                markdown = text
 
             # 截图
             screenshot_file = None
@@ -127,15 +83,16 @@ async def _scrape(
                 await page.screenshot(path=screenshot_path, full_page=True)
                 screenshot_file = screenshot_path
 
-            # LLM 提取（可选，需要调用 LLM API）
-            extracted = None
+            # LLM 提取（与 playwright_scraper 一致）
+            extracted: Optional[Dict[str, Any]] = None
             if extract_prompt:
+                import os
+                import json
+                import urllib.request
+
                 api_key = os.environ.get("ANTHROPIC_API_KEY")
                 if api_key:
                     try:
-                        import urllib.request
-
-                        # 用 Claude API 提取
                         req_data = {
                             "model": "claude-3-5-sonnet-20241022",
                             "max_tokens": 4000,
@@ -172,12 +129,14 @@ async def _scrape(
                         )
                         with urllib.request.urlopen(req, timeout=60) as resp:
                             result = json.loads(resp.read())
-                            tool_input = result.get("content", [{}])[0].get("input", {})
+                            tool_input = (
+                                result.get("content", [{}])[0].get("input", {})
+                            )
                             extracted = tool_input
                     except Exception as e:
                         extracted = {"_error": f"LLM extract failed: {e}"}
 
-            await browser.close()
+            await context.close()
 
             return {
                 "success": True,
@@ -192,7 +151,7 @@ async def _scrape(
     except Exception as e:
         return {
             "success": False,
-            "error": f"playwright 抓取失败: {type(e).__name__}: {e}",
+            "error": f"camoufox 抓取失败: {type(e).__name__}: {e}",
             "html": "",
             "text": "",
             "screenshot": None,
@@ -206,12 +165,13 @@ def scrape(
     screenshot_path: Optional[str] = None,
     extract_prompt: Optional[str] = None,
     timeout: int = 30000,
-) -> dict:
+) -> Dict[str, Any]:
     """同步接口（兼容已有 event loop）。"""
     try:
         loop = asyncio.get_running_loop()
         future = asyncio.run_coroutine_threadsafe(
-            _scrape(url, wait_selector, screenshot_path, extract_prompt, timeout), loop
+            _scrape(url, wait_selector, screenshot_path, extract_prompt, timeout),
+            loop,
         )
         return future.result(timeout=timeout / 1000 + 10)
     except RuntimeError:
@@ -221,45 +181,21 @@ def scrape(
 
 
 def is_available() -> bool:
-    """检查 playwright 是否安装 + 浏览器是否下载。"""
+    """检查 camoufox 是否安装。"""
     try:
-        from playwright.async_api import async_playwright  # noqa
-
+        __import__("camoufox.async_api")
         return True
     except ImportError:
         return False
 
 
-# ============================================================
-# MCP server 模式（让 Claude Code 通过 MCP 调用）
-# ============================================================
-MCP_CONFIG = {
-    "mcpServers": {
-        "playwright": {
-            "command": "npx",
-            "args": ["-y", "@playwright/mcp@latest"],
-            "env": {},
-        }
-    }
-}
-
-
-def print_mcp_setup():
-    """打印 MCP 配置（让用户加到 ~/.claude/settings.json）。"""
-    print("# 把以下内容加到 ~/.claude/settings.json 的 mcpServers 中：")
-    print(json.dumps(MCP_CONFIG, indent=2))
-
-
 if __name__ == "__main__":
     if is_available():
-        print("✓ Playwright 可用")
+        print("✓ Camoufox 可用")
         result = scrape("https://example.com", timeout=10000)
-        print(f"success: {result['success']}")
+        print(f"  success: {result['success']}")
         if result["success"]:
-            print(f"text length: {len(result['text'])}")
+            print(f"  text length: {len(result['text'])}")
     else:
-        print("✗ Playwright 未安装")
-        print("安装: pip install playwright && playwright install chromium")
-    print()
-    print("MCP server 模式：")
-    print_mcp_setup()
+        print("✗ Camoufox 未安装")
+        print("  安装: pip install camoufox && camoufox fetch")

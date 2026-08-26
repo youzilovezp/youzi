@@ -329,17 +329,21 @@ def merge_into_analysis(analysis: dict, summaries: dict) -> dict:
 
     for c in analysis.get("competitors", []):
         key = c["name"].lower().replace(".", "").replace(" ", "").replace("_", "")
-        matched = None
-        for k, v in name_to_summary.items():
-            if k == key or key.startswith(k) or k.startswith(key):
-                matched = v
-                break
+        matched = name_to_summary.get(key)
+        if matched is None:
+            for k, v in name_to_summary.items():
+                # 前缀匹配必须足够长("cm" 曾同时匹配 cm.com/cmc 交叉污染)
+                if len(k) >= 4 and len(key) >= 4 and (key.startswith(k) or k.startswith(key)):
+                    matched = v
+                    break
         if matched:
             # 不覆盖已有，只补充缺失字段
             c.setdefault("_crawl_summary", matched)
-            # 补充 pricing_tiers（如果 competitors[i].pricing 没切好）
-            if not c.get("pricing_tiers") and matched["pricing_keywords"]:
-                c["pricing_tiers"] = matched["pricing_keywords"]
+            # 定价关键词命中是原始 regex 串("$39"/"免费"),不是结构化 tier
+            # —— 历史缺陷:直接塞进 pricing_tiers 污染渲染。改存提示字段,
+            # 由 LLM Step 3 基于原文核对后再结构化。
+            if matched["pricing_keywords"]:
+                c.setdefault("pricing_mentions", matched["pricing_keywords"])
             # 补充 target_users_crawl
             if matched["target_user_hints"]:
                 c.setdefault("target_users_crawl_hints", matched["target_user_hints"])

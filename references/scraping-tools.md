@@ -11,16 +11,18 @@
 |------|---------|---------|
 | **LLM-ready 整站抓取** | 🔥 **Firecrawl**（已集成）| ⭐⭐⭐⭐⭐ |
 | **多平台统一接入** | 🔥 **Agent-Reach**（已集成）| ⭐⭐⭐⭐⭐ |
-| **开源 Python 爬虫** | 🔥 **Crawl4AI** | ⭐⭐⭐⭐⭐ |
+| **开源 Python 爬虫** | 🔥 **Crawl4AI**（已集成）| ⭐⭐⭐⭐⭐ |
+| **现代爬虫框架（反爬）** | 🔥 **Crawlee**（已集成 v1.2）| ⭐⭐⭐⭐ |
+| **隐身浏览器（反 Cloudflare）** | 🔥 **Camoufox**（已集成 v1.2）| ⭐⭐⭐⭐ |
+| **轻量 URL→Markdown** | 🔥 **Jina Reader**（已集成）| ⭐⭐⭐⭐ |
 | **AI 自动生成 schema** | 🔥 **ScrapeGraphAI** | ⭐⭐⭐⭐ |
 | **AI 搜索/语义** | 🔥 **Tavily** / **Exa** | ⭐⭐⭐⭐ |
-| **轻量 URL→Markdown** | 🔥 **Jina Reader** | ⭐⭐⭐⭐ |
 | **云爬虫平台** | 🔥 **Apify** | ⭐⭐⭐ |
 | **企业级反爬** | **Bright Data** / **Oxylabs** | ⭐⭐⭐ |
-| **隐身浏览器** | **Browserbase** / **Browserless** | ⭐⭐ |
-| **浏览器自动化** | **Playwright MCP** | ⭐⭐⭐ |
+| **隐身浏览器（云）** | **Browserbase** / **Browserless** | ⭐⭐ |
+| **浏览器自动化** | **Playwright MCP**（已集成）| ⭐⭐⭐ |
 | **图结构 AI** | **ScrapeGraph** | ⭐⭐⭐ |
-| **Python 框架** | **Scrapy** | ⭐⭐ |
+| **Python 框架** | **Scrapy**（已集成）| ⭐⭐ |
 | **反爬绕过** | **ZenRows** | ⭐⭐⭐ |
 
 ---
@@ -279,15 +281,19 @@ npm install -g @playwright/mcp
 
 ## 🛠️ 六、集成到 /youzi 的 Recommended Roadmap
 
-### 阶段 1（已有）
+### 阶段 1（已有 ✅ 13 个爬虫已注册）
 - ✅ **WebSearch**（内置）
 - ✅ **WebFetch**（内置）
 - ✅ **firecrawl**（96% 网页覆盖 + 截图）
+- ✅ **crawl4ai**（开源 LLM-ready markdown）
+- ✅ **jina**（轻量 URL→MD）
+- ✅ **crawlee**（现代反爬框架）
+- ✅ **camoufox**（Firefox 隐身反 Cloudflare）
+- ✅ **trafilatura / newspaper3k / readability / markdownify / html2text**
+- ✅ **playwright / scrapy / requests-html**
 - ✅ **Agent-Reach**（多平台）
 
 ### 阶段 2（推荐 ⭐⭐⭐⭐⭐）
-- 🔥 **Crawl4AI**（开源免费 + LLM 提取）
-  - 作为 firecrawl 的免费 fallback
 - 🔥 **ScrapeGraphAI**（自然语言 schema）
   - 替换 13 字段的手写提取逻辑
 - 🔥 **Tavily**（AI 搜索）

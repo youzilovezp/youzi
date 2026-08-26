@@ -1,62 +1,72 @@
-# Crawl Strategy · 竞品爬取策略（升级版 · firecrawl + Agent-Reach + MCP 套件）
+# Crawl Strategy · 竞品爬取策略（智能路由版 · 按模块选引擎 + 交叉验证 + 证据可追溯）
 
-## 核心原则：**firecrawl > web-reader > WebFetch，Agent-Reach 补全社交/视频/语义搜索**
+## 核心原则：**智能路由选组合，定价交叉验证，逐引擎留证据，绝不伪造**
 
 ---
 
-## 🎯 工具选择决策树（2026 多工具版）
+## 🎯 智能引擎路由（`scrape_smart` 默认 auto 策略）
 
 ```
-需要爬网页内容？
-├─ 需要登录 / 交互？
-│   ├─ 是 → Playwright MCP / playwright_scraper（唯一能填表单/点按钮）
-│   └─ 否 ↓
-├─ 想要截图？
-│   ├─ 是 → firecrawl（首选 + 截图）→ playwright_scraper（备用）
-│   └─ 否 ↓
-├─ firecrawl 不可用 / 失败？
-│   ├─ 是 → crawl4ai_scraper（开源免费，本地化）
-│   └─ 否 ↓
-├─ 是 SPA / 重度 JS？
-│   ├─ 是 → crawl4ai_scraper 或 Playwright
-│   └─ 否 ↓
-└─ 默认 → firecrawl（96% 覆盖 + 高质量 markdown）
-
-# 三个爬虫工具的定位
-┌──────────┬─────────────────────────┬──────────────────────┐
-│ 工具     │ 何时用                  │ 何时不用             │
-├──────────┼─────────────────────────┼──────────────────────┤
-│ firecrawl │ 通用首选                │ API 受限/本地化时    │
-│ Crawl4AI  │ firecrawl 失败时 fallback │ —                    │
-│ Playwright│ 登录、点击按钮、截图 SPA│ 简单页面（开销大）  │
-└──────────┴─────────────────────────┴──────────────────────┘
+scrape_smart(url)  # 默认 auto —— 不需要手动选引擎
+├─ classify_url(url) 识别页面类型
+│   pricing / docs / feature / about / blog / customer / changelog / dashboard / homepage
+├─ 按类型选引擎组合（下表）
+├─ 引擎历史成功率/质量加权排序（storage/engine-stats.json，越用越准）
+└─ 定价页特殊处理：各引擎原文独立保留（禁止拼接）→ 上层交叉验证
 ```
 
-**统一调用入口**（推荐用这个）：
+| 页面类型 | 引擎组合 | 设计理由 |
+|----------|---------|---------|
+| **pricing** | firecrawl + playwright + crawl4ai + **trafilatura** | 价格几乎都是前端渲染 → JS 组；加 1 个静态引擎做交叉对照：**≥2 独立引擎看到相同价格才 verified** |
+| docs | firecrawl + crawl4ai + trafilatura | 文档站需要深读 + 结构 |
+| feature | firecrawl + crawl4ai + trafilatura | 功能页 JS 中等 |
+| homepage | firecrawl + crawl4ai + jina | 覆盖优先 |
+| about | trafilatura + readability + markdownify | 静态文本，轻量引擎省资源 |
+| blog / customer | trafilatura + newspaper3k + readability | 文章型，正文抽取器最强 |
+| changelog | markdownify + trafilatura + readability | 简单文本 |
+| dashboard / 登录墙 | playwright + camoufox | 必须真浏览器 |
+
+**为什么不再全开 13 引擎**：慢是小事；大事是低质引擎的"补充段落"会污染证据 ——
+定价页混入其他引擎抓到的对比表价格/附加项价格/缓存价格，就是报告价格全错的
+根因之一。auto 路由按类型精准出机，定价页只信交叉验证。
 
 ```python
-from adapters import scrape_with_fallback
+from adapters import scrape_smart
 
-result = scrape_with_fallback(
-    url="https://example.com/features",
-    need_screenshot=True,    # firecrawl 截图
-    need_login=False,        # 不需要登录
-)
-print(result["scraper"])  # "firecrawl" | "crawl4ai" | "playwright"
-print(result["markdown"][:500])
+# 默认 auto(推荐):智能路由 + 定价页交叉验证隔离
+result = scrape_smart("https://example.com/pricing")
+print(result["url_type"])    # "pricing"
+print(result["scraper"])     # 实际用的引擎
+
+# auto 失败兜底:全引擎并行(覆盖最大)
+result = scrape_smart(url, strategy="parallel")
+
+# 手动指定引擎(调试用)
+result = scrape_smart(url, enabled_scrapers=["camoufox", "jina"])
 ```
 
-自动决策 + 失败时回退到下个工具。
+**需要登录 / 交互** → `need_login=True`（强制 playwright/camoufox）
+**需要截图** → `need_screenshot=True`
 
-└─ 否（需要视觉/代码/社交分析）？
-   ├─ 截图/图片 → zai MCP analyze_image
-   ├─ 架构图 → zai MCP understand_technical_diagram
-   ├─ UI 设计 → zai MCP ui_to_artifact / ui_diff_check
-   ├─ 开源代码仓库 → zread MCP / Agent-Reach GitHub channel
-   ├─ 产品演示视频 → Agent-Reach YouTube / zai MCP analyze_video
-   ├─ 社交信号（X/小红书/微博/B站） → Agent-Reach
-   └─ 语义搜索 → Agent-Reach Exa channel
-```
+13 个爬虫的定位速查：
+
+┌──────────────┬────────────────────────────┬────────────────────────┐
+│ 工具         │ 何时用                     │ 何时不用               │
+├──────────────┼────────────────────────────┼────────────────────────┤
+│ firecrawl    │ 通用首选（96% 覆盖）       │ API 受限/本地化时      │
+│ Crawl4AI     │ firecrawl 失败时 fallback  │ —                      │
+│ Crawlee      │ 整站爬取 / 高反爬          │ 单 URL（开销大）       │
+│ Camoufox     │ Cloudflare 拦截的隐身场景  │ 普通站点（开销大）     │
+│ Playwright   │ 登录、点击按钮、截图 SPA   │ 简单页面（开销大）     │
+│ Jina Reader  │ 零配置快速 URL→MD         │ 大量并发（限流）       │
+│ Trafilatura  │ 学术级正文抽取             │ JS 重度页面            │
+│ Newspaper3k  │ 文章/博客                  │ SPA                    │
+│ Readability  │ Mozilla 算法，文章类       │ 商品页                 │
+│ Markdownify  │ HTML→MD fallback          │ JS 重度                │
+│ html2text    │ HTML→纯文本 fallback      │ JS 重度                │
+│ Scrapy       │ 整站批量                   │ 单 URL（开销大）       │
+│ requests-html│ 轻量 JS 渲染               │ 复杂 SPA               │
+└──────────────┴────────────────────────────┴────────────────────────┘
 
 ---
 
@@ -115,46 +125,56 @@ WebSearch(query="<TOPIC> vs comparison 2026")
 
 ---
 
-## Step 2 · 深度爬取（每个竞品并行 · 优先 firecrawl）
+## Step 2 · 深度爬取（智能路由 + 逐页取证）
 
 ```python
-# === 主爬取：firecrawl（96% 覆盖 + JS 重度 + 结构化 JSON）===
-firecrawl.scrape(
-  url="<竞品官网>/",
-  formats=["markdown"],
-  only_main_content=True
-)
-firecrawl.scrape(
-  url="<竞品官网>/pricing"
-)
-firecrawl.scrape(
-  url="<竞品官网>/features"
-)
-firecrawl.scrape(
-  url="<竞品官网>/customers"
-)
+# === 统一入口:scrape_smart(auto 智能路由,按页面类型自动选引擎组合) ===
+from adapters import scrape_smart
 
-# === 进阶：firecrawl.agent（自动导航交互）===
-# 适合需要点击/滚动才能看到的内容（如需登录后的功能演示）
-firecrawl.agent(
-  prompt="访问这个产品的定价页，列出所有套餐名称、价格、限制、功能对比",
-  urls=["<竞品官网>/pricing"],
-  model="spark-1-pro"
-)
+r_home    = scrape_smart("<竞品官网>/")            # firecrawl + crawl4ai + jina
+r_pricing = scrape_smart("<竞品官网>/pricing")     # firecrawl + playwright + crawl4ai + trafilatura
+r_feat    = scrape_smart("<竞品官网>/features")    # firecrawl + crawl4ai + trafilatura
+r_about   = scrape_smart("<竞品官网>/about")       # trafilatura + readability + markdownify
 
-# === 进阶：firecrawl.crawl（一次抓全站）===
-firecrawl.crawl(
-  url="<竞品官网>",
-  limit=50,  # 最多抓 50 页
-  include_paths=["/blog/*", "/docs/*"]
-)
+# 定价页取证:r["all_results"] 里是各引擎独立原文 —— 交叉验证的数据源
+for engine_result in r_pricing["all_results"]:
+    print(engine_result["scraper"], engine_result["markdown"][:200])
 
-# === Fallback：firecrawl 失败时用 web-reader / WebFetch ===
-mcp__web-reader__webReader(url="<url>")
-WebFetch(url="<url>")
+# === 落盘规范(可追溯的最低要求) ===
+# 每页写 OUT_DIR/02-raw/<name>-<page>.md,header 必须含:
+#   # Source: <url>
+#   # Scrapers: <引擎列表>
+#   # Time: <UTC 时间>
+# run_youzi.py --crawl-only 已自动按此规范落盘
+
+# === 特殊场景 ===
+# 登录墙 → scrape_smart(url, need_login=True)  # playwright/camoufox
+# 反爬(Cloudflare) → enabled_scrapers=["camoufox", "jina"]
+# firecrawl MCP 可用时也可直接用 mcp firecrawl 工具(96% 覆盖),
+#   但定价页仍需第二个独立引擎对照 —— 单引擎价格一律标"未验证"
+
+# === Fallback:auto 组合全失败 → strategy="parallel" 全引擎兜底,
+#     仍失败 → WebSearch 找该竞品 Wikipedia/Crunchbase/G2 页作替代证据源(如实标注) ===
 ```
 
-每个竞品的内容写到 `OUT_DIR/02-raw/<name>.md`。
+## 📋 证据规范（Step 3 LLM 提取的输入契约）
+
+**每个进入报告的字段必须满足：**
+
+```json
+{
+  "value": "Growth $39/mo",
+  "source_url": "https://example.com/pricing",
+  "quote": "Growth — $39 per user/mo, billed annually",
+  "engines": ["firecrawl", "playwright"],
+  "scraped_at": "2026-08-25 03:12 UTC",
+  "verified": true
+}
+```
+
+- `quote` 必须**逐字**出现在 `source_url` 对应的 02-raw markdown 里（LLM 写完自查）
+- 定价：`verified` = ≥2 个独立引擎一致；单引擎 = false（报告自动显示 ⚠）
+- 无证据 → 值写「未验证」，绝不编造
 
 ---
 
@@ -227,9 +247,11 @@ mcp__zread__search_doc(repo_name="owner/repo", query="architecture")
 
 ---
 
-## Step 3 · 结构化分析（13 字段 + 视觉/代码/视频/社交信号）
+## Step 3 · 结构化分析（LLM 基于证据提取 13 字段 + 视觉/代码/视频/社交信号）
 
 读取 `OUT_DIR/02-raw/<name>.md`、`*-visual.md`、`*-video.md`、`*-code.md`、`*-social.md`，按 `analysis-framework.md` 提取 13 个字段。
+
+**所有字段遵守上面的「证据规范」**：值 + source_url + 逐字 quote；证据里没有 → 「未验证」。`scripts/crawl_competitors.py` 输出的启发式结果（tagline/价格行/功能列表）**只是候选**，LLM 必须回对 02-raw 原文核对后采用或丢弃。
 
 新增字段（来自 MCP）：
 - `visual_design` — 视觉风格描述（主色 / 字体 / 调性）来自 `analyze_image`

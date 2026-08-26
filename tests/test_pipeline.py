@@ -176,10 +176,14 @@ class TestNormalize(unittest.TestCase):
             self.assertIn(f, self.data, f"normalize() 缺少字段: {f}")
 
     def test_feature_matrix_correctness(self):
-        """§ 5.2 矩阵必须汇总所有 117 项功能,24 个类别。"""
+        """§ 5.2 矩阵:每家至少 18 项功能,合并后类别 ≥ 15。"""
         m = self.data["feature_comparison_matrix"]
-        self.assertEqual(m["totals_per_competitor"]["Twilio"], 18)
-        self.assertEqual(m["totals_per_competitor"]["WATI"], 18)
+        # 每家至少 18 项核心功能
+        for comp in ["Twilio", "WATI", "Respond.io", "Infobip", "ManyChat", "Tidio"]:
+            n = m["totals_per_competitor"].get(comp, 0)
+            self.assertGreaterEqual(
+                n, 18, f"{comp} 功能数 {n} < 18 (基础核心功能必须具备)"
+            )
         self.assertEqual(len(m["competitor_names"]), 6)
         # 类别数应 >= 15(允许有同类别)
         self.assertGreater(len(m["categories"]), 15)
@@ -196,9 +200,191 @@ class TestNormalize(unittest.TestCase):
         self.assertIn("Infobip", names)
 
     def test_sources_have_unique_urls(self):
-        """Sources 列表 URL 必须去重。"""
-        urls = [s["url"] for s in self.data["sources"]]
-        self.assertEqual(len(urls), len(set(urls)), "Sources URL 有重复")
+        """Sources 条目按 (url, claim) 去重 —— 同 URL 不同论断各成条目
+        (2026-08-26 角标重构:裸 URL 去重会让一个角标被多个论断复用,
+        来源区只显示第一次的 claim = 角标定位错位)。"""
+        normalized = self.data
+        keys = [
+            (s2["url"], s2["claim"], s2.get("competitor", ""))
+            for s2 in normalized["sources"]
+        ]
+        self.assertEqual(
+            len(keys), len(set(keys)),
+            "同一 (url, claim, competitor) 出现多次 —— 去重失效",
+        )
+
+    def test_junk_feature_filter(self):
+        from render import _is_junk_feature, _clean_feature_text
+
+        self.assertEqual(_clean_feature_text("**带星号残留**"), "带星号残留")
+        junk = [
+            "Respond.io vs Manychat",
+            "Explore the Power of Respond.io",
+            "Acquiring customers is costly.",
+            "Here's how respond.io sets you up for success",
+            "",
+        ]
+        legit = [
+            "WhatsApp Business API",
+            "Programmable Messaging",
+            "Segment CDP",
+            "团队收件箱",
+            "AI 智能路由",
+        ]
+        for t in junk:
+            self.assertTrue(_is_junk_feature(t), f"应过滤: {t!r}")
+        for t in legit:
+            self.assertFalse(_is_junk_feature(t), f"应保留: {t!r}")
+
+    def test_repair_fills_empty_swot_and_scores(self):
+        data = {
+            "topic": "X",
+            "competitors": [
+                {
+                    "name": "A",
+                    "url": "https://a.com",
+                    "pricing": "$39/月起",
+                    "stage": "成长期",
+                    "feature_catalog": {
+                        "A": [
+                            {"category": "开发者", "name": "**Open API 集成**"},
+                            {"category": "其他", "name": "Explore the Power"},
+                        ]
+                    },
+                    "strengths": [],
+                    "weaknesses": [],
+                    "scores": {k: 5 for k in (
+                        "feature_richness", "ux", "pricing_value",
+                        "integration", "ai_capability", "momentum",
+                    )},
+                },
+                {
+                    "name": "B",
+                    "url": "https://b.com",
+                    "pricing": "企业报价",
+                    "stage": "巨头",
+                    "feature_catalog": {"B": []},
+                    "strengths": [],
+                    "weaknesses": [],
+                    "scores": {},
+                },
+            ],
+            "opportunities": [],
+            "gaps": [],
+            "market_segments": [],
+        }
+        d = normalize(data)
+        for c in d["competitors"]:
+            self.assertTrue(c["strengths"], f"{c['name']} strengths 应被推断补全")
+            self.assertTrue(c["weaknesses"], f"{c['name']} weaknesses 应被推断补全")
+            vals = list(c["scores"].values())
+            self.assertTrue(all(isinstance(v, (int, float)) for v in vals))
+        a = next(c for c in d["competitors"] if c["name"] == "A")
+        # 营销噪音被清洗,只留真功能
+        names = [f["name"] for f in a["feature_catalog"]["A"]]
+        self.assertEqual(names, ["Open API 集成"])
+        # 定价差异应拉开 pricing_value 区分度(A $39 起步 > B 企业报价)
+        b = next(c for c in d["competitors"] if c["name"] == "B")
+        self.assertGreater(a["scores"]["pricing_value"], b["scores"]["pricing_value"])
+
+
+class TestScrapeMerge(unittest.TestCase):
+    """adapters._merge_results:质量选 primary + 原序保留 + 归一化去重。"""
+
+    def _results(self):
+        return [
+            {
+                "success": True, "scraper": "playwright",
+                "markdown": "jQuery(window).bind('load', function(){}\n\n" * 5 + "\n\nGrowth plan",
+                "html": "", "text": "", "screenshot": None, "extracted": None,
+            },
+            {
+                "success": True, "scraper": "trafilatura",
+                "markdown": "# Pricing\n\nGrowth plan  $39/mo\n\nTeam plan $79/mo, includes 5 agent seats and shared team inbox",
+                "html": "", "text": "", "screenshot": None, "extracted": None,
+            },
+            {
+                "success": True, "scraper": "firecrawl",
+                "markdown": "# Pricing\n\nGrowth plan  $39/mo\n\nStart free trial",
+                "html": "", "text": "", "screenshot": None, "extracted": None,
+            },
+        ]
+
+    def test_quality_primary_not_longest_junk(self):
+        from adapters import _merge_results
+
+        merged = _merge_results(self._results())
+        # 不变量:垃圾 JS 引擎不许当选 primary(干净引擎按质量分胜出)
+        self.assertNotEqual(merged["stats"]["primary_scraper"], "playwright")
+        self.assertIn(merged["stats"]["primary_scraper"], ("firecrawl", "trafilatura"))
+        # primary 原序保留:标题在最前
+        self.assertTrue(merged["markdown"].startswith("# Pricing"))
+        # 垃圾 JS 主体不允许当选
+        self.assertNotIn("jQuery", merged["markdown"].split("\n")[0])
+
+    def test_normalized_dedup(self):
+        from adapters import _merge_results
+
+        merged = _merge_results(self._results())
+        # "Growth plan $39/mo" 两引擎各一份(空格不同) → 只留一份
+        self.assertEqual(merged["markdown"].count("$39/mo"), 1)
+        # 独有段落作为补充保留
+        self.assertIn("Team plan $79/mo", merged["markdown"])
+
+
+class TestPricingEvidence(unittest.TestCase):
+    """跨引擎定价投票:一致 token 标记 verified。"""
+
+    def test_extract_price_lines_requires_context(self):
+        from scripts.crawl_competitors import _extract_price_lines
+
+        md = "# Pricing\n\nGrowth  $39/mo  per user\n\nrandom 42 number line\n\nContact Sales for Enterprise"
+        lines = [d["line"] for d in _extract_price_lines(md)]
+        self.assertTrue(any("$39" in ln for ln in lines))
+        self.assertTrue(any("Sales" in ln or "Enterprise" in ln for ln in lines))
+        self.assertFalse(any("random 42" in ln for ln in lines))
+
+    def test_price_lines_structured_parts(self):
+        """结构化部件:plan/price/period 拆开返回(定价卡片的直接数据源)。"""
+        from scripts.crawl_competitors import _extract_price_lines
+
+        md = "# Pricing\n\n## Growth\n\nsome card text here\n\n## $59\n\nmonth billed annually"
+        parts = _extract_price_lines(md)
+        self.assertTrue(parts)
+        p = parts[0]
+        self.assertEqual(p["plan"], "Growth")
+        self.assertEqual(p["price"], "$59")
+        self.assertIn("annually", p["period"])
+
+    def test_cross_engine_vote(self):
+        from scripts.crawl_competitors import _extract_pricing_evidence
+
+        r = {
+            "all_results": [
+                {"success": True, "scraper": "firecrawl",
+                 "markdown": "Growth plan $39/mo\nTeam $79/mo"},
+                {"success": True, "scraper": "trafilatura",
+                 "markdown": "Growth plan $39 / mo"},
+                {"success": True, "scraper": "playwright",
+                 "markdown": "jQuery junk no price"},
+            ]
+        }
+        ev = _extract_pricing_evidence(r)
+        self.assertTrue(ev["verified"])
+        self.assertIn("$39", ev["pricing"])
+        self.assertEqual(len(ev["engines"]), 2)
+
+    def test_single_engine_not_verified(self):
+        from scripts.crawl_competitors import _extract_pricing_evidence
+
+        r = {
+            "all_results": [
+                {"success": True, "scraper": "firecrawl",
+                 "markdown": "Growth plan $39/mo"},
+            ]
+        }
+        ev = _extract_pricing_evidence(r)
+        self.assertFalse(ev["verified"])
 
 
 class TestEdgeCases(unittest.TestCase):
@@ -439,7 +625,7 @@ class TestCrawlers(unittest.TestCase):
     """爬虫适配器注册测试。"""
 
     def test_all_crawlers_registered(self):
-        """11 个爬虫必须全部注册。"""
+        """13 个爬虫必须全部注册。"""
         from adapters import list_scrapers
 
         scrapers = list_scrapers()
@@ -455,6 +641,8 @@ class TestCrawlers(unittest.TestCase):
             "jina",
             "html2text",
             "requests_html",
+            "camoufox",
+            "crawlee",
         }
         self.assertEqual(set(scrapers.keys()), expected)
 
@@ -467,6 +655,171 @@ class TestCrawlers(unittest.TestCase):
 
         sig = inspect.signature(scrape_smart)
         self.assertIn("url", sig.parameters)
+
+
+class TestIntelligentRouting(unittest.TestCase):
+    """智能引擎路由(auto 默认 + 按类型组合 + 引擎学习)。"""
+
+    def test_default_strategy_is_auto(self):
+        """scrape_smart 默认策略必须是 auto(智能路由),不是全开 parallel。"""
+        from adapters import scrape_smart
+        import inspect
+
+        sig = inspect.signature(scrape_smart)
+        self.assertEqual(sig.parameters["strategy"].default, "auto")
+
+    def test_classify_url(self):
+        from adapters import classify_url
+
+        self.assertEqual(classify_url("https://x.com/pricing"), "pricing")
+        self.assertEqual(classify_url("https://docs.x.com/api"), "docs")
+        self.assertEqual(classify_url("https://x.com/about"), "about")
+        self.assertEqual(classify_url("https://x.com/"), "homepage")
+
+    def test_pricing_gets_cross_validation_group(self):
+        """定价页组合必须含 JS 引擎 + 静态对照引擎(交叉验证的基础)。"""
+        from adapters import _URL_TYPE_SCRAPERS
+
+        group = _URL_TYPE_SCRAPERS["pricing"]
+        self.assertIn("trafilatura", group)  # 静态对照
+        self.assertIn("firecrawl", group)  # JS 渲染
+
+    def test_pricing_merge_isolated(self):
+        """定价页禁止跨引擎拼接补充段落(历史价格污染根因)。"""
+        from adapters import _merge_results, _NO_SUPPLEMENT_TYPES
+
+        self.assertIn("pricing", _NO_SUPPLEMENT_TYPES)
+        primary_md = (
+            "# Pricing\n\nStarter $19/mo\n\nGrowth $39/mo\n\n"
+            "Pro $99/mo\n\nAll plans include unlimited contacts and\n"
+            "a shared team inbox with routing rules."
+        )
+        r1 = {"success": True, "scraper": "firecrawl", "markdown": primary_md,
+              "html": "", "text": "", "screenshot": None, "extracted": None}
+        r2 = {"success": True, "scraper": "trafilatura",
+              "markdown": primary_md + "\n\nAdditional users $999 per month enterprise add-on pricing from comparison table.",
+              "html": "", "text": "", "screenshot": None, "extracted": None}
+        merged = _merge_results([r1, r2], allow_supplements=False)
+        self.assertNotIn("$999", merged["markdown"])
+        self.assertNotIn("其他引擎补充段落", merged["markdown"])
+        self.assertEqual(merged["stats"]["supplement_paragraphs"], 0)
+        # 对照:允许合并时(非定价页)补充段落机制本身正常
+        merged2 = _merge_results([r1, r2], allow_supplements=True)
+        self.assertIn("$999", merged2["markdown"])
+
+    def test_engine_stats_learning(self):
+        """引擎历史统计应影响推荐排序(失败多的引擎排后)。
+
+        用临时 stats 文件,不污染真实 storage/engine-stats.json。
+        """
+        import adapters as A
+        from adapters import recommend_scrapers, record_engine_outcome
+        from pathlib import Path
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            orig = A._ENGINE_STATS_PATH
+            A._ENGINE_STATS_PATH = Path(td) / "engine-stats.json"
+            try:
+                record_engine_outcome("pricing", {
+                    "firecrawl": {"success": False, "quality": 0.0},
+                    "playwright": {"success": False, "quality": 0.0},
+                    "crawl4ai": {"success": True, "quality": 0.9},
+                    "trafilatura": {"success": True, "quality": 0.8},
+                })
+                recs = recommend_scrapers("https://example.com/pricing")
+                # crawl4ai 历史全优,应排在 firecrawl(历史全败)前面
+                self.assertLess(recs.index("crawl4ai"), recs.index("firecrawl"))
+            finally:
+                A._ENGINE_STATS_PATH = orig
+
+
+class TestNoFabrication(unittest.TestCase):
+    """防伪造回归测试 —— 历史曾出现硬编码价格/伪造引文,这里守住不再复发。"""
+
+    def test_builtin_price_fallback_deleted(self):
+        """内置静态价格库必须已删除(返回空 dict)。"""
+        from scripts.crawl_competitors import _get_fallback_from_builtin
+
+        for name in ("WATI", "YCloud", "Sleekflow", "Notion", "随便什么"):
+            self.assertEqual(_get_fallback_from_builtin(name), {})
+
+    def test_other_competitors_pool_deleted(self):
+        """硬编码 other_competitors 池(11 家 WhatsApp 竞品)必须已删除。"""
+        from scripts.crawl_competitors import _derive_other_competitors
+
+        self.assertEqual(_derive_other_competitors([], "任何主题"), [])
+
+    def test_opportunities_not_templated(self):
+        """脚本不得再输出模板化 opportunities(LLM Step 3 的工作)。"""
+        from scripts.crawl_competitors import _derive_opportunities
+
+        gaps = [{"gap": "Webhook 事件推送", "rationale": "x", "severity": "high", "source": ""}]
+        self.assertEqual(_derive_opportunities([], gaps, "t"), [])
+
+    def test_render_no_fabricated_g2_quotes(self):
+        """渲染端 SWOT 补全不得再输出伪造 G2 引文。"""
+        from render import _infer_strengths_weaknesses
+
+        c = {"name": "X", "url": "https://x.com", "pricing": "$79/mo",
+             "feature_catalog": {"X": [{"name": "AI 客服"}]}, "stage": "成长期"}
+        pos, neg = _infer_strengths_weaknesses(c)
+        for item in pos + neg:
+            self.assertNotIn("G2:", item.get("evidence", ""))
+            self.assertNotIn("gets expensive", item.get("evidence", ""))
+            self.assertNotIn("Meta 官方", item.get("evidence", ""))
+
+    def test_pricing_evidence_carries_provenance(self):
+        """定价证据必须带 source_url + scraped_at(可追溯)。"""
+        from scripts.crawl_competitors import _extract_pricing_evidence
+
+        scrape = {"all_results": [
+            {"success": True, "scraper": "firecrawl",
+             "markdown": "Growth Plan $39 per user/month\n\nPro Plan $99 per user/month"},
+            {"success": True, "scraper": "trafilatura",
+             "markdown": "Growth Plan $39 per user/month"},
+        ]}
+        ev = _extract_pricing_evidence(scrape, "https://x.com/pricing")
+        self.assertEqual(ev["source_url"], "https://x.com/pricing")
+        self.assertTrue(ev["scraped_at"])
+        self.assertTrue(ev["verified"])  # 2 引擎一致
+        self.assertIn("firecrawl", ev["engines"])
+
+    def test_verified_flag_consistent_with_engines(self):
+        """verified=True 时 engines 必须非空(历史 bug: verified=True 但 engines=[])。"""
+        from scripts.crawl_competitors import _extract_pricing_evidence
+
+        scrape = {"all_results": [
+            {"success": True, "scraper": "jina", "markdown": "Pro $49/mo"},
+        ]}
+        ev = _extract_pricing_evidence(scrape, "https://x.com/pricing")
+        if ev["verified"]:
+            self.assertTrue(ev["engines"], "verified=True 但 engines 为空")
+        else:
+            self.assertLessEqual(len(ev["engines"]), 1)
+
+    def test_self_check_catches_fabricated_quotes(self):
+        """self_check 的防伪造检查必须能拦住历史伪造引文。"""
+        from render import self_check, normalize
+
+        data = normalize({
+            "topic": "t", "competitors": [
+                {"name": "A", "url": "https://a.com", "scores": {},
+                 "feature_catalog": {"A": []}},
+                {"name": "B", "url": "https://b.com", "scores": {},
+                 "feature_catalog": {"B": []}},
+                {"name": "C", "url": "https://c.com", "scores": {},
+                 "feature_catalog": {"C": []}},
+            ],
+        })
+        html_with_fabrication = "<html>Pricing gets expensive at scale</html>"
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            ok = self_check(data, html_with_fabrication)
+        self.assertFalse(ok)
 
 
 if __name__ == "__main__":

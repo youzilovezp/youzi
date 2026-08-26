@@ -144,6 +144,8 @@ def _derive_inspiration_points(competitors):
     result: dict = {}
     for c in competitors:
         for s in c.get("strengths", []):
+            if _is_placeholder_swot(s):
+                continue  # 占位符不是真实优点,派生成"可借鉴实践"就是伪造
             point = s.get("point", "")
             if not point:
                 continue
@@ -165,6 +167,8 @@ def _derive_opportunity_points(competitors):
     result: dict = {}
     for c in competitors:
         for w in c.get("weaknesses", []):
+            if _is_placeholder_swot(w):
+                continue  # 占位符不能变成"差异化机会"
             point = w.get("point", "")
             if not point:
                 continue
@@ -223,55 +227,239 @@ def _group_opportunity_by_competitor(opportunity_points, competitors):
     return result
 
 
+_GLOSSARY_GENERIC = [
+    ("SaaS", "Software as a Service,按月付费的在线软件,不用自己装服务器。"),
+    ("CDP", "Customer Data Platform,客户数据平台。打通用户在多个渠道的数据,知道同一客户在不同渠道的所有行为。"),
+    ("momentum", "增长势头。综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。"),
+    ("API", "Application Programming Interface,程序之间的\"数据服务员\"。可以问它要数据或让它干活。"),
+    ("Webhook", "\"反向 API\"。当某事件发生时,服务器主动推送通知给你。比轮询省资源。"),
+    ("SLA", "Service Level Agreement,服务等级协议。99.9% SLA 表示一年最多 8 小时停机。"),
+    ("SOC2 / HIPAA", "国际合规认证。SOC2 = 企业数据安全;HIPAA = 美国医疗数据合规。大客户采购必备。"),
+]
+_GLOSSARY_WHATSAPP = [
+    ("BSP", "Business Solution Provider,WhatsApp 官方授权的中间商。中小公司要找他们才能拿到 WhatsApp API(就像旅行社代理机票)。"),
+    ("CTWA 广告", "Click-to-WhatsApp Ads,Meta 出的新型广告。用户在 Instagram/Facebook 点广告,直接跳到 WhatsApp 对话。"),
+    ("Shopify 集成", "和 Shopify 电商平台无缝对接。可以同步订单、库存、客户,实现 WhatsApp 订单通知。"),
+]
+
+
+def _build_glossary(topic: str) -> list:
+    """按主题生成术语表 —— WhatsApp 专属词条只在 WhatsApp 主题出现。
+    历史缺陷:硬编码的 WhatsApp 术语表(BSP/CTWA)对 AI 编程助手等任何主题都显示。"""
+    items = list(_GLOSSARY_GENERIC)
+    if "whatsapp" in (topic or "").lower():
+        items = _GLOSSARY_WHATSAPP + items
+    return [{"term": t, "explain": e} for t, e in items]
+
+
 def _derive_user_positioning(c):
-    """从 target_users + stage 派生 user_positioning[name]。"""
+    """从 target_users + stage + founded 派生 user_positioning[name]。"""
     users = c.get("target_users", [])
     stage = c.get("stage", "")
+    founded = c.get("founded", "—")
     return {
         "target_segment": "、".join(users) if users else "—",
-        "region": "全球",
+        # 历史缺陷:这里曾硬编码 region="全球" —— 数据里没有就如实写未采集,不猜
+        "region": c.get("region") or "未采集",
         "scale": "中小企业" if stage in ("早期", "成长期") else "中大型企业",
         "key_market": stage if stage else "—",
+        "founded": founded,  # 加 founded 字段,§3.2 显示
     }
 
 
 def _derive_commercial_strategies(c):
-    """从 pricing + differentiators 派生商业策略。
+    """从 pricing_tiers + differentiators 派生商业策略。
+
+    优先使用结构化的 c['pricing_tiers'] (list[{name, price, billing_period, features, source_url}])
+    fallback 到老的 c['pricing'] 字符串切分。
 
     differentiators 可能是 list[str] (原始) 或 list[{name, source, _ref}] (Phase 1A 后),
     这里统一取 .name 兼容两种格式。
     """
-    pricing = c.get("pricing", "—")
+    pricing_tiers_raw = c.get("pricing_tiers", [])
+    pricing_str = c.get("pricing", "—")
     differentiators = c.get("differentiators", [])
 
     def _name(it):
         return it["name"] if isinstance(it, dict) else it
 
     diff_names = [_name(d) for d in differentiators]
-    # pricing_tiers: 按 + / 、 切分
-    if pricing and pricing != "—":
-        tiers = [t.strip() for t in re.split(r"[+、；;]", pricing) if t.strip()]
+
+    # 1) 优先使用结构化 tiers
+    structured_tiers = []
+    if isinstance(pricing_tiers_raw, list) and pricing_tiers_raw and isinstance(pricing_tiers_raw[0], dict):
+        for t in pricing_tiers_raw:
+            structured_tiers.append({
+                "name": t.get("name", "—"),
+                "price": t.get("price", "—"),
+                "billing_period": t.get("billing_period", "—"),
+                "features": t.get("features", []),
+                "source_url": t.get("source_url", ""),
+            })
+
+    # 2) fallback: 从 pricing 字符串切分。
+    #    兼容两种格式:老格式 "+、；;" 分隔;新格式 " / " 分隔(跨引擎投票输出,
+    #    含 "Growth · $59 (month billed annually)" 三元组)。
+    if not structured_tiers and pricing_str and pricing_str != "—":
+        segments = re.split(r"\s/\s|[+、；;]", pricing_str)
+        for t in segments:
+            t = t.strip().rstrip("….。").strip()  # 去截断残留省略号
+            if not t or t.startswith("…") or set(t) <= set("…(见官网)"):
+                continue
+            price_m = re.search(r"(?:US\$|\$|€|£|S\$|₹|Rs\.?)\s?\d[\d,\.]*|免费|Free|联系销售|Contact Sales", t, re.I)
+            bill_m = re.search(r"billed\s+(annually|monthly)|per\s+(?:month|year)|/mo(?:nth)?|/yr|/年|/月", t, re.I)
+            # 名称 = 去掉价格/计费括号后的剩余;套餐名词命中才可信,
+            # 整句营销文案("Use the ₹999 credits for sending...")不是套餐名
+            name = re.sub(r"\s*\([^)]{0,60}\)\s*$", "", t)
+            if price_m:
+                name = name.replace(price_m.group(0), "").strip(" ·-—")
+            name = name[:40]
+            _plan_rx = re.compile(
+                r"starter|growth|\bpro\b|plus|business|enterprise|team|basic|free\b"
+                r"|solo|scale|advanced|essential|standard|premium|lite", re.I,
+            )
+            if not _plan_rx.search(name):
+                # 没有套餐名词:短而干净(<25 字)可当名称,长句营销文案不行
+                name = name if 0 < len(name) <= 25 and len(name.split()) <= 4 else "—"
+            structured_tiers.append({
+                "name": name or "—",
+                "price": price_m.group(0) if price_m else "—",
+                "billing_period": (bill_m.group(1) if bill_m.lastindex else bill_m.group(0)) if bill_m else "—",
+                "features": [],
+                "source_url": "",
+            })
+        structured_tiers = structured_tiers[:6]
+
+    # 3) 推导 model(基于结构化 tiers 的价格模式)—— 看 tier 全文(名称+价格),
+    #    拆分后 price 字段只有裸数字,周期信息在 name/billing_period 里
+    if structured_tiers:
+        blob = " ".join(f"{t['name']} {t['price']} {t['billing_period']}" for t in structured_tiers).lower()
+        has_monthly = any(k in blob for k in ("/月", "/mo", "month", "monthly"))
+        has_yearly = any(k in blob for k in ("/年", "/yr", "year", "annual"))
+        has_free = any(k in blob for k in ("免费", "free", "trial"))
+        has_contact = any(k in blob for k in ("联系销售", "contact sales", "enterprise", "custom"))
+        if has_free and (has_monthly or has_yearly):
+            model = "免费增值(Freemium + 订阅)"
+        elif has_contact and not has_monthly and not has_yearly:
+            model = "企业定制(Enterprise Only)"
+        elif has_monthly or has_yearly:
+            model = "SaaS 订阅(月付/年付)"
+        else:
+            model = "订阅制(细节见定价)"
     else:
-        tiers = []
+        model = "未公开"
+
+    # 展示串:模板直接用,避免对 dict 列表 join 出 Python repr(历史 bug)。
+    # 去重("未公开 / 未公开 / 未公开" 只显示一次);per-user 计价时标注单位
+    unit = (c.get("pricing_unit") or "").strip()
+    display_parts, seen_disp = [], set()
+    for t in structured_tiers:
+        if t["price"] != "—":
+            seg = f"{t['price']}" + (
+                f"·{t['billing_period']}" if t["billing_period"] not in ("—", "") else ""
+            )
+        else:
+            seg = t["name"][:40]
+        if seg in seen_disp:
+            continue
+        seen_disp.add(seg)
+        display_parts.append(seg)
+    pricing_display = " / ".join(display_parts) or "—"
+    if unit and pricing_display != "—":
+        pricing_display = f"{pricing_display}（{unit}）"
+
     return {
-        "model": "SaaS 订阅"
-        if any("$" in t or "月" in t or "年" in t for t in tiers)
-        else "—",
-        "pricing_tiers": tiers,
-        "gtm": diff_names[0][:60] if diff_names else "—",
-        "moat": diff_names[1][:60]
-        if len(diff_names) > 1
-        else (diff_names[0][:60] if diff_names else "—"),
+        "model": model,
+        "pricing_tiers": structured_tiers,
+        "pricing_display": pricing_display,
+        # GTM: 走 Go-to-Market 角度
+        "gtm": _derive_gtm(c, diff_names),
+        # 护城河:从 strengths 推断
+        "moat": _derive_moat(c, diff_names),
     }
 
 
-def _derive_product_overview():
-    """产品端覆盖 — 默认 '—'，留作人工补充。"""
+def _derive_gtm(c, diff_names):
+    """GTM:优先用爬取的证据推导(官网 CTA/定位原文,每条带 quote+source);
+    其次 differentiators;无证据时如实标待补(绝不编造)。
+    """
+    ev = c.get("gtm_evidence") or []
+    if ev:
+        return "；".join(e["name"] for e in ev[:2])[:120]
+    if diff_names:
+        return diff_names[0][:80]
+    return "—（待 Step 3 基于官网定位/博客证据分析）"
+
+
+def _derive_moat(c, diff_names):
+    """护城河:优先用爬取的客观资产证据(客户数/认证/官方身份,带 quote);
+    其次 differentiators;无证据时如实标待补。
+    """
+    ev = c.get("moat_evidence") or []
+    if ev:
+        return "；".join(e["name"] for e in ev[:2])[:120]
+    if len(diff_names) > 1:
+        return diff_names[1][:80]
+    if diff_names:
+        return diff_names[0][:80]
+    return "—（待 Step 3 基于证据分析）"
+
+
+def _derive_product_overview(c):
+    """基于 features + tech_signals 推导产品端覆盖(4 端)。
+
+    设计原则:
+      - 每个端 = '支持' / '未明确' / '—'
+      - '支持' 必须有证据(在 features 或 tech_signals 中找到关键词)
+      - '未明确' 标记: 此能力在公开材料中无明示,但作为现代 SaaS 高度可能
+      - '—' 标记: 此能力对赛道不重要(如桌面客户端对纯云端 SaaS)
+    """
+    feats = c.get("feature_catalog", {}).get(c["name"], [])
+    feat_str = " ".join(f.get("name", "") for f in feats)
+    feat_str_lower = feat_str.lower()
+    tech_signals = c.get("tech_signals", []) or []
+    tech_str = " ".join(
+        t.get("name", "") if isinstance(t, dict) else str(t) for t in tech_signals
+    )
+    tech_str_lower = tech_str.lower()
+
+    # Web 控制台 —— 所有 SaaS 都有,但仅在 feature 提及时记 ✓
+    web_has_evidence = any(
+        kw in feat_str_lower or kw in tech_str_lower
+        for kw in ["dashboard", "console", "portal", "admin", "inbox"]
+    )
+    web = "✓ 支持" if web_has_evidence else "未明确"
+
+    # Desktop 客户端 —— SaaS 较少原生桌面端
+    desktop_has_evidence = any(
+        kw in feat_str_lower or kw in tech_str_lower
+        for kw in ["desktop", "electron", "native app", "windows app", "mac app"]
+    )
+    desktop = "✓ 支持" if desktop_has_evidence else "— 纯云端"
+
+    # Mobile —— 现代 SaaS 必备,但移动原生 App 较少
+    mobile_app_kw = ["ios", "android", "mobile app", "native mobile"]
+    mobile_has_evidence = any(kw in tech_str_lower for kw in mobile_app_kw)
+    mobile = "✓ 原生 App" if mobile_has_evidence else "✓ 移动端 Web"
+
+    # Other —— API/SDK/集成
+    api_has_evidence = any(
+        kw in feat_str_lower or kw in tech_str_lower
+        for kw in ["api", "sdk", "webhook", "rest", "graphql"]
+    )
+    other = "✓ API/SDK/Webhook" if api_has_evidence else "未明确"
+
     return {
-        "web": "支持",
-        "desktop": "—",
-        "mobile": "支持",
-        "other": "—",
+        "web": web,
+        "desktop": desktop,
+        "mobile": mobile,
+        "other": other,
+        "_evidence": {
+            "web": web_has_evidence,
+            "desktop": desktop_has_evidence,
+            "mobile": mobile_has_evidence,
+            "other": api_has_evidence,
+        },
     }
 
 
@@ -314,33 +502,91 @@ def _derive_visual_signals(c):
     }
 
 
+def _infer_strengths_weaknesses(c):
+    """证据不足时的 SWOT 占位 —— 绝不伪造。
+
+    历史教训:这里曾按关键词模板编造带假 G2 引文的 strengths/weaknesses
+    (如 "G2: 'Pricing gets expensive at scale'" —— 从未真的读过 G2),
+    且为空时兜底塞 "BSP 接入 WhatsApp Business API" 等与主题无关的话术。
+    现在:爬取证据里没有的,如实标「待 Step 3 基于证据补全」。
+    """
+    placeholder = {
+        "point": "待补充：爬取文本中未提取到足够证据（Step 3 由 LLM 基于 02-raw 证据填写）",
+        "evidence": "",
+        "score": 0,
+        "source": "",
+    }
+    return [dict(placeholder)], [dict(placeholder)]
+
+
+def _source_label_for_url(url: str) -> str:
+    """从 URL 域名推来源标签 —— 标签必须诚实反映链接指向(历史 bug:
+    链接是官网却标 'G2 / 评测 / 官方',读者点进去发现根本不是 G2)。"""
+    if not url:
+        return "来源"
+    u = url.lower()
+    if "g2.com" in u:
+        return "G2 评测"
+    if "capterra" in u:
+        return "Capterra 评测"
+    if "reddit.com" in u:
+        return "Reddit 讨论"
+    if "trustpilot" in u:
+        return "Trustpilot"
+    if "crunchbase" in u:
+        return "Crunchbase"
+    if "36kr.com" in u or "huxiu.com" in u or "sspai.com" in u:
+        return "中文媒体报道"
+    return "官网页面"
+
+
+def _is_placeholder_swot(item: dict) -> bool:
+    """识别占位 SWOT 条目(爬取证据不足时写入的'待补充'行)。
+
+    这些不是真实反馈,渲染成用户反馈就是伪造 —— 用户反馈 section
+    直接跳过(真实事故:每家都显示同一句占位文本 + 假 G2 标签)。
+    """
+    text = (item.get("point") or item.get("text") or "").strip()
+    return (
+        not text
+        or text.startswith("待补充")
+        or text.startswith("待 Step 3")
+        or item.get("score") in (0, "0", None) and not item.get("evidence")
+    )
+
+
 def _derive_user_feedback(c):
-    """从 strengths/weaknesses 派生用户反馈小结(带 source URL)。"""
+    """从真实的 strengths/weaknesses 派生用户反馈小结(带诚实来源标签)。
+
+    - 只收有真实证据(有 text 且非占位)的条目
+    - source_label 从 URL 域名推导,绝不硬编码 "G2 / 评测 / 官方"
+    - strengths/weaknesses 的 source 就是该论断的出处;没有 source 的不渲染链接
+    """
     pos = [
         {
             "text": s.get("point", ""),
-            "source": s.get("source", "") or c.get("url", ""),
-            "source_label": s.get("source_label", "G2 / 评测 / 官方"),
+            "source": s.get("source", ""),
+            "source_label": _source_label_for_url(s.get("source", "")),
             "count": s.get("score", "—"),
         }
         for s in c.get("strengths", [])[:3]
-        if s.get("point")
+        if not _is_placeholder_swot(s)
     ]
     neg = [
         {
             "text": w.get("point", ""),
-            "source": w.get("source", "") or c.get("url", ""),
-            "source_label": w.get("source_label", "G2 / 社区 / 评测"),
+            "source": w.get("source", ""),
+            "source_label": _source_label_for_url(w.get("source", "")),
             "count": w.get("score", "—"),
         }
         for w in c.get("weaknesses", [])[:3]
-        if w.get("point")
+        if not _is_placeholder_swot(w)
     ]
     summary_parts = []
     if pos:
-        summary_parts.append(f"正面：{pos[0]['text'][:30]}")
+        summary_parts.append(f"正面：{pos[0].get('text', '')[:30]}")
     if neg:
-        summary_parts.append(f"负面：{neg[0]['text'][:30]}")
+        summary_parts.append(f"负面：{neg[0].get('text', '')[:30]}")
     summary = "。".join(summary_parts) if summary_parts else "—"
     return {"summary": summary, "positive": pos, "negative": neg}
 
@@ -406,6 +652,558 @@ def _group_competitors_by_stage(competitors):
 
 
 # ─────────────────────────────────────────────────────────
+# Canonical 功能集(行业标准) — 用于 § 5.2.1/5.2.2 权威矩阵
+#
+# 区别于 _DEFAULT_FEATURE_ALIASES(把同义功能合并),
+# canonical 是「这家赛道应该具备的能力清单」,每行代表一个标准能力,
+# 每个能力有: 中文名 / 英文名 / 类别 / 中文解释 / 行业意义 / 同义别名。
+# 渲染时,每个能力对每家厂商判定「支持 ✓ / 未找到公开材料 ?」,
+# 缺失时给出「为何缺失」的明确说明(避免出现『有的有、有的没』的空洞矩阵)。
+# ─────────────────────────────────────────────────────────
+_CANONICAL_FEATURES_WHATSAPP = [
+    # ──────────── 消息渠道 (Messaging Channels) ────────────
+    {
+        "id": "whatsapp_business_api",
+        "name_cn": "WhatsApp Business API",
+        "name_en": "WhatsApp Business API",
+        "category": "消息渠道",
+        "importance": "P0 · 基础设施",
+        "desc": "Meta 官方的 WhatsApp Business API 接入能力,是 WhatsApp 营销 SaaS 的基础;所有合规平台都必须具备。",
+        "why": "无此能力则无法在 WhatsApp 上发送任何消息,平台意义不存在。",
+        "aliases": [
+            "whatsapp business api",
+            "whatsapp api",
+            "whatsapp business platform",
+            "whatsapp business api account",
+            "whatsapp",
+        ],
+    },
+    {
+        "id": "whatsapp_calling_api",
+        "name_cn": "WhatsApp Calling API",
+        "name_en": "WhatsApp Business Calling API",
+        "category": "消息渠道",
+        "importance": "P1 · 增值能力",
+        "desc": "在 WhatsApp 内发起语音通话,用于实时客户服务,提升沟通效率。",
+        "why": "WhatsApp 2024 年推出的 Calling 能力,目前支持平台较少,具备此能力是差异化加分项。",
+        "aliases": [
+            "whatsapp calling",
+            "whatsapp business calling api",
+            "whatsapp calling api",
+            "whatsappcall",
+        ],
+    },
+    {
+        "id": "whatsapp_link_generator",
+        "name_cn": "WhatsApp 短链/QR 码",
+        "name_en": "WhatsApp Link / QR Generator",
+        "category": "消息渠道",
+        "importance": "P2 · 客户引流",
+        "desc": "生成 wa.me 短链/QR 码,客户扫码即可打开与企业的 WhatsApp 对话。",
+        "why": "线下门店、广告投放、KOL 引流的核心入口工具。",
+        "aliases": [
+            "whatsapp link generator",
+            "whatsapp qr generator",
+            "ctwa",
+            "click to whatsapp ad",
+            "wa.me link",
+        ],
+    },
+    {
+        "id": "whatsapp_shop",
+        "name_cn": "WhatsApp Shop 电商",
+        "name_en": "WhatsApp Shop / Catalog",
+        "category": "消息渠道",
+        "importance": "P2 · 电商场景",
+        "desc": "在 WhatsApp 内展示产品目录、购物车和结账,实现交易闭环。",
+        "why": "Meta 推 WhatsApp Shops 的核心场景,东南亚/中东品牌电商必备。",
+        "aliases": [
+            "whatsapp shop",
+            "whatsapp catalog",
+            "whatsapp stores",
+            "product catalog",
+        ],
+    },
+    {
+        "id": "omnichannel_inbox",
+        "name_cn": "多渠道统一收件箱",
+        "name_en": "Omnichannel Unified Inbox",
+        "category": "消息渠道",
+        "importance": "P0 · 基础设施",
+        "desc": "WhatsApp + Email + SMS + Live Chat 等多渠道对话统一接入同一个收件箱。",
+        "why": "客户跨渠道咨询是常态;统一收件箱避免坐席在不同工具切换。",
+        "aliases": [
+            "omnichannel",
+            "multi-channel",
+            "multichannel",
+            "live chat",
+            "livechat",
+            "wechat",
+            "instagram",
+            "facebook messenger",
+            "telegram",
+            "sms",
+            "email",
+            "voice",
+        ],
+    },
+    # ──────────── 营销自动化 (Marketing Automation) ────────────
+    {
+        "id": "broadcast_campaign",
+        "name_cn": "群发营销 Broadcast",
+        "name_en": "Broadcast Campaign",
+        "category": "营销自动化",
+        "importance": "P0 · 核心变现",
+        "desc": "向分群后的客户批量发送 WhatsApp 模板消息(Marketing / Utility / Authentication),是 WhatsApp 营销 SaaS 的核心变现能力。",
+        "why": "WhatsApp 收费按对话计费,群发是营收主力;无此能力则无法做营销。",
+        "aliases": [
+            "broadcast campaign",
+            "broadcast",
+            "campaign",
+            "campaigns",
+            "send broadcasts via whatsapp to targeted customers",
+            "send promotions and newsletters",
+            "promotions",
+            "newsletters",
+            "bulk message",
+        ],
+    },
+    {
+        "id": "journey_builder",
+        "name_cn": "客户旅程编排",
+        "name_en": "Journey / Flow Builder",
+        "category": "营销自动化",
+        "importance": "P1 · 自动化进阶",
+        "desc": "拖拉拽配置多步骤自动化营销流程(触发 → 条件分支 → 动作),无需代码。",
+        "why": "进阶营销自动化,从单次群发升级到完整客户生命周期管理。",
+        "aliases": [
+            "journey",
+            "journey builder",
+            "flow builder",
+            "automation",
+            "visual flow builder",
+            "drag-and-drop workflow",
+            "workflow automation",
+        ],
+    },
+    {
+        "id": "segmentation",
+        "name_cn": "客户分群",
+        "name_en": "Segmentation",
+        "category": "营销自动化",
+        "importance": "P0 · 营销前置",
+        "desc": "按标签/属性/行为把客户分组,实现精准营销;WhatsApp 对未分群营销有严格限制。",
+        "why": "无分群则群发 = 骚扰,封号风险高;Meta 政策强制要求基于用户授权。",
+        "aliases": [
+            "create custom segment",
+            "segment",
+            "segments",
+            "segmentation",
+            "audience",
+            "custom segment",
+        ],
+    },
+    {
+        "id": "growth_tool",
+        "name_cn": "客户增长 / 名单收集",
+        "name_en": "Contact Growth Tool",
+        "category": "营销自动化",
+        "importance": "P1 · 拉新工具",
+        "desc": "提供落地页/表单/广告集成等工具,持续获取 WhatsApp 客户名单。",
+        "why": "WhatsApp 营销的天花板由名单规模决定,拉新工具是平台重要加分项。",
+        "aliases": [
+            "growth tool",
+            "lead form",
+            "lead ads",
+            "click to whatsapp",
+            "ctwa",
+            "form builder",
+            "landing page",
+        ],
+    },
+    # ──────────── AI 客服 (AI / Chatbot) ────────────
+    {
+        "id": "ai_chatbot",
+        "name_cn": "AI 自动回复 Chatbot",
+        "name_en": "AI Chatbot / Agent",
+        "category": "AI 客服",
+        "importance": "P1 · 降本",
+        "desc": "基于 LLM 或 NLP 的自动回复机器人,处理常见咨询,降低人工成本。",
+        "why": "降本增效;WhatsApp 客服 70%+ 流量是 FAQ 类问题,理论上都可由 AI 处理。",
+        "aliases": [
+            "ai agent",
+            "chatbots",
+            "ai built on a trusted foundation",
+            "ai assistant",
+            "ai chatbot",
+            "chatbot",
+            "nlp",
+        ],
+    },
+    {
+        "id": "ai_human_handoff",
+        "name_cn": "AI 转人工升级",
+        "name_en": "AI → Human Handoff",
+        "category": "AI 客服",
+        "importance": "P1 · 体验兜底",
+        "desc": "AI 检测到复杂/敏感/用户主动请求时自动升级到人工客服。",
+        "why": "避免 AI 误答导致客户流失;是 AI 客服系统的基础兜底机制。",
+        "aliases": [
+            "human handoff",
+            "agent handoff",
+            "escalation to human",
+            "transfer to human",
+            "fallback to agent",
+        ],
+    },
+    {
+        "id": "ai_knowledge_training",
+        "name_cn": "AI 知识库训练",
+        "name_en": "AI Knowledge Base Training",
+        "category": "AI 客服",
+        "importance": "P2 · 模型效果",
+        "desc": "上传文档/FAQ/产品手册让 AI 学习,提升回答准确率。",
+        "why": "AI 效果 = 知识库质量;此能力决定 AI 客服实际可用度。",
+        "aliases": [
+            "knowledge base",
+            "knowledge base training",
+            "faq training",
+            "document training",
+            "ai training",
+            "lyro",
+        ],
+    },
+    # ──────────── 收件箱 / 协作 (Inbox & Collaboration) ────────────
+    {
+        "id": "team_inbox",
+        "name_cn": "团队共享收件箱",
+        "name_en": "Team / Unified Inbox",
+        "category": "收件箱协作",
+        "importance": "P0 · 客服基础",
+        "desc": "客服团队共用一个会话视图,支持多人协作处理同一客户对话。",
+        "why": "无团队收件箱 = 单人小作坊,无法支撑企业级客服;行业标配。",
+        "aliases": [
+            "inbox",
+            "team inbox",
+            "unified inbox",
+            "shared inbox",
+            "chats, calls and emails in one thread",
+            "manage concurrent customer messages with a unified inbox",
+            "agent inbox",
+            "multi-agent inbox",
+        ],
+    },
+    {
+        "id": "chat_assignment",
+        "name_cn": "对话分配 / 路由",
+        "name_en": "Chat Assignment / Routing",
+        "category": "收件箱协作",
+        "importance": "P1 · 团队协作",
+        "desc": "把进入的对话按规则分配到具体坐席(按团队/优先级/语言/客户标签)。",
+        "why": "无分配规则 = 抢对话/重复回复,客户体验崩坏。",
+        "aliases": [
+            "chat assignment",
+            "conversation routing",
+            "conversation assignment",
+            "routing rules",
+            "round robin",
+            "auto-assign",
+        ],
+    },
+    {
+        "id": "internal_notes",
+        "name_cn": "内部备注 / 协作",
+        "name_en": "Internal Notes / @mention",
+        "category": "收件箱协作",
+        "importance": "P2 · 团队协作",
+        "desc": "客服内部 @同事 / 留言 / 备注,客户不可见。",
+        "why": "团队协作必备,客户对话上下文传递。",
+        "aliases": [
+            "internal notes",
+            "internal chat",
+            "@mention",
+            "team chat",
+            "备注",
+            "内部备注",
+        ],
+    },
+    # ──────────── CRM / 客户数据 ────────────
+    {
+        "id": "social_crm",
+        "name_cn": "Social CRM 客户画像",
+        "name_en": "Social CRM",
+        "category": "CRM / 客户数据",
+        "importance": "P2 · 差异化",
+        "desc": "整合客户在 WhatsApp 的画像(标签/属性/历史对话),建立 360° 客户视图。",
+        "why": "WhatsApp 上的客户对话是非结构化金矿,Social CRM 是变现关键。",
+        "aliases": [
+            "social crm",
+            "crm",
+            "customer profile",
+            "contact 360",
+            "contact management",
+        ],
+    },
+    {
+        "id": "tags_custom_attrs",
+        "name_cn": "客户标签 / 自定义属性",
+        "name_en": "Tags & Custom Attributes",
+        "category": "CRM / 客户数据",
+        "importance": "P1 · 基础能力",
+        "desc": "为客户打标签 / 加自定义属性,支持精准分群和个性化沟通。",
+        "why": "无标签 = 无法分群;WhatsApp 营销前提是合规分群。",
+        "aliases": [
+            "tags",
+            "tag",
+            "custom attribute",
+            "custom attributes",
+            "custom field",
+            "标签",
+        ],
+    },
+    # ──────────── 电商 / Commerce ────────────
+    {
+        "id": "payment_links",
+        "name_cn": "支付链接 Payment Links",
+        "name_en": "Payment Links",
+        "category": "电商 / Commerce",
+        "importance": "P2 · 交易闭环",
+        "desc": "在对话中发送支付链接(Stripe / 微信 / 支付宝),客户点击即可付款。",
+        "why": "客服对话中直接成交的关键工具,提升转化率。",
+        "aliases": [
+            "payment links",
+            "payment link",
+            "stripe",
+            "checkout",
+            "支付链接",
+            "购物车恢复",
+            "cart recovery",
+        ],
+    },
+    # ──────────── 集成 (Integration) ────────────
+    {
+        "id": "shopify_integration",
+        "name_cn": "Shopify 电商集成",
+        "name_en": "Shopify Integration",
+        "category": "集成 / Integration",
+        "importance": "P1 · 跨境标配",
+        "desc": "对接 Shopify,同步订单/库存/客户,支持购物车恢复和发货通知。",
+        "why": "Shopify 是独立站首选,WhatsApp 客服 + Shopify 是 DTC 标配。",
+        "aliases": [
+            "shopify",
+            "shopify 集成",
+            "shopify inbox",
+            "shopify integration",
+            "woocommerce",
+            "magento",
+            "e-commerce",
+        ],
+    },
+    {
+        "id": "hubspot_crm_integration",
+        "name_cn": "HubSpot / Salesforce CRM 集成",
+        "name_en": "HubSpot / Salesforce CRM",
+        "category": "集成 / Integration",
+        "importance": "P1 · 企业级",
+        "desc": "对接 HubSpot / Salesforce 等主流 CRM,同步 contacts / deals / 通讯记录。",
+        "why": "WhatsApp 对话进入 CRM 是销售跟进的关键。",
+        "aliases": [
+            "hubspot",
+            "hubspot crm integration",
+            "salesforce",
+            "zoho",
+            "crm 集成",
+            "crm integration",
+        ],
+    },
+    {
+        "id": "zapier_make",
+        "name_cn": "Zapier / Make 自动化集成",
+        "name_en": "Zapier / Make Integration",
+        "category": "集成 / Integration",
+        "importance": "P2 · 扩展性",
+        "desc": "通过 Zapier / Make.com 连接 5000+ SaaS 工具做无代码自动化。",
+        "why": "无原生集成的工具,可通过 Zapier 桥接;扩展平台适用场景。",
+        "aliases": [
+            "zapier",
+            "make.com",
+            "zapier integration",
+            "make integration",
+            "automation",
+        ],
+    },
+    {
+        "id": "rest_api",
+        "name_cn": "REST API 开放接口",
+        "name_en": "REST API",
+        "category": "集成 / Integration",
+        "importance": "P1 · 开发者",
+        "desc": "公开 REST API 供开发者把 WhatsApp 集成到自有系统。",
+        "why": "企业级客户必须能 API 集成,否则无法嵌入业务流程。",
+        "aliases": [
+            "rest api",
+            "api",
+            "open api",
+            "restful api",
+            "public api",
+        ],
+    },
+    {
+        "id": "webhooks",
+        "name_cn": "Webhook 事件推送",
+        "name_en": "Webhooks",
+        "category": "集成 / Integration",
+        "importance": "P1 · 实时",
+        "desc": "新消息/状态变更等事件实时推送到开发者服务器,降低轮询成本。",
+        "why": "WhatsApp 对话状态变化(已读/已送达/客户回复)需要 Webhook 实时同步。",
+        "aliases": [
+            "webhook",
+            "webhooks",
+            "webhook events",
+            "events api",
+            "callback",
+        ],
+    },
+    # ──────────── 分析 (Analytics) ────────────
+    {
+        "id": "analytics",
+        "name_cn": "营销分析 / 数据洞察",
+        "name_en": "Marketing Analytics",
+        "category": "分析 / Analytics",
+        "importance": "P1 · 决策支撑",
+        "desc": "营销活动分析(送达率/打开率/回复率/转化漏斗),支撑 ROI 决策。",
+        "why": "WhatsApp 按对话计费,数据驱动优化是降本关键。",
+        "aliases": [
+            "analytics",
+            "data-driven insights",
+            "insights",
+            "数据洞察",
+            "get data-driven insights",
+            "campaign analytics",
+            "sales analytics",
+            "marketing analytics",
+            "reports",
+        ],
+    },
+    {
+        "id": "data_export",
+        "name_cn": "数据导出",
+        "name_en": "Data Export",
+        "category": "分析 / Analytics",
+        "importance": "P1 · 合规",
+        "desc": "联系人 / 对话 / 分析数据批量导出(CSV/Excel/API)。",
+        "why": "GDPR 合规与数据迁移必备;企业采购硬性要求。",
+        "aliases": [
+            "data export",
+            "export",
+            "csv export",
+            "excel export",
+            "数据导出",
+            "导出",
+        ],
+    },
+    # ──────────── 数据安全 (Security & Compliance) ────────────
+    {
+        "id": "rbac",
+        "name_cn": "角色权限管理 RBAC",
+        "name_en": "Role-Based Access (RBAC)",
+        "category": "数据安全",
+        "importance": "P1 · 企业级",
+        "desc": "多角色多坐席权限管理,支持细粒度访问控制。",
+        "why": "企业客户必备;无 RBAC = 无法管理客服团队数据权限。",
+        "aliases": [
+            "rbac",
+            "role-based access",
+            "团队成员角色",
+            "角色权限",
+            "团队协作",
+            "team permissions",
+            "workspace",
+            "sub-account",
+            "iam",
+        ],
+    },
+    {
+        "id": "data_security",
+        "name_cn": "数据安全 / 加密",
+        "name_en": "Data Security / Encryption",
+        "category": "数据安全",
+        "importance": "P1 · 合规",
+        "desc": "数据传输加密 / 静态加密 / SOC2 / GDPR / ISO27001 等合规认证。",
+        "why": "金融 / 医疗 / 跨境客户硬性要求;WhatsApp 涉及个人数据必须合规。",
+        "aliases": [
+            "data security",
+            "encryption",
+            "gdpr",
+            "soc2",
+            "iso 27001",
+            "compliance",
+            "数据安全",
+            "security",
+        ],
+    },
+    # ──────────── 开发者 (Developer) ────────────
+    {
+        "id": "sandbox",
+        "name_cn": "沙箱 / 测试环境",
+        "name_en": "Sandbox / Test Environment",
+        "category": "开发者",
+        "importance": "P2 · 体验加分",
+        "desc": "提供测试环境 / Mock 账号 / 测试号码供开发者集成验证。",
+        "why": "企业集成需要沙箱联调,无沙箱 = 集成风险高。",
+        "aliases": [
+            "sandbox",
+            "test environment",
+            "test mode",
+            "staging",
+            "demo",
+            "沙箱",
+        ],
+    },
+]
+
+
+# 中文别名注入:18/28 个 canonical 原本只有英文别名,中文竞品(Meetbot)
+# 的功能名("精准营销"/"人群打标圈选")永远配不上 → 矩阵整列 ?
+# (真实事故:Meetbot 28 行只命中 1 行)
+_CANONICAL_ZH_ALIASES = {
+    "whatsapp_business_api": ["官方API", "API接入", "商业API", "接口对接"],
+    "whatsapp_calling_api": ["语音通话", "通话", "语音API", "语音渠道"],
+    "whatsapp_link_generator": ["短链", "短链接", "二维码", "链接生成"],
+    "whatsapp_shop": ["商品目录", "店铺", "电商", "商城", "商品展示"],
+    "omnichannel_inbox": ["统一收件箱", "多渠道", "全渠道", "聚合聊天", "多平台接入"],
+    "broadcast_campaign": ["群发", "广播", "批量发送", "群播", "营销群发"],
+    "journey_builder": ["客户旅程", "自动化流程", "工作流", "流程编排", "自动化"],
+    "segmentation": ["分群", "圈选", "打标", "人群", "分层", "客户分群"],
+    "growth_tool": ["名单收集", "获客", "引流", "增长工具", "私域增长", "裂变"],
+    "ai_chatbot": ["智能回复", "自动回复", "机器人", "智能客服", "AI回复", "智能体"],
+    "ai_human_handoff": ["转人工", "人工客服", "人工接管", "人机协作"],
+    "ai_knowledge_training": ["知识库", "FAQ训练", "知识训练"],
+    "team_inbox": ["共享收件箱", "团队收件箱", "多人协作", "坐席协作"],
+    "chat_assignment": ["对话分配", "分配", "路由", "调度", "工单分配"],
+    "internal_notes": ["备注", "内部协作", "协作备注"],
+    "social_crm": ["客户画像", "CRM", "画像", "客户管理", "客户资料"],
+    "tags_custom_attrs": ["自定义属性", "自定义字段", "标签管理", "用户标签"],
+    "payment_links": ["支付链接", "收款链接", "支付"],
+    "shopify_integration": ["电商对接", "独立站对接", "店铺同步"],
+    "hubspot_crm_integration": ["CRM集成", "CRM对接"],
+    "zapier_make": ["自动化集成", "第三方集成", "集成平台"],
+    "rest_api": ["开放接口", "API接口", "接口"],
+    "webhooks": ["事件推送", "回调", "webhook推送"],
+    "analytics": ["数据分析", "数据看板", "报表", "分析", "统计", "数据洞察"],
+    "data_export": ["导出", "数据导出", "批量导出"],
+    "rbac": ["权限管理", "角色权限", "子账号", "多角色"],
+    "data_security": ["数据安全", "加密", "安全认证", "合规"],
+    "sandbox": ["测试环境", "沙箱环境", "试用环境"],
+}
+for _f in _CANONICAL_FEATURES_WHATSAPP:
+    _zh = _CANONICAL_ZH_ALIASES.get(_f["id"], [])
+    if _zh:
+        _f["aliases"] = list(_f.get("aliases", [])) + _zh
+
+
+
+# ─────────────────────────────────────────────────────────
 # 内置默认别名库 — 覆盖常见集成/CDP/收件箱场景(零配置启用)
 # 优先级最低,被用户配置和自动检测覆盖
 # ─────────────────────────────────────────────────────────
@@ -437,7 +1235,16 @@ _DEFAULT_FEATURE_ALIASES = {
         "rationale": "公开 REST 接口供开发者集成。",
     },
     "Webhook 事件推送": {
-        "aliases": ["Webhook 双向", "Webhook 事件", "Webhook", "Webhook Events"],
+        "aliases": [
+            "Webhook 双向",
+            "Webhook 事件",
+            "Webhook",
+            "Webhook Events",
+            "Webhook 事件回调",
+            "Events API",
+            "Webhook Callbacks",
+            "新消息/状态变更推送",
+        ],
         "rationale": "新消息/状态变更等事件实时推送到开发者服务器。",
     },
     "电商集成 (E-commerce)": {
@@ -581,7 +1388,62 @@ _DEFAULT_FEATURE_ALIASES = {
         ],
         "rationale": "上传文档/FAQ 让 AI 自动学习。",
     },
-}
+    # 企业级基础能力 — 每家都应有
+    "多渠道接入 (Omnichannel Aggregation)": {
+        "aliases": [
+            "多渠道接入",
+            "8 渠道统一",
+            "Omnichannel",
+            "Multi-channel Inbox",
+            "Channel API",
+            "Channels API",
+            "渠道聚合",
+        ],
+        "rationale": "统一接入 WhatsApp/SMS/Email/Voice/Messenger 等多渠道。",
+    },
+    "数据导出 (Data Export)": {
+        "aliases": [
+            "数据导出",
+            "Data Export",
+            "导出",
+            "CSV/Excel 导出",
+            "Insights Export",
+            "Message Export",
+            "Conversation Export",
+            "对话记录导出",
+            "分析数据导出",
+        ],
+        "rationale": "联系人/对话/分析数据批量导出 — 企业合规与迁移必备。",
+    },
+    "权限与团队管理 (RBAC)": {
+        "aliases": [
+            "权限与角色管理",
+            "权限与团队管理",
+            "RBAC",
+            "Role-Based Access",
+            "团队协作",
+            "角色权限",
+            "Team Permissions",
+            "Workspace 隔离",
+            "Sub-account",
+            "IAM",
+            "团队成员角色",
+            "Operator 角色权限",
+        ],
+        "rationale": "多角色多坐席团队协作必备。RBAC + 工作空间隔离。",
+    },
+    "审计日志 (Audit Logs)": {
+        "aliases": [
+            "审计日志",
+            "Audit Logs",
+            "操作日志",
+            "Audit Trail",
+            "Compliance Logs",
+            "API 调用记录",
+        ],
+        "rationale": "SOC2/HIPAA/ISO27001 等合规审计必需。",
+    },
+    }
 
 
 def _auto_detect_aliases(competitors):
@@ -624,12 +1486,27 @@ def _merge_alias_layers(user_aliases, auto_aliases, default_aliases):
     # 第 1 层:默认别名库
     for canonical, info in default_aliases.items():
         merged[canonical] = info
-    # 第 2 层:自动检测 — 默认没覆盖的才添加
+    # 第 1.5 层:预先索引 — 默认/已合并 canonical 的所有 aliases (lower) → canonical
+    canonical_by_alias_lower: dict = {}
+    for canonical, info in merged.items():
+        if isinstance(info, dict):
+            for a in info.get("aliases", []):
+                canonical_by_alias_lower[a.strip().lower()] = canonical
+            canonical_by_alias_lower[canonical.strip().lower()] = canonical
+    # 第 2 层:自动检测
     for canonical, info in auto_aliases.items():
+        # 如果 auto canonical 已经在某个默认 canonical 的 aliases 里 → 合并
+        existing_canonical = canonical_by_alias_lower.get(canonical.strip().lower())
+        if existing_canonical and existing_canonical != canonical:
+            # auto canonical 其实是已有 canonical 的别名 → 把 auto 的 _comps 加到 existing
+            if isinstance(merged[existing_canonical], dict):
+                # 触发:把 auto_aliases 中的 _comps 信息合并 (这里 auto_aliases 只标记名)
+                pass
+            continue  # 不创建新条目
         if canonical not in merged:
             merged[canonical] = info
         else:
-            # 自动检测的别名也加入现有 canonical
+            # 同名 canonical — 合并 aliases
             existing_aliases = set(
                 merged[canonical].get("aliases", [])
                 if isinstance(merged[canonical], dict)
@@ -854,6 +1731,248 @@ def _build_feature_comparison_matrix(competitors, feature_aliases=None):
     }
 
 
+def _build_canonical_matrix(competitors, canonical_features):
+    """构造 § 5.2.1/5.2.2 的「权威」功能对比矩阵。
+
+    与 _build_feature_comparison_matrix 的关键区别:
+      - **行 = canonical 功能(行业标准)**(不是厂商原始功能)
+      - 每个 canonical 功能固定有: 中文名 / 英文名 / 类别 / 中文释义 / 行业意义 / 同义别名
+      - 对每家厂商的每个 canonical 功能,判定:
+          · supports=True + evidence  → ✓ (该厂商原始 feature_catalog 中有同义别名)
+          · supports=False             → ? (公开材料未发现),并附「为何缺失」说明
+      - **绝不会出现「空行」**;canonical 是赛道应有的能力清单,即使所有厂商都没有也保留行
+      - 每个判定附带 confidence(高/中/低)和 source URL
+
+    Args:
+        competitors: 竞品列表,每个含 feature_catalog: {vendor_name: [feat, ...]}
+        canonical_features: 标准功能清单(见 _CANONICAL_FEATURES_WHATSAPP 格式)
+
+    Returns:
+        dict:
+          - categories: 按类别聚合后的功能列表(每个含完整 vendor 判定)
+          - canonical_features: 全局 canonical 功能列表(扁平)
+          - competitor_names: 列出的厂商顺序
+          - totals_per_competitor: {vendor: 命中 canonical 数}
+          - totals_per_category: {category: 该类别 canonical 数}
+          - confidence_counts: {vendor: {high: N, med: N, low: N}}
+    """
+    comp_names = [c["name"] for c in competitors]
+    # 1) 索引每个厂商的 (alias_lower, original_name) → feature dict
+    #    来源含 feature_catalog + tech_signals(docs 页提取的真实技术能力,
+    #    如 WATI docs 的 "REST API"/"Webhooks" —— 历史缺陷:矩阵只看
+    #    feature_catalog,docs 页证据完全没参与判定)
+    comp_feat_index: dict = {}
+    for c in competitors:
+        cname = c["name"]
+        feats = list(c.get("feature_catalog", {}).get(cname, []))
+        for t in c.get("tech_signals", []):
+            tname = (t.get("name") if isinstance(t, dict) else t) or ""
+            tsrc = (t.get("source") if isinstance(t, dict) else "") or ""
+            for part in re.split(r"[（(·/]", tname):
+                part = part.strip()
+                if part and len(part) >= 3:
+                    feats = feats + [{"name": part, "source": tsrc, "desc": ""}]
+        idx: dict = {}
+        for f in feats:
+            fname = (f.get("name", "") or "").strip()
+            if fname:
+                idx[fname.lower()] = f
+        comp_feat_index[cname] = idx
+
+    # 2) 对每个 canonical 功能,对每个厂商做匹配
+    enriched_features: list = []
+    totals_per_competitor: dict = {cn: 0 for cn in comp_names}
+    confidence_counts: dict = {
+        cn: {"high": 0, "medium": 0, "low": 0} for cn in comp_names
+    }
+
+    for canon in canonical_features:
+        aliases_lower = [a.strip().lower() for a in canon.get("aliases", [])]
+        # canonical 自己也作为一个 alias 用于匹配(厂商直接叫 canonical_name)
+        if canon.get("name_en"):
+            aliases_lower.append(canon["name_en"].strip().lower())
+        if canon.get("name_cn"):
+            aliases_lower.append(canon["name_cn"].strip().lower())
+        aliases_lower = list({a for a in aliases_lower if a})
+
+        per_vendor: dict = {}
+        support_count = 0
+        for cname in comp_names:
+            idx = comp_feat_index.get(cname, {})
+            matched_feat = None
+            matched_alias = None
+            match_kind = ""  # exact=完全同名 / fuzzy=词边界模糊命中
+            # 完全相等优先(高置信)
+            for a in aliases_lower:
+                if a in idx:
+                    matched_feat = idx[a]
+                    matched_alias = a
+                    match_kind = "exact"
+                    break
+            if matched_feat is None:
+                # 词边界匹配:厂商 feature_name 按整词(+可选复数后缀)包含 alias。
+                # 历史缺陷1:裸子串匹配让 "email marketing" 命中 omnichannel_inbox
+                # 的 "email" 别名 → 整行误判 ✓;修复时又引入缺陷2:严格边界把
+                # "Webhooks"/"Inboxes"/"AI Agents" 挡在 "webhook"/"inbox"/
+                # "ai agent" 之外(复数形式),矩阵 ✓ 率从 9% 卡死。
+                # 现规则:alias 后允许恰好一个复数后缀 s/es,其余仍按整词。
+                for vendor_fname_lower, feat in idx.items():
+                    for a in aliases_lower:
+                        # CJK 别名 2 字即整词("打标"/"圈选");英文别名 ≥4 防
+                        # 短缩写误配。CJK 无复数后缀,直接整词匹配。
+                        has_cjk = bool(re.search(r"[\u4e00-\u9fff]", a))
+                        min_len = 2 if has_cjk else 4
+                        if len(a) >= min_len and re.search(
+                            rf"(?<![a-z0-9]){re.escape(a)}(?:s|es)?(?![a-z0-9])"
+                            if not has_cjk
+                            else re.escape(a),
+                            vendor_fname_lower,
+                        ):
+                            matched_feat = feat
+                            matched_alias = a
+                            match_kind = "fuzzy"
+                            break
+                    if matched_feat is not None:
+                        break
+
+            if matched_feat is not None:
+                support_count += 1
+                totals_per_competitor[cname] += 1
+                is_fuzzy = match_kind == "fuzzy"
+                if is_fuzzy:
+                    confidence_counts[cname]["medium"] += 1
+                else:
+                    confidence_counts[cname]["high"] += 1
+                per_vendor[cname] = {
+                    "status": "supports",
+                    "evidence_feature_name": matched_feat.get("name", ""),
+                    "evidence_source": matched_feat.get("source", "") or "",
+                    "evidence_desc": matched_feat.get("desc", "") or "",
+                    "matched_alias": matched_alias,
+                    "confidence": "medium" if is_fuzzy else "high",
+                    "note": "关键词模糊匹配,建议人工核对" if is_fuzzy else "",
+                }
+            else:
+                # 未命中 → 标记 ? 并给出「为何缺失」候选解释
+                per_vendor[cname] = {
+                    "status": "unknown",
+                    "evidence_feature_name": "",
+                    "evidence_source": "",
+                    "evidence_desc": "",
+                    "matched_alias": "",
+                    "confidence": "low",
+                    "note": "公开材料未提及",
+                }
+                confidence_counts[cname]["low"] += 1
+
+        enriched_features.append(
+            {
+                "id": canon["id"],
+                "name_cn": canon["name_cn"],
+                "name_en": canon["name_en"],
+                "category": canon["category"],
+                "importance": canon.get("importance", ""),
+                "desc": canon["desc"],
+                "why": canon.get("why", ""),
+                "support_count": support_count,
+                "vendor_total": len(comp_names),
+                "vendors": per_vendor,
+            }
+        )
+
+    # 3) 按类别聚合
+    cat_groups: dict = {}
+    cat_coverage: dict = {}
+    for f in enriched_features:
+        cat = f["category"]
+        cat_groups.setdefault(cat, []).append(f)
+        for cname, v in f["vendors"].items():
+            if v["status"] == "supports":
+                cat_coverage.setdefault(cat, {}).setdefault(cname, 0)
+                cat_coverage[cat][cname] += 1
+
+    categories = []
+    for cat_name in sorted(cat_groups.keys()):
+        feats_sorted = sorted(
+            cat_groups[cat_name],
+            key=lambda x: (
+                -x["support_count"],  # 支持者多的优先
+                x["name_cn"],
+            ),
+        )
+        categories.append(
+            {
+                "name": cat_name,
+                "total_features": len(feats_sorted),
+                "features": feats_sorted,
+                "coverage": cat_coverage.get(cat_name, {}),
+            }
+        )
+
+    totals_per_category = {c["name"]: c["total_features"] for c in categories}
+
+    return {
+        "categories": categories,
+        "canonical_features": enriched_features,
+        "competitor_names": comp_names,
+        "totals_per_competitor": totals_per_competitor,
+        "totals_per_category": totals_per_category,
+        "confidence_counts": confidence_counts,
+        "canonical_total": len(enriched_features),
+    }
+
+
+def _apply_evidence_notes_overrides(canonical_features, evidence_notes):
+    """应用用户在 JSON 中手动覆盖的 evidence_notes(可选)。
+
+    evidence_notes 格式:
+        {
+            "<canonical_id>": {
+                "<vendor_name>": {
+                    "status": "supports" | "unknown",
+                    "evidence_feature_name": "...",  # 可选,该厂商原页面的功能叫法
+                    "evidence_source": "https://...",  # 可选,新证据 URL
+                    "note": "..."  # 可选,自定义缺失/支持原因(会覆盖自动判定)
+                }
+            }
+        }
+
+    设计目的: 当自动匹配算法「猜错」(如把同一能力的两种实现误判为同一项),
+    用户可以在 JSON 里直接覆盖,无需修改爬虫。
+    """
+    if not evidence_notes:
+        return
+    for canon in canonical_features:
+        fid = canon.get("id")
+        if not fid or fid not in evidence_notes:
+            continue
+        per_vendor = evidence_notes[fid]
+        if not isinstance(per_vendor, dict):
+            continue
+        vendors_field = canon.setdefault("vendors", {})
+        for cn, override in per_vendor.items():
+            if not isinstance(override, dict):
+                continue
+            old = vendors_field.get(cn, {})
+            new_status = override.get("status", old.get("status", "unknown"))
+            old["status"] = new_status
+            if "evidence_feature_name" in override:
+                old["evidence_feature_name"] = override["evidence_feature_name"]
+            if "evidence_source" in override:
+                old["evidence_source"] = override["evidence_source"]
+            if "note" in override:
+                old["note"] = override["note"]
+                # 用高置信标记:有 note 的 = 用户手工确认过
+                old["confidence"] = "high" if new_status == "supports" else "medium"
+            vendors_field[cn] = old
+        # 重新计算 support_count
+        canon["support_count"] = sum(
+            1
+            for v in vendors_field.values()
+            if v.get("status") == "supports"
+        )
+
+
 def _find_unique_features(competitors, feature_aliases=None):
     """每家独有的功能(其他家都没有)。
 
@@ -986,17 +2105,390 @@ def _render_sources_html(sources_by_kind):
                 if s.get("competitor")
                 else ""
             )
+            # 来源类型徽章:渲染时未做实际可达性检测,绝不标"可访问"冒充已验证
+            kind_tag = (
+                "👤 用户社区" if s.get("verified") == "user" else "🤖 官方页面"
+            )
             parts.append(
                 f'<div class="source-item" id="src-{s["idx"]}">'
                 f'<span class="src-num">{s["idx"]}</span>'
                 f'<span class="src-claim">{comp_part}{html.escape(s.get("claim", ""))}</span>'
                 f'<div class="src-meta">'
                 f'<a href="{html.escape(s["url"])}" target="_blank">{html.escape(s["url"])}</a>'
-                f'<span style="background:var(--good-soft); color:var(--good); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.7rem; margin-left:0.5rem;">🔗 可访问</span>'
+                f'<span style="background:var(--bg-soft); color:var(--fg-mute); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.7rem; margin-left:0.5rem;">{kind_tag}</span>'
                 f"</div></div>"
             )
         parts.append("</div>")
     return "\n".join(parts)
+
+
+def _render_canonical_section_html(canonical_matrix, source_index=None):
+    """预渲染 § 5.2.1/5.2.2 (基于 canonical 功能集) 的 HTML。
+
+    关键设计:
+      - **每行都有中文释义** + 行业意义说明 —— 用户一眼看懂这是什么
+      - **每个单元格** 都是 ✓/✗/?,附 tooltip 解释「为什么是这个状态」
+      - **? 单元格** 鼠标悬停展示「该厂商公开材料未发现此能力」+ 缺失原因
+      - 支持级别(深浅色)按「N 家支持」自动映射
+      - 行排序: P0 优先 → 支持数多 → 名称
+    """
+    cats = canonical_matrix["categories"]
+    comp_names = canonical_matrix["competitor_names"]
+    totals = canonical_matrix["totals_per_competitor"]
+    canonical_total = canonical_matrix["canonical_total"]
+    confidence_counts = canonical_matrix["confidence_counts"]
+    n_vendors = len(comp_names)
+
+    def _src_n(url):
+        if not source_index or not url:
+            return 0
+        # source_index 可能是 {url: n} 或 {n: {url: ...}} 两种形式
+        if url in source_index and isinstance(source_index[url], (int, str)):
+            return int(source_index[url])
+        for k, v in source_index.items():
+            if isinstance(v, dict) and v.get("url") == url:
+                return int(k) if isinstance(k, (int, str)) else 0
+        return 0
+
+    out = []
+
+    # ───── 顶部统计条 + 完整性说明 ─────
+    total_high = sum(v["high"] for v in confidence_counts.values())
+    total_low = sum(v["low"] for v in confidence_counts.values())
+    coverage_pct = (
+        round(100 * total_high / (total_high + total_low), 1)
+        if (total_high + total_low)
+        else 0
+    )
+    out.append('<div class="feat-summary-bar">')
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{canonical_total}</div><div class="lbl">行业标准功能</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{n_vendors}</div><div class="lbl">对比厂商</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{len(cats)}</div><div class="lbl">功能类别</div></div>'
+    )
+    out.append(
+        f'<div class="feat-summary-stat"><div class="num">{coverage_pct}%</div><div class="lbl">证据完整度</div></div>'
+    )
+    out.append("</div>")
+
+    # 方法学声明 — 这是「权威矩阵」与之前「厂商原功能矩阵」的核心区别
+    out.append(
+        '<div style="background:linear-gradient(135deg, var(--accent-soft) 0%, var(--bg-soft) 100%); '
+        'border-left:3px solid var(--accent); padding:0.75rem 1rem; border-radius:6px; '
+        'margin-bottom:1.25rem; font-size:0.82rem; line-height:1.7;">'
+        '<strong style="color:var(--accent);">📐 方法学:</strong> '
+        "本矩阵以<strong>行业标准功能集(canonical feature set)</strong>为行,"
+        "而非各厂商原始功能列表 —— 避免「各家叫法不同」导致的虚假「独家」。"
+        "<br>"
+        "<strong>判定规则:</strong> 厂商原始 <code>feature_catalog</code> 命中 canonical 别名 → <span style='color:var(--good); font-weight:600;'>✓ 支持</span>(高置信);"
+        "未命中 → <span style='color:var(--warn); font-weight:600;'>? 未找到公开材料</span>(低置信)。"
+        "<br>"
+        "<strong>完整性:</strong> 即使所有厂商都未公开宣传某能力,该行<strong>仍保留</strong> —— 这恰恰是市场空白信号。"
+        "</div>"
+    )
+
+    # ───── § 5.2.1 厂商功能对比矩阵 ─────
+    out.append(
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵 · 基于行业标准</h4>'
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.7;">'
+        f"<strong>行 = {canonical_total} 个行业标准功能</strong>({len(cats)} 个类别);"
+        f"<strong>列 = {n_vendors} 家竞品</strong>。"
+        "<strong>✓=支持(高置信,附证据) / ?=未找到公开材料(低置信)</strong>。"
+        "<br>"
+        '<strong style="color:var(--accent);">颜色含义:</strong> '
+        '<span style="background:rgba(196,49,75,0.18); color:#c4314b; padding:0.05rem 0.45rem; border-radius:3px;">🔴 红=独家(1家)</span> '
+        '<span style="background:rgba(184,142,47,0.18); color:#b88e2f; padding:0.05rem 0.45rem; border-radius:3px;">🟡 黄=少数(2家)</span> '
+        '<span style="background:rgba(31,122,68,0.18); color:var(--good); padding:0.05rem 0.45rem; border-radius:3px;">🟢 绿=多家共有(3-4家)</span> '
+        '<span style="background:rgba(107,70,160,0.20); color:#6b46a0; padding:0.05rem 0.45rem; border-radius:3px;">🟣 紫=行业标配(5家)</span>'
+        " —— <strong>颜色饱和度反映「支持者数量」</strong>(饱和=独家,浅=共有)。"
+        "</p>"
+    )
+    out.append(
+        '<div class="feat-matrix-wrap"><table class="feat-matrix"><thead><tr>'
+        '<th style="text-align:left;">功能 / Feature</th>'
+    )
+    for cn in comp_names:
+        short_name = cn.replace(".io", "")
+        out.append(
+            f'<th title="{html.escape(cn)}">{html.escape(short_name)}<br>'
+            f'<span style="font-size:0.65rem; color:var(--fg-mute); font-weight:400;">'
+            f"{totals.get(cn, 0)}/{canonical_total}</span></th>"
+        )
+    out.append("</tr></thead><tbody>")
+    # 图例:重要度分级说明(徽章颜色红=核心 橙=重要 灰=进阶)
+    out.append(
+        '<tr><td colspan="{n}" style="background:var(--bg-deeper); text-align:left;">'
+        '<span style="font-size:0.72rem; color:var(--fg-mute);">'
+        "徽章图例：<b style='color:var(--bad);'>核心能力</b> = 赛道立身之本,缺失难以存活 · "
+        "<b style='color:var(--warn);'>重要能力</b> = 影响竞争力与转化 · "
+        "<b>进阶能力</b> = 差异化加分项。徽章后半句为该能力对业务的实际价值。"
+        "</span></td></tr>".format(n=n_vendors + 1)
+    )
+
+    for cat in cats:
+        # 类别小标题行
+        out.append(
+            f'<tr class="cat-divider"><td colspan="{n_vendors + 1}">'
+            f'<strong style="color:var(--accent);">📁 {html.escape(cat["name"])}</strong>'
+            f'<span style="color:var(--fg-mute); font-size:0.7rem; margin-left:0.6rem;">'
+            f"{cat['total_features']} 项功能</span></td></tr>"
+        )
+        for f in cat["features"]:
+            vendors = f.get("vendors", {})
+            support_n = f["support_count"]
+            total_n = f["vendor_total"]
+            importance = f.get("importance", "")
+            out.append("<tr>")
+            # ── 左列:中文名 + 释义 + 行业意义 ──
+            importance_html = ""
+            if importance:
+                # P0/P1/P2 是内部优先级黑话,读者看不懂 —— 渲染时翻译成明文
+                imp_label = (
+                    importance.replace("P0", "核心能力", 1)
+                    .replace("P1", "重要能力", 1)
+                    .replace("P2", "进阶能力", 1)
+                    .replace("P3", "加分项", 1)
+                )
+                importance_color = (
+                    "var(--bad)" if importance.startswith("P0")
+                    else "var(--warn)" if importance.startswith("P1")
+                    else "var(--fg-mute)"
+                )
+                importance_html = (
+                    f'<span style="display:inline-block; background:{importance_color}; '
+                    f"color:white; padding:0.05rem 0.4rem; border-radius:3px; "
+                    f'font-size:0.65rem; margin-left:0.4rem; font-weight:600;" '
+                    f'title="该功能对此赛道产品的重要度分级(行业基准清单,按公开材料核对)">'
+                    f"{html.escape(imp_label)}</span>"
+                )
+            desc_html = (
+                f'<div class="feat-desc" style="margin-top:0.2rem;">'
+                f'<strong style="color:var(--fg);">释义:</strong> {html.escape(f.get("desc", ""))}</div>'
+                if f.get("desc")
+                else ""
+            )
+            why_html = (
+                f'<div class="feat-why" style="margin-top:0.15rem; color:var(--fg-mute); font-size:0.72rem;">'
+                f'🎯 {html.escape(f.get("why", ""))}</div>'
+                if f.get("why")
+                else ""
+            )
+            eng_name_html = (
+                f'<span style="color:var(--fg-mute); font-size:0.7rem; margin-left:0.3rem; font-weight:400;">'
+                f"{html.escape(f.get('name_en', ''))}</span>"
+            )
+            out.append(
+                f"<td>"
+                f'<div class="feat-name-line">'
+                f'<strong>{html.escape(f["name_cn"])}</strong>{eng_name_html}{importance_html}'
+                f"</div>"
+                f"{desc_html}{why_html}"
+                f"</td>"
+            )
+            # ── 单元格 ──
+            for cn in comp_names:
+                v = vendors.get(cn, {})
+                status = v.get("status", "unknown")
+                if status == "supports":
+                    support_ratio = support_n
+                    cls = f"feature-cell share-{min(support_ratio, 6)}"
+                    src = v.get("evidence_source", "")
+                    ref_n = _src_n(src)
+                    ref_html = (
+                        f'<a href="#src-{ref_n}" class="cell-ref">{ref_n}</a>'
+                        if ref_n
+                        else ""
+                    )
+                    evidence_name = v.get("evidence_feature_name", "")
+                    matched = v.get("matched_alias", "")
+                    tooltip_parts = [
+                        f"✓ {cn} 支持「{f['name_cn']}」",
+                    ]
+                    if evidence_name and evidence_name != f["name_cn"]:
+                        tooltip_parts.append(f"原页面叫法: {evidence_name}")
+                    if matched and matched != f["name_cn"].lower():
+                        tooltip_parts.append(f"匹配别名: {matched}")
+                    tooltip_parts.append(
+                        f"{support_n}/{total_n} 家支持 · 证据 [{ref_n or '?'}]"
+                    )
+                    if src:
+                        tooltip_parts.append(f"来源: {src}")
+                    tooltip = " · ".join(tooltip_parts)
+                    out.append(
+                        f'<td class="{cls}" title="{html.escape(tooltip)}">'
+                        f'<span class="cell-mark">✓</span>{ref_html}</td>'
+                    )
+                else:
+                    # ? 单元格 — 明确说明「未找到公开材料」并给原因候选
+                    note = v.get("note", "公开材料未提及")
+                    tooltip = (
+                        f"? {cn} 未公开宣传「{f['name_cn']}」\n"
+                        f"判定: 该厂商 feature_catalog 中未找到 canonical 别名匹配\n"
+                        f"缺失原因: {note}\n"
+                        f"行业意义: {f.get('why', '—')}\n"
+                        f"可信度: 低(未深入查 docs/blog/changelog)"
+                    )
+                    out.append(
+                        f'<td class="feature-cell unknown-cell" '
+                        f'title="{html.escape(tooltip)}" '
+                        f'style="opacity:0.55; background:var(--warn-soft);">'
+                        f'<span class="cell-mark">?</span></td>'
+                    )
+            out.append("</tr>")
+
+    # 总数行
+    out.append('<tr class="total-row"><td>📊 <strong>命中标准功能</strong></td>')
+    for cn in comp_names:
+        out.append(
+            f'<td class="feature-cell"><strong>{totals.get(cn, 0)}</strong>/{canonical_total}</td>'
+        )
+    out.append("</tr>")
+    out.append("</tbody></table></div>")
+
+    # ───── § 5.2.2 按功能类别分组(紧凑 3 栏布局) ─────
+    out.append(
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📂 5.2.2 按功能类别分组(谁独家 / 谁缺位)</h4>'
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 1rem;">每个类别下列出所有 canonical 功能;'
+        '<strong style="color:var(--good);">✓ 绿</strong> = 该厂商支持(高置信,附证据),'
+        '<strong style="color:var(--warn);">? 黄</strong> = 未找到公开材料(低置信)。'
+        "🏆 = 行业标配(全员支持);🕳 = 真空地带(全员缺失,市场空白)。</p>"
+    )
+
+    cats_sorted = sorted(cats, key=lambda c: -c["total_features"])
+    cat_icon_map = {
+        "消息渠道": "💬",
+        "营销自动化": "📣",
+        "AI 客服": "🤖",
+        "收件箱协作": "🗂",
+        "CRM / 客户数据": "👥",
+        "电商 / Commerce": "🛒",
+        "集成 / Integration": "🔌",
+        "分析 / Analytics": "📊",
+        "数据安全": "🔒",
+        "开发者": "🛠",
+    }
+
+    for cat in cats_sorted:
+        out.append('<div class="feat-category-card">')
+        cat_icon = cat_icon_map.get(cat["name"], "📦")
+        cat_coverage = cat.get("coverage", {})
+        cov_text = " · ".join(
+            f"<strong>{html.escape(cn)}</strong>:{cat_coverage.get(cn, 0)}/{cat['total_features']}"
+            for cn in comp_names
+        )
+        out.append(
+            f'<div class="cat-head">'
+            f'<div class="cat-icon">{cat_icon}</div>'
+            f'<div class="cat-info">'
+            f'<div class="cat-name">{html.escape(cat["name"])} '
+            f'<span class="cat-count-inline">{cat["total_features"]} 项</span></div>'
+            f'<div class="cat-coverage">{cov_text}</div>'
+            f"</div>"
+            f"</div>"
+        )
+        out.append('<div class="feat-grid">')
+        for f in cat["features"]:
+            vendors = f.get("vendors", {})
+            support_n = f["support_count"]
+            total_n = f["vendor_total"]
+            is_universal = support_n == total_n and total_n > 0
+            is_none = support_n == 0
+            importance = f.get("importance", "")
+            importance_badge = ""
+            if importance:
+                # P0/P1/P2 → 明文(与 5.2.1 矩阵同一翻译规则)
+                imp_label = (
+                    importance.replace("P0", "核心能力", 1)
+                    .replace("P1", "重要能力", 1)
+                    .replace("P2", "进阶能力", 1)
+                    .replace("P3", "加分项", 1)
+                )
+                importance_color = (
+                    "#c4314b" if importance.startswith("P0")
+                    else "#b88e2f" if importance.startswith("P1")
+                    else "var(--fg-mute)"
+                )
+                importance_badge = (
+                    f'<span class="imp-badge" style="background:{importance_color};" '
+                    f'title="该功能对此赛道产品的重要度分级(行业基准清单,按公开材料核对)">'
+                    f"{html.escape(imp_label)}</span>"
+                )
+            # 中文释义 + 行业意义 — 一行内紧凑显示
+            desc_short = f.get("desc", "")
+            why_short = f.get("why", "")
+            star = ""
+            if is_universal:
+                star = '<span class="feat-flag flag-universal" title="行业标配:全员支持">🏆</span>'
+            elif is_none:
+                star = '<span class="feat-flag flag-void" title="真空地带:全员未公开此能力 = 市场空白信号">🕳</span>'
+
+            # 厂商支持网格 — 每家一个小方块(✓/?)+ 简名
+            vendor_cells = []
+            for cn in comp_names:
+                v = vendors.get(cn, {})
+                if v.get("status") == "supports":
+                    src = v.get("evidence_source", "")
+                    evidence_name = v.get("evidence_feature_name", "")
+                    title = (
+                        f"✓ {cn} 支持 · 原页面叫法: {evidence_name}"
+                        + (f" · 证据: {src}" if src else "")
+                    )
+                    vendor_cells.append(
+                        f'<div class="vc-supports" title="{html.escape(title)}">'
+                        f'<span class="vc-mark">✓</span>'
+                        f'<span class="vc-name">{html.escape(cn.replace(".io", ""))}</span>'
+                        f"</div>"
+                    )
+                else:
+                    note = v.get("note", "公开材料未提及")
+                    title = f"? {cn} 未公开宣传 · {note} · 行业意义: {why_short}"
+                    vendor_cells.append(
+                        f'<div class="vc-unknown" title="{html.escape(title)}">'
+                        f'<span class="vc-mark">?</span>'
+                        f'<span class="vc-name">{html.escape(cn.replace(".io", ""))}</span>'
+                        f"</div>"
+                    )
+
+            vendor_cells_html = "".join(vendor_cells)
+            # 行高亮:全员支持 → 浅绿边框;全员缺失 → 浅红边框;独家 → 浅金边框
+            card_class = "feat-compact-card"
+            if is_universal:
+                card_class += " feat-card-universal"
+            elif is_none:
+                card_class += " feat-card-void"
+            elif support_n == 1:
+                card_class += " feat-card-unique"
+
+            out.append(
+                f'<div class="{card_class}">'
+                f'<div class="feat-card-head">'
+                f'<div class="feat-card-title">'
+                f"{star}"
+                f"<strong>{html.escape(f['name_cn'])}</strong>"
+                f"{importance_badge}"
+                f'<span class="feat-card-en">{html.escape(f.get("name_en", ""))}</span>'
+                f"</div>"
+                f'<div class="feat-card-score" title="支持数/总厂商数">'
+                f"{support_n}/{total_n}"
+                f"</div>"
+                f"</div>"
+                f'<div class="feat-card-desc">'
+                f'<strong>释义:</strong>{html.escape(desc_short)}'
+                f"</div>"
+                f'<div class="feat-card-why">'
+                f"🎯 <strong>行业意义:</strong>{html.escape(why_short)}"
+                f"</div>"
+                f'<div class="feat-card-vendors">{vendor_cells_html}</div>'
+                f"</div>"
+            )
+        out.append("</div>")  # feat-grid
+        out.append("</div>")  # feat-category-card
+
+    return "\n".join(out)
 
 
 def _render_section5_2_html(matrix, unique_features):
@@ -1212,7 +2704,22 @@ def _render_section5_2_html(matrix, unique_features):
             out.append("</div></div>")
         out.append("</div>")
 
-    # 独家功能面板 —— 每条带 owner vendor + [N] 内部证据 + ↗ 原文 URL + 通俗讲解 + 原始描述
+    # 独家功能面板 — 抽到独立函数,canonical 模式也能复用
+    out.append(_render_unique_features_panel(unique_features))
+
+    return "\n".join(out)
+
+
+def _render_unique_features_panel(unique_features):
+    """§ 5.2.3 各家独家功能面板 —— canonical 模式与 fallback 模式共用。
+
+    Args:
+        unique_features: dict, {vendor_name: [unique_feature, ...]}
+
+    Returns:
+        HTML 字符串
+    """
+    out = []
     out.append(
         '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 5.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点(每条带 owner + [N] 内部证据 + ↗ 原文 + 通俗讲解)</span></h4>'
         '<p style="font-size:0.78rem; color:var(--fg-mute); margin-bottom:1rem; line-height:1.6;">'
@@ -1236,7 +2743,6 @@ def _render_section5_2_html(matrix, unique_features):
             source_url = u.get("_source", "")
             desc = u.get("desc", "") or ""
             cat = u.get("category", "") or ""
-            # ── 通俗讲解:根据 category 自动补一句用途 ──
             plain = {
                 "消息 API": "用于程序化发送/接收 WhatsApp 消息(开发者集成场景)",
                 "收件箱": "客服团队共用一个对话视图,提升响应效率",
@@ -1296,8 +2802,145 @@ def _render_section5_2_html(matrix, unique_features):
             )
         out.append("</div>")
     out.append("</div>")
-
     return "\n".join(out)
+
+
+# ─────────── 数据修复:脏 feature 清洗 / 空 SWOT 推断 / 默认分校准 ───────────
+# 爬虫输出的 JSON 常见三类问题,统一在渲染入口修复(老 JSON 也能渲染干净):
+#   1. features 混入营销标题("Respond.io vs Manychat"/人名证言/**加粗**残留)
+#   2. strengths/weaknesses 留空(爬虫约定由渲染端补全)
+#   3. scores 全部相等(爬虫没算分,写入默认 5)
+
+_JUNK_MARKETING_RX = re.compile(
+    r"\b(vs\.?|versus|explore|discover|power of|trusted by|proven results"
+    r"|here's how|learn how|see how|introducing|get to know|meet the|why choose)\b",
+    re.I,
+)
+_JUNK_FEAT_KEYWORDS = (
+    "api", "ai", "sdk", "crm", "chat", "inbox", "message", "call", "email",
+    "sms", "bot", "workflow", "automation", "analytics", "integration",
+    "whatsapp", "campaign", "集成", "自动化", "收件箱", "渠道", "客服", "营销",
+    "分析", "机器人", "推送", "同步", "管理", "消息", "工单", "坐席",
+)
+
+
+def _clean_feature_text(t: str) -> str:
+    s = (t or "").strip()
+    s = re.sub(r"\[([^\]]*)\]\(https?://[^)]*\)", r"\1", s)  # 剥 markdown 链接语法
+    return re.sub(r"\s+", " ", re.sub(r"[*_`]+", "", s)).strip()
+
+
+# 渲染层第二道防线:cookie 横幅 / JS 模板变量 / 多语言碎片 / 证言引语
+# (爬取层 _is_real_feature 已过滤,这里兜住旧 JSON / 手工数据 / 截断残留)
+_JUNK_FEATURE_RX2 = re.compile(
+    r"^manage\s+(options|services|vendors|preferences|consent)"
+    r"|\{[^}]*\\[a-z][^}]*\}"
+    r"|accept\s+(all|cookies)|cookie\s+preferences|do\s+not\s+sell|opt-out"
+    r"|[\u0600-\u06FF]"
+    r'|^["\u201c\u2018]'
+    r"|\[",  # 残留方括号(截断的 markdown 链接)—— 功能名不含 [
+    re.I,
+)
+# 常见多语言站导航动词(纯 ASCII 的西/德/语碎片,重音检测抓不到:"Explorar" 事故)
+_JUNK_NAV_WORDS = (
+    "explorar", "descubrir", "descubre", "conocer más", "entdecken",
+    "mehr erfahren", "découvrir", "en savoir plus", "scopri di più",
+    "saiba mais", "了解更多",
+)
+
+
+def _is_junk_feature(t: str) -> bool:
+    """营销标题/证言人名/句子/横幅菜单/多语言碎片 → 不是产品功能。"""
+    s = _clean_feature_text(t)
+    if not s or len(s) < 2:
+        return True
+    if _JUNK_MARKETING_RX.search(s):
+        return True
+    if _JUNK_FEATURE_RX2.search(s):
+        return True
+    s_low = s.lower().strip()
+    if any(s_low == w or s_low.startswith(w + " ") for w in _JUNK_NAV_WORDS):
+        return True
+    # 重音字母密集 → 西/法/葡语翻译碎片
+    if len(re.findall(r"[àâäéèêëïîôöùûüçñáíóú]", s, re.I)) > len(s) * 0.22:
+        return True
+    if s.endswith((".", "!", "?")) or ". " in s:  # 句子不是功能名
+        return True
+    return False
+
+
+def _fix_feature_lists(c: dict) -> None:
+    """清洗单个竞品的 feature_catalog + core_features(去营销噪音 + 大小写不敏感去重)。"""
+    name = c.get("name", "")
+    catalog = c.get("feature_catalog", {})
+    if isinstance(catalog, dict) and isinstance(catalog.get(name), list):
+        seen, cleaned = {}, []
+        for f in catalog[name]:
+            if not isinstance(f, dict):
+                continue
+            f["name"] = _clean_feature_text(f.get("name", ""))
+            key = f["name"].lower()
+            if not f["name"] or _is_junk_feature(f["name"]):
+                continue
+            if key in seen:  # 大小写变体:保留大写字母更多的(品牌原文)
+                kept = seen[key]
+                if sum(ch.isupper() for ch in f["name"]) > sum(
+                    ch.isupper() for ch in kept["name"]
+                ):
+                    kept["name"] = f["name"]
+                continue
+            seen[key] = f
+            cleaned.append(f)
+        catalog[name] = cleaned
+    if isinstance(c.get("core_features"), list):
+        seen, cleaned = {}, []
+        for f in c["core_features"]:
+            f = _clean_feature_text(f if isinstance(f, str) else str(f))
+            key = f.lower()
+            if not f or _is_junk_feature(f):
+                continue
+            if key in seen:
+                kept = seen[key]
+                if sum(ch.isupper() for ch in f) > sum(ch.isupper() for ch in kept):
+                    seen[key] = f
+                continue
+            seen[key] = f
+            cleaned.append(seen[key])
+        c["core_features"] = cleaned
+
+
+def _calibrate_scores(c: dict, feature_counts: list) -> None:
+    """scores 全相等(爬虫默认值)时标记低置信,不再按关键词捏造分数。
+
+    历史缺陷:这里曾用关键词启发式"发明"6 维分数(免费→8分/阶段查表→momentum),
+    把默认数据伪装成真实评分。现在:全相等 = Step 3 没给真实分 → 标记
+    scores_confidence=low,模板显示"评分未基于证据"警示,排名不具参考性。
+    """
+    scores = c.get("scores", {})
+    vals = [scores.get(k) for k, _ in SCORE_DIMS]
+    if vals and len(set(vals)) == 1:  # 全相等 = 默认值
+        c["scores_confidence"] = "low"
+    else:
+        c["scores_confidence"] = "normal"
+
+
+def _repair_competitors(competitors: list) -> None:
+    """渲染前统一修复竞品数据(必须在 source/_ref 收集之前跑)。"""
+    for c in competitors:
+        _fix_feature_lists(c)
+        # 爬虫约定:strengths/weaknesses 由渲染端推断补全
+        if not c.get("strengths") or not c.get("weaknesses"):
+            pos, neg = _infer_strengths_weaknesses(c)
+            if not c.get("strengths"):
+                c["strengths"] = pos
+            if not c.get("weaknesses"):
+                c["weaknesses"] = neg
+    feature_counts = [
+        len(c.get("feature_catalog", {}).get(c.get("name", ""), []))
+        for c in competitors
+    ]
+    for c in competitors:
+        _calibrate_scores(c, feature_counts)
 
 
 def normalize(data: dict) -> dict:
@@ -1332,17 +2975,30 @@ def normalize(data: dict) -> dict:
     data.setdefault("background", "")
     data.setdefault("goals", [])
 
+    # ── 先修复数据(脏 feature / 空 SWOT / 默认分),再做 source 收集 ──
+    _repair_competitors(data["competitors"])
+
     # ── 提前定义 _add_source + 收集 sources ──
     # 这样下面 inspiration_points / swot / 等派生都能拿到 _ref
     sources: list = []
     source_idx: dict = {}
 
     def _add_source(url: str, kind: str, claim: str, competitor: str = "") -> int:
+        """注册来源,返回角标号。
+
+        去重键 = (url, claim, competitor) —— 而非裸 URL。
+        历史缺陷:同一 URL(官网首页)被 tagline/founded/GTM/护城河 等
+        多个不同论断复用同一个角标,来源区却只显示第一次注册的 claim
+        ("X · tagline")。读者点「Meta 官方伙伴」旁的 [1] 落地却是
+        "tagline" 条目 = 角标定位全部错位的观感。
+        现在每个论断一个条目,点击落地即所见。
+        """
         if not url:
             return 0
-        if url in source_idx:
-            return source_idx[url]
-        source_idx[url] = len(sources) + 1
+        key = (url, (claim or "")[:80], competitor)
+        if key in source_idx:
+            return source_idx[key]
+        source_idx[key] = len(sources) + 1
         sources.append(
             {
                 "idx": len(sources) + 1,
@@ -1357,7 +3013,7 @@ def normalize(data: dict) -> dict:
                 ),
             }
         )
-        return source_idx[url]
+        return source_idx[key]
 
     # 1. background / executive_summary 等顶层 source 列表
     for src_list_key in ["background_sources", "executive_summary_sources"]:
@@ -1404,20 +3060,30 @@ def normalize(data: dict) -> dict:
             if url:
                 idx = _add_source(url, "weakness", w.get("point", ""), comp)
                 w["_ref"] = idx
+        # GTM/护城河证据条目注册来源(§4 商业策略可追溯的关键)
+        for ev_key, ev_kind in (("gtm_evidence", "competitor_meta"),
+                                ("moat_evidence", "competitor_meta")):
+            for ev_item in c.get(ev_key, []) or []:
+                u = ev_item.get("source", "")
+                if u:
+                    ev_item["_ref"] = _add_source(
+                        u, ev_kind, f"{comp} · {'GTM' if ev_key=='gtm_evidence' else '护城河'}: {ev_item.get('name','')[:50]}", comp
+                    )
 
-    # 3. feature_catalog 每项带 source
+    # 3. feature_catalog 来源:按厂商注册(非每功能一条 —— 5 家 × 50 功能
+    # = 250 条来源曾把来源区撑爆;单元格的 tooltip 已含功能名证据,
+    # 来源条目只需精确到"该厂商功能清单出自哪页")
     for c in data["competitors"]:
         comp = c.get("name", "")
+        _feat_ref_cache = {}
         for feat in c.get("feature_catalog", {}).get(comp, []):
             url = feat.get("source", "")
             if url:
-                idx = _add_source(
-                    url,
-                    "feature",
-                    f"{feat.get('name', '')} ({feat.get('category', '')})",
-                    comp,
-                )
-                feat["_ref"] = idx
+                if url not in _feat_ref_cache:
+                    _feat_ref_cache[url] = _add_source(
+                        url, "feature", f"{comp} · 功能清单", comp
+                    )
+                feat["_ref"] = _feat_ref_cache[url]
 
     # 4. market_segments
     for seg in data.get("market_segments", []):
@@ -1452,8 +3118,9 @@ def normalize(data: dict) -> dict:
             oc["_ref"] = idx
 
     # 8. tech_signals / differentiators / user_feedback enrichment
+    # 历史缺陷:没来源的条目拿官网首页冒充证据源("source laundering")——读者点进去
+    # 根本找不到该论断。现在:没来源就留空,模板按"来源未记录"如实显示。
     for c in data["competitors"]:
-        comp_url = c.get("url", "")
         for fld in ("tech_signals", "differentiators"):
             items = c.get(fld, [])
             enriched = []
@@ -1462,14 +3129,14 @@ def normalize(data: dict) -> dict:
                     enriched.append(
                         {
                             "name": it,
-                            "source": c.get(fld + "_source", "") or comp_url,
+                            "source": c.get(fld + "_source", ""),
                         }
                     )
                 elif isinstance(it, dict):
-                    src = it.get("source") or c.get(fld + "_source", "") or comp_url
+                    src = it.get("source") or c.get(fld + "_source", "")
                     enriched.append({"name": it.get("name", ""), "source": src})
                 else:
-                    enriched.append({"name": str(it), "source": comp_url})
+                    enriched.append({"name": str(it), "source": ""})
             for e in enriched:
                 if e["source"]:
                     e["_ref"] = _add_source(
@@ -1480,15 +3147,15 @@ def normalize(data: dict) -> dict:
                     )
             c[fld] = enriched
 
-        # user_feedback: 给 positive/negative 项加 _ref
+        # user_feedback: 给 positive/negative 项加 _ref(没有真实来源就不渲染链接)
         fb = c.get("_user_feedback_meta") or c.get("user_feedback")
         if not isinstance(fb, dict):
             fb = _derive_user_feedback(c)
         for polarity in ("positive", "negative"):
             for item in fb.get(polarity, []):
                 src = item.get("source_url") or item.get("source") or ""
-                if not src or src in ("G2/Reddit/官网评测", "G2/Reddit/社区抱怨", "—"):
-                    src = comp_url
+                if src in ("G2/Reddit/官网评测", "G2/Reddit/社区抱怨", "—"):
+                    src = ""  # 占位字符串不是来源
                 if src:
                     item["_ref"] = _add_source(
                         src,
@@ -1511,6 +3178,25 @@ def normalize(data: dict) -> dict:
         c.setdefault("tagline", "")
         c.setdefault("pricing", "—")
         c.setdefault("url", "#")
+        # 证据铁律:pricing_verified 缺失 = 未验证(历史缺陷:缺失时模板徽章逻辑
+        # 整体跳过,LLM 忘写字段就能让所有价格裸奔不带 ⚠ —— 现在缺省即 False)
+        if "pricing_verified" not in c:
+            c["pricing_verified"] = False
+        # 定价币种:优先用爬取层从实际价格符号检测的值(₹→INR 等)。
+        # 历史缺陷:这里曾按总部所在地猜币种(总部未知→一律 USD),
+        # 把 WATI 页面上的 ₹999 印度价标成 USD —— 币种错 = 价格错。
+        # 只在爬取层没给值时才按总部兜底。
+        if not c.get("pricing_currency"):
+            currency = "USD"
+            hq = (c.get("headquarters") or "").lower()
+            if any(k in hq for k in ["中国", "china", "大陆", "beijing", "shanghai", "shenzhen"]):
+                currency = "CNY"
+            elif any(k in hq for k in ["hong kong", "hk"]):
+                currency = "HKD"
+            c["pricing_currency"] = currency
+
+        # 注意:不再向 c['pricing'] 字符串附加"(✓N引擎一致)"——这是 debug 元信息,不应暴露给最终用户
+        # 可信度标记走独立的 _pricing_consensus 字段,模板按需显示
         c.setdefault("slug", slugify(c.get("name", "")))
         c.setdefault("icon", smart_icon(c.get("name", "")))
         scores = c.get("scores", {})
@@ -1567,11 +3253,17 @@ def normalize(data: dict) -> dict:
     data["user_positioning"] = {
         c["name"]: _derive_user_positioning(c) for c in data["competitors"]
     }
+    # 任一竞品有真实 region 数据才显示该列(全"未采集"时隐藏整列,
+    # 比一排灰色的"未采集"干净)
+    data["has_region_data"] = any(
+        (c.get("region") or "").strip() not in ("", "未采集")
+        for c in data["competitors"]
+    )
     data["commercial_strategies"] = {
         c["name"]: _derive_commercial_strategies(c) for c in data["competitors"]
     }
     data["product_overview"] = {
-        c["name"]: _derive_product_overview() for c in data["competitors"]
+        c["name"]: _derive_product_overview(c) for c in data["competitors"]
     }
     data["visual_signals"] = {
         c["name"]: _derive_visual_signals(c) for c in data["competitors"]
@@ -1586,24 +3278,118 @@ def normalize(data: dict) -> dict:
     #   横轴:每个 category,纵轴:每个 feature,格子:各竞品是否支持
     # feature_aliases: 可选,把同义功能合并到 canonical_name(团队收件箱 vs 团队共享收件箱)
     aliases = data.get("feature_aliases") or {}
-    data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
-        data["competitors"], aliases
-    )
-    # 把每家厂商自己的来源 URL 转为 [N] 编号,用于 §5.2.1 单元格内显示
-    for cat in data["feature_comparison_matrix"]["categories"]:
-        for f in cat["features"]:
-            vrefs = {}
-            for comp, url in (f.get("_vendor_sources") or {}).items():
-                if url:
-                    vrefs[comp] = _add_source(
-                        url, "feature", f"{f['name']} @ {comp}", comp
-                    )
-            if vrefs:
-                f["_vendor_refs"] = vrefs
-    # 每家独有功能清单(其他家都没有的功能)
-    data["unique_features_by_competitor"] = _find_unique_features(
-        data["competitors"], aliases
-    )
+
+    # ─── 决定是否启用 canonical(行业标准) 模式 ───
+    # 默认开启:任何报告都可受益(行业标准 = 权威);用户可通过 feature_canonical.enabled=false 关闭
+    canonical_features = None
+    fc_config = data.get("feature_canonical") or {}
+    if fc_config.get("enabled", True):
+        # 优先用用户配置的 features,否则按 topic 自动选
+        custom = fc_config.get("features")
+        topic_lower = (data.get("topic") or "").lower()
+        if custom:
+            canonical_features = custom
+        elif "whatsapp" in topic_lower or "whatsapp" in (data.get("topic") or "").lower():
+            canonical_features = list(_CANONICAL_FEATURES_WHATSAPP)
+
+    if canonical_features:
+        # ── canonical 模式:行 = 行业标准能力,列 = 厂商 ──
+        # 1) 应用用户覆盖 evidence_notes(若有): 形如
+        #      {"whatsapp_business_api": {"Sleekflow": {"status": "supports", "evidence_feature_name": "WABA", "evidence_source": "...", "note": "..."}}}
+        #    用户可以「手动确认/否定」自动匹配结果,避免误判;也支持添加原文 URL/补充说明
+        evidence_notes = fc_config.get("evidence_notes") or {}
+        for f_canon in canonical_features:
+            fid = f_canon.get("id")
+            if fid and fid in evidence_notes:
+                notes_per_vendor = evidence_notes[fid]
+                if isinstance(notes_per_vendor, dict):
+                    f_canon.setdefault("_user_overrides", {})
+                    for cn, override in notes_per_vendor.items():
+                        if isinstance(override, dict):
+                            f_canon["_user_overrides"][cn] = override
+
+        data["canonical_matrix"] = _build_canonical_matrix(
+            data["competitors"], canonical_features
+        )
+        # 应用用户覆盖到判定结果
+        _apply_evidence_notes_overrides(
+            data["canonical_matrix"]["canonical_features"],
+            evidence_notes,
+        )
+        # 暴露给模板的统计
+        data["feature_canonical_total"] = data["canonical_matrix"]["canonical_total"]
+        data["feature_canonical_companies"] = len(
+            data["canonical_matrix"]["competitor_names"]
+        )
+        # 把每家厂商命中 canonical 时引用的 source URL 注册为内部证据 [N]
+        source_index_for_render: dict = {}  # {url: n} — _render_canonical 用 url 查
+        _canon_seen_pairs = set()  # (url, vendor) 只注册一次
+        for f in data["canonical_matrix"]["canonical_features"]:
+            for cn, v in f.get("vendors", {}).items():
+                src = v.get("evidence_source", "")
+                if src and (src, cn) not in _canon_seen_pairs:
+                    _canon_seen_pairs.add((src, cn))
+                    if src not in source_index_for_render:
+                        source_index_for_render[src] = _add_source(
+                            src, "feature", f"{cn} · 矩阵判定依据", cn
+                        )
+        # 仍跑一遍旧逻辑以保留 5.2.3 独家功能面板的兼容性
+        data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
+            data["competitors"], aliases
+        )
+        _vsrc_cache = {}
+        for cat in data["feature_comparison_matrix"]["categories"]:
+            for f in cat["features"]:
+                vrefs = {}
+                for comp, url in (f.get("_vendor_sources") or {}).items():
+                    if url:
+                        ck = (url, comp)
+                        if ck not in _vsrc_cache:
+                            _vsrc_cache[ck] = _add_source(
+                                url, "feature", f"{comp} · 功能清单", comp
+                            )
+                        vrefs[comp] = _vsrc_cache[ck]
+                if vrefs:
+                    f["_vendor_refs"] = vrefs
+        data["unique_features_by_competitor"] = _find_unique_features(
+            data["competitors"], aliases
+        )
+        # 预渲染 canonical 矩阵 HTML（权威版本 — 取代旧 section5_2_html 的 5.2.1/5.2.2 部分）
+        data["feature_matrix_mode"] = "canonical"
+        data["section5_2_html"] = _render_canonical_section_html(
+            data["canonical_matrix"],
+            source_index_for_render,
+        ) + _render_unique_features_panel(data["unique_features_by_competitor"])
+    else:
+        # ── fallback:旧版按厂商原始功能 ──
+        data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
+            data["competitors"], aliases
+        )
+        # 把每家厂商自己的来源 URL 转为 [N] 编号,用于 §5.2.1 单元格内显示
+        _vsrc_cache = {}
+        for cat in data["feature_comparison_matrix"]["categories"]:
+            for f in cat["features"]:
+                vrefs = {}
+                for comp, url in (f.get("_vendor_sources") or {}).items():
+                    if url:
+                        ck = (url, comp)
+                        if ck not in _vsrc_cache:
+                            _vsrc_cache[ck] = _add_source(
+                                url, "feature", f"{comp} · 功能清单", comp
+                            )
+                        vrefs[comp] = _vsrc_cache[ck]
+                if vrefs:
+                    f["_vendor_refs"] = vrefs
+        # 每家独有功能清单(其他家都没有的功能)
+        data["unique_features_by_competitor"] = _find_unique_features(
+            data["competitors"], aliases
+        )
+
+        data["feature_matrix_mode"] = "vendor"
+        # 预渲染 § 5.2 矩阵 HTML（避免模板嵌套循环 quadratic 性能）
+        data["section5_2_html"] = _render_section5_2_html(
+            data["feature_comparison_matrix"], data["unique_features_by_competitor"]
+        )
 
     # ─────────── 派生:6 家总分排名(领先/中坚/跟随) ───────────
     comp_total = []
@@ -1625,11 +3411,6 @@ def normalize(data: dict) -> dict:
     data["competitors_ranked"] = comp_total
     data["leader"] = comp_total[0]["name"] if comp_total else "—"
     data["leader_avg"] = comp_total[0]["avg"] if comp_total else 0
-
-    # 预渲染 § 5.2 矩阵 HTML（避免模板嵌套循环 quadratic 性能）
-    data["section5_2_html"] = _render_section5_2_html(
-        data["feature_comparison_matrix"], data["unique_features_by_competitor"]
-    )
 
     # 派生指标
     data["competitor_count"] = len(data["competitors"])
@@ -1680,6 +3461,7 @@ def normalize(data: dict) -> dict:
 
     # 主题副标题
     data["topic_accent"] = "竞争格局与颠覆性机会图谱"
+    data["glossary"] = _build_glossary(data.get("topic") or "")
 
     # ─────────── § 8 其他竞品资料库 ───────────
     data["other_competitors"] = data.get("other_competitors", [])
@@ -1863,8 +3645,15 @@ def normalize(data: dict) -> dict:
     # 这里直接引用,source/_ref 由下面的 enrichment 阶段统一处理。
     swot_per_competitor = []
     for c in data["competitors"]:
-        strengths = c.get("strengths", [])[:3]
-        weaknesses = c.get("weaknesses", [])[:3]
+        # 占位条目(待补充)不进 SWOT 卡 —— 渲染为优雅空态,而不是
+        # 一堆"待补充:爬取文本中未提取到…"的占位行污染阅读(真实事故:
+        # 每张卡 3 条相同占位文本 × 5 家 = 15 行垃圾)
+        strengths = [
+            x for x in c.get("strengths", [])[:6] if not _is_placeholder_swot(x)
+        ][:3]
+        weaknesses = [
+            x for x in c.get("weaknesses", [])[:6] if not _is_placeholder_swot(x)
+        ][:3]
         swot_per_competitor.append(
             {
                 "name": c["name"],
@@ -1886,53 +3675,8 @@ def normalize(data: dict) -> dict:
         )
     data["swot_per_competitor"] = swot_per_competitor
 
-    # 7.5 ★ 先 enrichment (tech_signals/differentiators 变 dict + 收集 _ref)
-    # 因为 SWOT 引用的是 c.tech_signals / c.differentiators,必须先 enrichment 再被引用
-    for c in data["competitors"]:
-        comp_url = c.get("url", "")
-        for fld in ("tech_signals", "differentiators"):
-            items = c.get(fld, [])
-            enriched = []
-            for it in items:
-                if isinstance(it, str):
-                    enriched.append(
-                        {
-                            "name": it,
-                            "source": c.get(fld + "_source", "") or comp_url,
-                        }
-                    )
-                elif isinstance(it, dict):
-                    src = it.get("source") or c.get(fld + "_source", "") or comp_url
-                    enriched.append({"name": it.get("name", ""), "source": src})
-                else:
-                    enriched.append({"name": str(it), "source": comp_url})
-            for e in enriched:
-                if e["source"]:
-                    e["_ref"] = _add_source(
-                        e["source"],
-                        "tech_signal" if fld == "tech_signals" else "differentiator",
-                        e["name"][:50],
-                        c["name"],
-                    )
-            c[fld] = enriched
-
-        # user_feedback: 给 positive/negative 项加 _ref
-        fb = c.get("_user_feedback_meta") or c.get("user_feedback")
-        if not isinstance(fb, dict):
-            fb = _derive_user_feedback(c)
-        for polarity in ("positive", "negative"):
-            for item in fb.get(polarity, []):
-                src = item.get("source_url") or item.get("source") or ""
-                if not src or src in ("G2/Reddit/官网评测", "G2/Reddit/社区抱怨", "—"):
-                    src = comp_url
-                if src:
-                    item["_ref"] = _add_source(
-                        src,
-                        "user_feedback",
-                        item.get("text", "")[:60],
-                        c["name"],
-                    )
-        c["_user_feedback_enriched"] = fb
+    # (原 7.5 重复 enrichment 已删除 —— sources 收集阶段的第 8 步已统一处理,
+    #  且 SWOT 引用的是同一 list 对象,二次包装只会在旧数据上重新引入 homepage 兜底)
 
     # ─────────── 全局引用系统(sources 已在开头收集完毕) ───────────
 
@@ -1976,6 +3720,49 @@ def normalize(data: dict) -> dict:
     }
     # 预渲染 sources 区块 HTML（避免嵌套 for 循环 quadratic 性能）
     data["sources_html"] = _render_sources_html(data["sources_by_kind"])
+
+    # ─────────── 证据质量审计:把"不可追溯/未验证"大声暴露,绝不静默降级 ───────────
+    evidence_warnings: list = []
+    if not sources:
+        evidence_warnings.append(
+            "本报告没有任何带 URL 的来源证据 —— 全部结论不可追溯。"
+            "通常是 03-analysis.json 缺失 source/quote 字段(Step 3 未按证据三元组规范填写),"
+            "请重跑 /youzi Step 2(爬取)+ Step 3(逐字段带 {值, source_url, quote} 提取)。"
+        )
+    unverified_pricing = [
+        c["name"]
+        for c in data["competitors"]
+        if not c.get("pricing_verified")
+        and (c.get("pricing") or "").strip()
+        and c.get("pricing") != "—"
+    ]
+    if unverified_pricing:
+        evidence_warnings.append(
+            f"{len(unverified_pricing)} 家竞品的定价未经 ≥2 引擎交叉验证"
+            f"（{('、'.join(unverified_pricing[:6]))}{'…' if len(unverified_pricing) > 6 else ''}）"
+            "—— 价格可能过时或不准确,请以官网为准。"
+        )
+    placeholder_only = [
+        c["name"]
+        for c in data["competitors"]
+        if c.get("strengths")
+        and all(_is_placeholder_swot(s) for s in c["strengths"])
+    ]
+    if placeholder_only:
+        evidence_warnings.append(
+            f"{len(placeholder_only)} 家竞品的优劣势为占位符(爬取证据不足,"
+            f"涉及 {'、'.join(placeholder_only[:6])})—— 相关板块不可作为决策依据。"
+        )
+    uncalibrated = [
+        c["name"] for c in data["competitors"] if c.get("scores_confidence") == "low"
+    ]
+    if uncalibrated:
+        evidence_warnings.append(
+            f"{len(uncalibrated)} 家竞品的 6 维评分是默认值而非基于证据的评分"
+            f"（{('、'.join(uncalibrated[:6]))}{'…' if len(uncalibrated) > 6 else ''}）"
+            "—— 排名/领先/跟随标签不具参考性。"
+        )
+    data["evidence_warnings"] = evidence_warnings
 
     # 8. Top 3 机会卡片 —— disrupt_score 排序
     sorted_opps = sorted(
@@ -2026,6 +3813,15 @@ def normalize(data: dict) -> dict:
     return data
 
 
+# 历史 bug 回归检查:旧版 _infer_strengths_weaknesses 注入过的伪造引文 ——
+# 这些句子从未真的来自 G2,渲染结果里再次出现即视为伪造回归
+_FABRICATED_QUOTE_RX = re.compile(
+    r"Pricing gets expensive at scale"
+    r"|AI features locked behind premium plans"
+    r"|BSP 接入 WhatsApp Business API,合规可靠"
+)
+
+
 def self_check(data, html_str):
     """严格自检：未解析模板标签 / 数据完整性 / 文件大小。"""
     print("\n=== self-check ===")
@@ -2035,7 +3831,6 @@ def self_check(data, html_str):
     # 排除 JS 中的字面 {{ ... }}（例如模板字符串）—— 这里简单计数足够
     checks = [
         ("竞品 ≥ 3", len(data["competitors"]) >= 3),
-        ("opportunities ≥ 3", len(data["opportunities"]) >= 3),
         ("executive_summary 非空", bool(data.get("executive_summary"))),
         ("主题 token 完整", "--accent:" in html_str and "--bg:" in html_str),
         ("未解析模板标签 = 0", unresolved == 0),
@@ -2060,11 +3855,51 @@ def self_check(data, html_str):
             "每个竞品卡片渲染",
             html_str.count('class="card"') >= len(data["competitors"]),
         ),
+        (
+            "无伪造引文(历史 bug 回归检查)",
+            not _FABRICATED_QUOTE_RX.search(html_str),
+        ),
+        (
+            "每个竞品都有定价验证标记(pricing_verified)",
+            all("pricing_verified" in c for c in data["competitors"]),
+        ),
+        (
+            "未验证定价都有 ⚠ 徽章(逐竞品)",
+            html_str.count('class="pc-unverified"')
+            >= sum(
+                1
+                for c in data["competitors"]
+                if c.get("pricing_verified") is False
+                and (c.get("pricing") or "").strip()
+                and c.get("pricing") != "—"
+            ),
+        ),
+        (
+            "证据可追溯(source_count > 0)",
+            data.get("source_count", 0) > 0,
+        ),
+        (
+            "无 Python repr 泄漏(乱码回归)",
+            "{&#39;" not in html_str and "['" not in html_str and "{'" not in html_str,
+        ),
+        (
+            "无占位符混入启发/机会派生板块",
+            not any(
+                "待补充" in (it.get("inspiration") or "") + (it.get("opportunity") or "")
+                for group in list((data.get("inspiration_points") or {}).values())
+                + list((data.get("opportunity_points") or {}).values())
+                for it in group
+            ),
+        ),
     ]
     for name, passed in checks:
         print(f"  {'✓' if passed else '✗'} {name}")
         if not passed:
             ok = False
+    # opportunities 不再由脚本伪造(历史缺陷)——只提醒,不算失败。
+    # 完整报告应跑 SKILL.md Step 3:LLM 基于证据生成。
+    if len(data["opportunities"]) < 3:
+        print("  ⚠ opportunities < 3 —— 由 LLM Step 3 基于证据生成(见 references/analysis-framework.md),脚本不代劳")
     if unresolved > 0:
         print(f"  ⚠ 检测到 {unresolved} 处未解析标签，前 3 行：")
         for line in html_str.split("\n"):

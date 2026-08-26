@@ -1,6 +1,12 @@
-# Analysis Framework · 13 字段提取
+# Analysis Framework · 13 字段提取（证据优先协议）
 
-每个竞品按下面 13 个字段提取，**所有 strengths / weaknesses / scores 必须有 raw 文件里的具体证据**（带 URL + 引文片段）。没有证据的字段写「无足够证据」。
+每个竞品按下面 13 个字段提取。**证据铁律（优先级最高）：**
+
+1. **每个字段必须带证据三元组**：`值 + source_url + quote（原文逐字引文 ≤100 字）`
+2. **quote 必须能在该 source_url 的 02-raw markdown 里逐字找到** —— 写完用 grep 自查
+3. **证据里没有的写「未验证」**，绝不编造、绝不脑补、绝不用训练记忆填充
+4. **定价交叉验证**：≥2 独立引擎一致 → `pricing_verified: true`；单引擎 → `false`（报告显示 ⚠ 未验证徽章）；零证据 → 「未能获取，请核对官网」
+5. 脚本（crawl_competitors.py）输出的启发式结果只是**候选** —— LLM 必须回对原文核对后采用或丢弃
 
 ## 单竞品 schema
 
@@ -9,32 +15,38 @@
   "name": "Notion",
   "url": "https://notion.so",
   "tagline": "工作空间 · 一个工具搞定一切",
+  "tagline_source": "https://notion.so",
   "founded": 2016,
   "stage": "成熟期",
   "target_users": ["知识工作者", "中小团队", "学生"],
   "core_features": ["块编辑器", "数据库", "模板市场", "AI 写作", "跨平台同步", "API"],
   "pricing": "免费 + Plus $10/月 + Business $15/月",
+  "pricing_verified": true,
+  "pricing_engines": ["firecrawl", "playwright"],
+  "pricing_source": "https://notion.so/pricing",
+  "pricing_scraped_at": "2026-08-25 03:12 UTC",
   "strengths": [
     {
       "point": "块编辑器极灵活，几乎可以搭建任何工作流",
-      "evidence": "官网主页：'Turn any thought into a beautiful page. Notion docs adapt to how you think.' (https://notion.so)",
-      "score": 9
+      "evidence": "官网主页原文：'Turn any thought into a beautiful page. Notion docs adapt to how you think.'",
+      "score": 9,
+      "source": "https://notion.so"
     }
   ],
   "weaknesses": [
     {
       "point": "离线能力弱，网速慢时体验差",
-      "evidence": "G2 评价 Top 5 负面关键词：'slow offline' (https://g2.com/products/notion/reviews)",
-      "score": 3
+      "evidence": "G2 评价原文（需真的读过该页）：'slow offline'",
+      "score": 3,
+      "source": "https://g2.com/products/notion/reviews"
     }
   ],
   "differentiators": [
-    "块编辑器 + 数据库二合一（vs. Confluence 只文档 / Airtable 只表格）",
-    "AI 直接写满整篇文档（vs. 多数产品只做补全）"
+    "块编辑器 + 数据库二合一（vs. Confluence 只文档 / Airtable 只表格）"
   ],
   "tech_signals": [
-    "React + 自研同步引擎（来自 engineering blog）",
-    "Postgres + 自研增量同步（来自 changelog 2024）"
+    {"name": "React 前端", "source": "https://notion.so/blog/..."},
+    {"name": "自研增量同步引擎", "source": "https://notion.so/changelog..."}
   ],
   "scores": {
     "feature_richness": 9,
@@ -46,6 +58,9 @@
   }
 }
 ```
+
+**注意 evidence 字段的写法**：引文必须是你**真的在 02-raw 里读到的句子**。
+写 "G2 评价：xxx" 之前，必须真的爬过那个 G2 页面 —— 否则整条删掉，写「未收集到」。
 
 ## 评分维度（6 维 · 1-10 分）
 
@@ -131,8 +146,11 @@ JSON 数组，按「颠覆性指数」降序（颠覆性 = 用户痛点强度 ×
 ## 自检清单（Step 3 完成时核对）
 
 - [ ] 每个竞品 13 个字段齐全
-- [ ] strengths / weaknesses 至少各有 1 条带 URL 证据
-- [ ] 6 维评分每个竞品都有，且 1-10 范围内
-- [ ] opportunities ≥ 5 条
+- [ ] 每个非空字段的 quote 能在 02-raw 里 grep 到（逐字）
+- [ ] strengths / weaknesses 至少各有 1 条带 URL 证据（没有证据就明说，不硬凑）
+- [ ] 定价带 `pricing_verified` / `pricing_source` / `pricing_scraped_at`
+- [ ] 6 维评分每个竞品都有，且 1-10 范围内，且能说出打分依据（功能数/集成数/定价结构）
+- [ ] opportunities ≥ 5 条（由 LLM 基于证据生成，不是脚本模板）
 - [ ] opportunities 每条都有 validation 量化信号
 - [ ] executive_summary ≤ 200 字
+- [ ] **全程零伪造**：没有任何字段来自硬编码/模板/训练记忆

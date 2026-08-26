@@ -4,7 +4,7 @@ youzi · 一站式竞品分析 runner
 
 按 SKILL.md 的 6 步管线串起来:
   Step 1 发现竞品     — （本 runner 跳过；分析 JSON 由用户/上游提供）
-  Step 2 深度爬取     — 调用 scrape_smart() 抓 competitor URL（7 爬虫并行）
+  Step 2 深度爬取     — 调用 scrape_smart() 抓 competitor URL（13 爬虫并行）
   Step 3 结构化分析   — 读取 03-analysis.json（已含 13 字段提取结果）
   Step 4 渲染 HTML    — 调用 render.py 输出精美报告
   Step 5 自检         — render.py 内置 7 项严格检查
@@ -33,7 +33,7 @@ sys.path.insert(0, str(REPO))
 
 
 def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
-    """Step 2: 并行爬取 — 7 爬虫智能合并"""
+    """Step 2: 并行爬取 — 13 爬虫智能合并"""
     from adapters import scrape_smart
 
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,15 @@ def step4_render(analysis_path, output_path, template_path=None):
     print(f"\n🎨 Step 4 · 渲染 HTML\n  $ {' '.join(cmd[1:])}\n")
     r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True)
     print(r.stdout)
-    if r.returncode != 0:
+    if r.returncode == 2:
+        # 自检失败(如 0 来源证据)但 HTML 已写出:不中断流程,
+        # 报告内有显式警告横幅,提醒重跑 Step 2/3 补证据
+        print(
+            "  ⚠ 渲染自检未通过(见上方 ✗ 项)—— HTML 已生成,但带数据可信度警告。\n"
+            "    通常是 03-analysis.json 缺 source/quote 证据字段,请重跑 Step 3。",
+            file=sys.stderr,
+        )
+    elif r.returncode != 0:
         print(r.stderr, file=sys.stderr)
         raise RuntimeError("render.py failed")
 
@@ -175,13 +183,13 @@ def main():
         print("   示例: --analysis examples/whatsapp-advertising-demo.json")
         return
 
-    analysis_path = Path(args.analysis)
+    analysis_path = Path(args.analysis).expanduser().resolve()
     # 默认输出到当前目录
     if args.output:
-        output_path = Path(args.output)
+        output_path = Path(args.output).expanduser().resolve()
     else:
         safe_topic = "".join(c if c.isalnum() or c in "-_" else "_" for c in args.topic)
-        output_path = Path.cwd() / f"{safe_topic}-report.html"
+        output_path = (Path.cwd() / f"{safe_topic}-report.html").resolve()
     if not analysis_path.exists():
         print(f"\n❌ 分析 JSON 不存在: {analysis_path}", file=sys.stderr)
         sys.exit(1)

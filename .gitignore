@@ -228,3 +228,8 @@ __marimo__/
 /report.html
 *_report.html
 *-report.html
+
+# crawlee / scrapy 运行时产物
+/storage/
+/.cache/
+

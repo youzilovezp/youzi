@@ -42,72 +42,210 @@
   ],
   "feature_aliases": {
     "团队收件箱 (Team Inbox)": {
-      "aliases": ["团队收件箱", "团队共享收件箱", "Team Inbox", "Shared Inbox", "协作收件箱"],
+      "aliases": [
+        "团队收件箱",
+        "团队共享收件箱",
+        "Team Inbox",
+        "Shared Inbox",
+        "协作收件箱"
+      ],
       "rationale": "本质都是「多坐席共享同一个 WhatsApp 对话列表」,只是各家产品命名不同:WATI 强调「共享」,Respond.io / Tidio 用「团队」;指向同一能力。"
     },
     "对话分配 (Chat Assignment)": {
-      "aliases": ["对话分配", "对话分配规则", "Chat Assignment", "Conversation Routing"],
+      "aliases": [
+        "对话分配",
+        "对话分配规则",
+        "Chat Assignment",
+        "Conversation Routing"
+      ],
       "rationale": "把进入的 WhatsApp 对话按规则分配给坐席:按团队 / 优先级 / 语言 / 标签。Respond.io 在「对话分配」后加「规则」后缀,WATI / Tidio 省略;同一能力。"
     },
     "电商集成 (Shopify / E-commerce)": {
-      "aliases": ["Shopify 集成", "Shopify 一键连接", "Shopify Inbox", "Shopify 深度", "E-commerce Integration"],
+      "aliases": [
+        "Shopify 集成",
+        "Shopify 一键连接",
+        "Shopify Inbox",
+        "Shopify 深度",
+        "E-commerce Integration"
+      ],
       "rationale": "对接 Shopify 同步订单 / 库存 / 客户。ManyChat 强调「一键连接」,Respond.io / WATI 直接叫「集成」,Tidio 强调「深度」。同质能力。"
     },
     "HubSpot CRM 集成": {
-      "aliases": ["HubSpot 集成", "HubSpot 连接", "HubSpot CRM Integration"],
+      "aliases": [
+        "HubSpot 集成",
+        "HubSpot 连接",
+        "HubSpot CRM Integration"
+      ],
       "rationale": "对接 HubSpot 同步 contacts / deals / 通讯记录;中英文翻译差异 + 「集成/连接」叫法差异。"
     },
     "Zapier 自动化集成": {
-      "aliases": ["Zapier 集成", "Zapier 连接", "Zapier/Make", "Zapier Integration"],
+      "aliases": [
+        "Zapier 集成",
+        "Zapier 连接",
+        "Zapier/Make",
+        "Zapier Integration"
+      ],
       "rationale": "通过 Zapier 连接 5000+ SaaS 工具做自动化。Respond.io 写「Zapier/Make」(同时支持 Make.com)。"
     },
     "Instagram 多渠道接入": {
-      "aliases": ["Instagram DM", "Instagram 集成", "Instagram Integration"],
+      "aliases": [
+        "Instagram DM",
+        "Instagram 集成",
+        "Instagram Integration"
+      ],
       "rationale": "把 Instagram Direct Message 接入统一收件箱;DM / 集成 / Integration 是同一能力的三种叫法。"
     },
     "Facebook Messenger 接入": {
-      "aliases": ["Facebook Messenger", "Messenger"],
+      "aliases": [
+        "Facebook Messenger",
+        "Messenger"
+      ],
       "rationale": "对接 Meta 的 Facebook Messenger 多渠道能力。ManyChat 全称,Tidio 简写;同一接入。"
     },
     "REST API 开放接口": {
-      "aliases": ["REST API", "API", "Open API"],
+      "aliases": [
+        "REST API",
+        "API",
+        "Open API"
+      ],
       "rationale": "公开 REST 接口供开发者集成;同一能力。"
     },
     "内部备注 (Internal Notes)": {
-      "aliases": ["内部备注", "Internal Notes", "Internal Chat"],
+      "aliases": [
+        "内部备注",
+        "Internal Notes",
+        "Internal Chat"
+      ],
       "rationale": "团队成员在工单内私下沟通(@同事 / @团队),客户不可见;同一协作能力。"
     },
     "Webhook 事件推送": {
-      "aliases": ["Webhook 双向", "Webhook 事件", "Webhook"],
-      "rationale": "新消息/状态变更等事件实时推送到开发者服务器。Respond.io 叫「双向」强调可逆,WATI 叫「事件」强调触发类型。"
+      "aliases": [
+        "Webhook 双向",
+        "Webhook 事件",
+        "Webhook",
+        "Webhook Events",
+        "Webhook 事件回调",
+        "Events API",
+        "Webhook Callbacks"
+      ],
+      "rationale": "新消息/状态变更等事件实时推送到开发者服务器。Respond.io 叫「双向」强调可逆,WATI 叫「事件」强调触发类型。Twilio 的 Events API / Infobip 的 Webhook 推送。"
     },
     "Mailchimp 集成": {
-      "aliases": ["Mailchimp", "Mailchimp 集成"],
+      "aliases": [
+        "Mailchimp",
+        "Mailchimp 集成"
+      ],
       "rationale": "对接 Mailchimp 做邮件营销协同;叫法差异。"
     },
     "WooCommerce 集成": {
-      "aliases": ["WooCommerce", "WooCommerce 连接", "WooCommerce Integration"],
+      "aliases": [
+        "WooCommerce",
+        "WooCommerce 连接",
+        "WooCommerce Integration"
+      ],
       "rationale": "对接 WordPress WooCommerce 电商;「连接 / Integration」叫法差异。"
     },
     "行业模板库 (Workflow Templates)": {
-      "aliases": ["模板市场", "工作流模板库", "Workflow Templates"],
+      "aliases": [
+        "模板市场",
+        "工作流模板库",
+        "Workflow Templates"
+      ],
       "rationale": "预制行业流程模板让用户快速上手。ManyChat 强调「市场」(100+ 模板),Respond.io 强调「模板库」(20+ 模板);同一能力。"
     },
     "Email API (事务 + 营销邮件)": {
-      "aliases": ["Email API", "SendGrid Email", "Transactional Email"],
+      "aliases": [
+        "Email API",
+        "SendGrid Email",
+        "Transactional Email"
+      ],
       "rationale": "事务性 + 营销邮件 API。Twilio 通过 SendGrid,Infobip 自有 Email API;同质能力。"
     },
     "WhatsApp Business API": {
-      "aliases": ["WhatsApp Business API", "WhatsApp Business Platform", "WhatsApp Business"],
+      "aliases": [
+        "WhatsApp Business API",
+        "WhatsApp Business Platform",
+        "WhatsApp Business"
+      ],
       "rationale": "Meta 官方 WhatsApp Business API 直连。Infobip 叫 Platform,Twilio 叫 API;同一接入。"
     },
     "可视化拖拽流程编辑器": {
-      "aliases": ["可视化拖拽流程", "拖拽流程编辑器"],
+      "aliases": [
+        "可视化拖拽流程",
+        "拖拽流程编辑器"
+      ],
       "rationale": "零代码拖拽式工作流编辑。ManyChat 强调「拖拽流程」,Respond.io 强调「流程编辑器」。Twilio Studio 是独立产品,不合并。"
     },
     "AI 转人工升级": {
-      "aliases": ["AI 转人工", "AI 智能路由"],
+      "aliases": [
+        "AI 转人工",
+        "AI 智能路由"
+      ],
       "rationale": "AI 检测到复杂问题后自动升级到人工客服。WATI 叫「转人工」,Tidio「智能路由」实际描述都是「复杂问题自动转人工」。Infobip 的「智能路由」是「AI 自动分配对话」,不合并。"
+    },
+    "多渠道接入 (Omnichannel Aggregation)": {
+      "aliases": [
+        "多渠道接入",
+        "8 渠道统一",
+        "Omnichannel",
+        "Multi-channel Inbox",
+        "Channel API",
+        "Channels API",
+        "渠道聚合"
+      ],
+      "rationale": "统一接入 WhatsApp/SMS/Email/Voice/Messenger 等多渠道。"
+    },
+    "数据导出 (Data Export)": {
+      "aliases": [
+        "数据导出",
+        "Data Export",
+        "导出",
+        "CSV/Excel 导出",
+        "Insights Export",
+        "Message Export",
+        "Conversation Export",
+        "对话记录导出",
+        "分析数据导出"
+      ],
+      "rationale": "联系人/对话/分析数据批量导出 — 企业合规与迁移必备。"
+    },
+    "权限与团队管理 (RBAC)": {
+      "aliases": [
+        "权限与角色管理",
+        "权限与团队管理",
+        "RBAC",
+        "Role-Based Access",
+        "团队协作",
+        "角色权限",
+        "Team Permissions",
+        "Workspace 隔离",
+        "Sub-account",
+        "IAM",
+        "团队成员角色"
+      ],
+      "rationale": "多角色多坐席团队协作必备。RBAC + 工作空间隔离。"
+    },
+    "审计日志 (Audit Logs)": {
+      "aliases": [
+        "审计日志",
+        "Audit Logs",
+        "操作日志",
+        "Audit Trail",
+        "Compliance Logs",
+        "API 调用记录"
+      ],
+      "rationale": "SOC2/HIPAA/ISO27001 等合规审计必需。"
+    },
+    "Flex 联络中心 (TaskRouter 引擎)": {
+      "aliases": [
+        "Flex 任务编排",
+        "Flex 联络中心",
+        "Cloud Contact Center",
+        "Flex Contact Center",
+        "TaskRouter",
+        "Twilio Flex"
+      ],
+      "rationale": "Twilio Flex 是基于 TaskRouter 引擎构建的云联络中心产品;属于同一产品线。"
     }
   },
   "market_segments": [
@@ -340,6 +478,36 @@
             "name": "CLI + Serverless",
             "desc": "Functions 无服务器函数",
             "source": "https://www.twilio.com/runtime"
+          },
+          {
+            "category": "开发者",
+            "name": "Webhook 事件回调",
+            "desc": "消息状态 / 接收回调通过 Webhook 推送",
+            "source": "https://www.twilio.com/docs/usage/webhooks"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "消息日志/对话数据 CSV/JSON 导出",
+            "source": "https://www.twilio.com/docs/usage/api/usage-record"
+          },
+          {
+            "category": "平台",
+            "name": "权限与角色管理",
+            "desc": "子账号 + IAM 角色 + 资源级权限",
+            "source": "https://www.twilio.com/docs/iam"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "API 调用记录 + 用户操作日志",
+            "source": "https://www.twilio.com/docs/usage/api/audit"
+          },
+          {
+            "category": "多渠道",
+            "name": "多渠道接入",
+            "desc": "Flex + Frontline + Channels API 跨渠道(语音/消息/邮件/视频)",
+            "source": "https://www.twilio.com/channels"
           }
         ]
       },
@@ -568,6 +736,30 @@
             "name": "6 种语言支持",
             "desc": "英/中/西/葡/阿/印",
             "source": "https://www.wati.io"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "联系人/对话记录 CSV 导出",
+            "source": "https://www.wati.io"
+          },
+          {
+            "category": "平台",
+            "name": "权限与团队管理",
+            "desc": "坐席角色权限 + 多坐席协作",
+            "source": "https://www.wati.io/team-inbox"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "操作日志追踪",
+            "source": "https://help.wati.io"
+          },
+          {
+            "category": "多渠道",
+            "name": "多渠道接入",
+            "desc": "WhatsApp + Instagram + Messenger + TikTok 4 渠道",
+            "source": "https://www.wati.io"
           }
         ]
       },
@@ -787,6 +979,24 @@
             "name": "客户旅程分析",
             "desc": "跨渠道用户行为",
             "source": "https://respond.io/"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "联系人/对话/分析数据 CSV/Excel 导出",
+            "source": "https://respond.io/features/data-export"
+          },
+          {
+            "category": "平台",
+            "name": "权限与角色管理",
+            "desc": "基于角色的访问控制 RBAC + 自定义角色",
+            "source": "https://respond.io/security"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "所有用户操作 + 系统事件追踪",
+            "source": "https://respond.io/security"
           }
         ]
       },
@@ -1017,6 +1227,36 @@
             "name": "99.95% SLA",
             "desc": "消息送达率保证",
             "source": "https://www.infobip.com/about"
+          },
+          {
+            "category": "开发者",
+            "name": "Webhook 事件",
+            "desc": "消息发送/接收/状态推送 Webhook",
+            "source": "https://www.infobip.com/docs/api"
+          },
+          {
+            "category": "多渠道",
+            "name": "多渠道接入",
+            "desc": "WhatsApp + SMS + Email + Voice + Viber + RCS 统一接入",
+            "source": "https://www.infobip.com/products"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "分析数据/消息日志批量导出",
+            "source": "https://www.infobip.com/docs/api"
+          },
+          {
+            "category": "平台",
+            "name": "权限与角色管理",
+            "desc": "Workspace 隔离 + 角色权限 + SSO",
+            "source": "https://www.infobip.com/security"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "API 调用 + 用户操作全链路审计",
+            "source": "https://www.infobip.com/security"
           }
         ]
       },
@@ -1235,6 +1475,36 @@
             "name": "ROI 仪表盘",
             "desc": "广告 → 对话 → 成交漏斗",
             "source": "https://help.manychat.com/"
+          },
+          {
+            "category": "开发者",
+            "name": "Webhook 事件",
+            "desc": "外部系统集成 Webhook",
+            "source": "https://manychat.github.io/api-docs/"
+          },
+          {
+            "category": "多渠道",
+            "name": "多渠道接入",
+            "desc": "WhatsApp + IG + Messenger + Telegram + Email 多渠道",
+            "source": "https://manychat.com/features"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "联系人标签/订阅状态导出",
+            "source": "https://help.manychat.com"
+          },
+          {
+            "category": "平台",
+            "name": "权限与团队管理",
+            "desc": "团队成员角色 + 工作空间权限",
+            "source": "https://manychat.com/pricing"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "操作日志 + API 调用追踪",
+            "source": "https://manychat.com/security"
           }
         ]
       },
@@ -1452,6 +1722,36 @@
             "name": "客服 KPI",
             "desc": "响应时间 + 满意度",
             "source": "https://www.tidio.com/"
+          },
+          {
+            "category": "开发者",
+            "name": "Webhook 事件",
+            "desc": "新对话/订单事件 Webhook",
+            "source": "https://developers.tidio.com"
+          },
+          {
+            "category": "多渠道",
+            "name": "多渠道接入",
+            "desc": "Live Chat + Email + Messenger + IG + WhatsApp",
+            "source": "https://www.tidio.com/features/"
+          },
+          {
+            "category": "平台",
+            "name": "数据导出",
+            "desc": "对话记录 CSV/Excel 导出",
+            "source": "https://www.tidio.com"
+          },
+          {
+            "category": "平台",
+            "name": "权限与团队管理",
+            "desc": "Operator 角色权限 + 团队分配",
+            "source": "https://help.tidio.com"
+          },
+          {
+            "category": "平台",
+            "name": "审计日志",
+            "desc": "操作日志 + 操作历史查询",
+            "source": "https://www.tidio.com/security"
           }
         ]
       },

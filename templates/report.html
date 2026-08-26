@@ -393,28 +393,28 @@
     font-size: 0.75rem; color: var(--fg-mute);
     text-transform: uppercase; letter-spacing: 0.08em;
   }
-  /* § 5.2 厂商功能对比矩阵 */
+  /* § 5.2 厂商功能对比矩阵 —— 不使用滚动条,自适应展开 */
   .feat-matrix-wrap {
-    overflow-x: auto;
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     margin-bottom: 1.5rem;
-    max-height: 70vh;  /* 长表格可滚动,表头 sticky */
+    overflow: visible;
   }
   .feat-matrix {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
-    min-width: 720px;
+    font-size: 0.78rem;
+    table-layout: fixed;
   }
   .feat-matrix th, .feat-matrix td {
-    padding: 0.6rem 0.7rem;
+    padding: 0.5rem 0.5rem;
     border-bottom: 1px solid var(--line);
     border-right: 1px solid var(--line);
     text-align: center;
     vertical-align: middle;
+    word-break: break-word;
   }
   .feat-matrix thead th {
     background: var(--accent);
@@ -423,26 +423,17 @@
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
   }
-  /* 功能列：宽 + 左对齐 + sticky */
+  /* 功能列：定宽防止长释义把列撑爆(固定布局下 width 生效);厂商列均分剩余 */
   .feat-matrix th:first-child, .feat-matrix td:first-child {
     text-align: left;
     background: var(--bg-soft);
     color: var(--fg);
     font-weight: 600;
     border-right: 2px solid var(--line-strong);
-    min-width: 280px;
-    max-width: 320px;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-  }
-  .feat-matrix thead th:first-child {
-    z-index: 3;  /* sticky 左上角要更高优先级 */
+    width: 34%;
+    max-width: 34%;
+    overflow-wrap: break-word;
   }
   .feat-matrix .feat-name-line {
     display: flex;
@@ -534,13 +525,16 @@
     vertical-align: middle;
   }
   .feat-matrix .cell-ref:hover { background: rgba(255,255,255,0.4); }
-  /* 几家共有的功能 - 颜色深度 */
-  .feat-matrix .share-1 { background: rgba(196, 49, 75, 0.18); color: var(--accent); }
-  .feat-matrix .share-2 { background: rgba(184, 142, 47, 0.15); color: var(--warn); }
-  .feat-matrix .share-3 { background: rgba(43, 108, 176, 0.12); color: var(--info); }
-  .feat-matrix .share-4 { background: rgba(31, 122, 68, 0.12); color: var(--good); }
-  .feat-matrix .share-5 { background: rgba(107, 70, 160, 0.15); color: #6b46a0; }
-  .feat-matrix .share-6 { background: rgba(29, 110, 122, 0.18); color: var(--info); font-weight: 800; }
+  /* 颜色饱和度反映「支持者数量」—— 独家深红 → 标配浅紫
+     命名: share-N 中 N 表示「多少家支持」,但背景颜色按比例饱和:
+     share-1 = 最饱和红(独家)  share-2 = 较饱和黄(少数)
+     share-3/4 = 浅绿(多家共有) share-5 = 浅紫(标配) */
+  .feat-matrix .share-1 { background: rgba(196, 49, 75, 0.32); color: #c4314b; font-weight: 800; }
+  .feat-matrix .share-2 { background: rgba(184, 142, 47, 0.28); color: #b88e2f; font-weight: 700; }
+  .feat-matrix .share-3 { background: rgba(31, 122, 68, 0.22); color: var(--good); font-weight: 700; }
+  .feat-matrix .share-4 { background: rgba(31, 122, 68, 0.18); color: var(--good); font-weight: 600; }
+  .feat-matrix .share-5 { background: rgba(107, 70, 160, 0.15); color: #6b46a0; font-weight: 600; }
+  .feat-matrix .share-6 { background: rgba(107, 70, 160, 0.10); color: #6b46a0; font-weight: 500; }
   /* 总计行 */
   .feat-matrix .total-row td {
     background: var(--bg-deeper) !important;
@@ -646,6 +640,100 @@
   .feat-category-card .comp-pill.unique { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
   .feat-category-card .comp-pill.shared { background: var(--bg-soft); color: var(--fg-soft); }
 
+  /* § 5.2.2 紧凑卡片网格 —— 每张卡 3 段(标题+释义+厂商网格),按 280px 列自适应 */
+  .feat-category-card .cat-info {
+    flex: 1; display: flex; flex-direction: column; gap: 0.2rem;
+  }
+  .feat-category-card .cat-count-inline {
+    font-size: 0.78rem; color: var(--fg-mute);
+    background: var(--bg-soft);
+    padding: 0.1rem 0.5rem; border-radius: 999px;
+    margin-left: 0.5rem; font-weight: 500;
+  }
+  .feat-category-card .cat-coverage {
+    font-size: 0.72rem; color: var(--fg-mute);
+    line-height: 1.5;
+  }
+  .feat-category-card .cat-coverage strong {
+    color: var(--fg-soft); font-weight: 600;
+  }
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 0.65rem;
+  }
+  .feat-compact-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    display: flex; flex-direction: column;
+    gap: 0.4rem;
+    /* 同一行的卡片高度一致 —— 避免错落不齐 */
+    align-self: stretch;
+  }
+  .feat-compact-card:hover {
+    border-color: var(--accent);
+  }
+  .feat-card-universal { border-color: rgba(31, 122, 68, 0.4); background: rgba(31, 122, 68, 0.04); }
+  .feat-card-void { border-color: rgba(196, 49, 75, 0.3); background: rgba(196, 49, 75, 0.03); }
+  .feat-card-unique { border-color: rgba(184, 142, 47, 0.3); background: rgba(184, 142, 47, 0.03); }
+  .feat-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .feat-card-title {
+    display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    flex: 1; min-width: 0;
+  }
+  .feat-card-title strong { font-size: 0.88rem; color: var(--fg); }
+  .feat-card-en {
+    font-size: 0.7rem; color: var(--fg-mute); font-weight: 400;
+  }
+  .feat-flag { font-size: 0.85rem; }
+  .imp-badge {
+    display: inline-block; color: white;
+    padding: 0.05rem 0.4rem; border-radius: 3px;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .feat-card-score {
+    font-size: 0.78rem; font-weight: 700;
+    color: var(--accent); white-space: nowrap;
+    background: var(--accent-soft);
+    padding: 0.1rem 0.5rem; border-radius: 4px;
+  }
+  .feat-card-desc {
+    font-size: 0.76rem; color: var(--fg-soft); line-height: 1.5;
+  }
+  .feat-card-why {
+    font-size: 0.72rem; color: var(--fg-mute); line-height: 1.5;
+  }
+  .feat-card-vendors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 0.3rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--line);
+  }
+  .vc-supports, .vc-unknown {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 0.05rem;
+    padding: 0.3rem 0.2rem; border-radius: 4px;
+    font-size: 0.7rem; text-align: center;
+    cursor: help;
+  }
+  .vc-supports {
+    background: var(--good-soft); color: var(--good);
+    border: 1px solid rgba(31, 122, 68, 0.25);
+  }
+  .vc-unknown {
+    background: var(--warn-soft); color: var(--warn);
+    border: 1px dashed rgba(184, 142, 47, 0.4);
+    opacity: 0.78;
+  }
+  .vc-mark { font-size: 0.92rem; font-weight: 800; line-height: 1; }
+  .vc-name { font-size: 0.62rem; line-height: 1.1; font-weight: 500; }
+
   /* § 2 同类厂商聚类 */
   .segment-cluster {
     background: var(--bg-elev);
@@ -730,7 +818,7 @@
   /* § 2 评分可视化条 */
   .score-visual-bar {
     display: grid;
-    grid-template-columns: 50px 1fr 35px;
+    grid-template-columns: minmax(88px, max-content) 1fr minmax(140px, max-content);
     gap: 0.4rem;
     align-items: center;
     font-size: 0.8rem;
@@ -762,6 +850,7 @@
   .tier-领先 { background: var(--good-soft); color: var(--good); }
   .tier-中坚 { background: var(--info-soft); color: var(--info); }
   .tier-跟随 { background: var(--bg-soft); color: var(--fg-mute); }
+  .tier-未知 { background: var(--bg-soft); color: var(--fg-mute); }
 
   /* Six. Visual signal (5.3 交互视觉) */
   .visual-grid {
@@ -826,7 +915,7 @@
   /* SWOT grid (二.3) */
   .swot-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
     gap: 1rem;
     margin-top: 1rem;
   }
@@ -897,6 +986,38 @@
   .opp-card .insp { font-size: 0.85rem; color: var(--fg-soft); margin: 0.4rem 0; line-height: 1.55; }
   .opp-card .target { font-size: 0.78rem; color: var(--fg-mute); margin-top: 0.5rem; }
   .opp-card .target strong { color: var(--accent); }
+
+  /* 长不可断词(URL/引擎名串)允许任意断行 —— 手机端横滚主因 */
+  section p, section li, section h3, section h4, section td, section th, .sec-hero * { overflow-wrap: anywhere; }
+  .toc-sidebar a, footer p { overflow-wrap: anywhere; }
+
+  /* 窄屏表格横向滚动 */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll .score-table { min-width: 720px; }
+
+  /* SWOT 空态(优雅的"证据收集中"提示,替代占位行) */
+  .swot-empty {
+    font-size: 0.78rem;
+    color: var(--fg-mute);
+    line-height: 1.6;
+    padding: 0.55rem 0.7rem;
+    background: var(--bg-soft);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+  }
+
+  /* 证据质量警告横幅 */
+  .evidence-banner {
+    border: 1px solid var(--warn);
+    background: var(--warn-soft);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1.2rem;
+    margin: 0 0 1.5rem;
+    font-size: 0.88rem;
+    line-height: 1.75;
+  }
+  .evidence-banner strong { color: var(--warn); }
+  .evidence-banner ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
 
   /* Score comparison table (四.1) */
   .score-table {
@@ -1052,9 +1173,13 @@
   /* User overlap matrix (三.3) */
   .overlap-list { margin-top: 0.75rem; }
   .overlap-row {
-    display: grid; grid-template-columns: 200px 1fr 60px;
+    display: grid; grid-template-columns: minmax(120px, 200px) 1fr minmax(48px, 60px);
     gap: 0.75rem; align-items: center; padding: 0.5rem 0;
     border-bottom: 1px dashed var(--line);
+  }
+  @media (max-width: 640px) {
+    .overlap-row { grid-template-columns: 1fr; gap: 0.35rem; }
+    .overlap-intensity { text-align: left; }
   }
   .overlap-segment {
     font-weight: 600; color: var(--fg); font-size: 0.9rem;
@@ -1069,6 +1194,7 @@
   }
   .overlap-intensity {
     font-size: 1.1rem; text-align: right;
+    overflow-wrap: anywhere;
   }
 
   /* Segment overview (六.0) */
@@ -1124,7 +1250,7 @@
   .sources-list {
     margin-top: 1rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
     gap: 0.6rem;
   }
   .source-item {
@@ -1133,7 +1259,11 @@
     padding: 0.6rem 0.85rem;
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     font-size: 0.85rem;
+    min-width: 0; max-width: 100%; overflow: hidden;
+    scroll-margin-top: 96px;  /* 锚点跳转不被吸顶导航遮住(定位"错位"观感来源之一) */
   }
+  html { scroll-behavior: smooth; }
+  .source-item .src-claim { overflow-wrap: anywhere; }
   .source-item .src-num {
     display: inline-block; width: 24px; height: 24px; line-height: 24px;
     text-align: center; border-radius: 50%;
@@ -1149,7 +1279,7 @@
     margin-top: 0.25rem;
   }
   .source-item a {
-    color: var(--info); word-break: break-all;
+    color: var(--info); overflow-wrap: anywhere; word-break: break-word;
   }
 
   /* ────── 章节 Hero ────── */
@@ -1239,7 +1369,7 @@
   .info-chip .lbl { color: var(--fg-mute); font-size: 0.7rem; }
   .info-chip .val { color: var(--fg); font-weight: 600; }
 
-  /* Pricing tier table */
+  /* Pricing tier table — 旧版(保留兼容) */
   .pricing-table {
     width: 100%; border-collapse: collapse;
     background: var(--bg-elev); border-radius: var(--radius-md);
@@ -1257,6 +1387,92 @@
   }
   .pricing-table td:first-child { font-weight: 700; color: var(--accent); }
   .pricing-table tr:hover td { background: var(--bg-soft); }
+
+  /* § 4.4 定价卡片(新) —— 每家一张卡片,内含多个 tier */
+  .pricing-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    display: flex; flex-direction: column;
+    gap: 0.6rem;
+  }
+  .pricing-card .pc-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 0.4rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .pricing-card .pc-head strong {
+    font-size: 1rem; color: var(--fg);
+    font-family: var(--font-display);
+  }
+  .pricing-card .pc-model {
+    font-size: 0.7rem;
+    background: var(--accent-soft); color: var(--accent);
+    padding: 0.1rem 0.5rem; border-radius: 999px;
+    font-weight: 600;
+  }
+  .pricing-card .pc-currency {
+    font-size: 0.65rem;
+    background: var(--bg-soft); color: var(--fg);
+    border: 1px solid var(--line);
+    padding: 0.05rem 0.45rem; border-radius: 3px;
+    font-weight: 700; letter-spacing: 0.04em;
+  }
+  .pricing-card .pc-tiers {
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .pricing-card .pc-tier {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+  }
+  .pricing-card .pc-tier-name {
+    font-size: 0.82rem; font-weight: 700; color: var(--accent);
+    margin-bottom: 0.2rem;
+  }
+  .pricing-card .pc-tier-price strong {
+    font-size: 1.1rem; color: var(--fg);
+    font-family: var(--font-display);
+  }
+  .pricing-card .pc-tier-period {
+    font-size: 0.72rem; color: var(--fg-mute); margin-left: 0.3rem;
+  }
+  .pricing-card .pc-tier-feats {
+    list-style: none; padding: 0; margin: 0.35rem 0 0;
+    font-size: 0.72rem; color: var(--fg-soft);
+    line-height: 1.5;
+  }
+  .pricing-card .pc-tier-feats li {
+    padding-left: 0.85rem; position: relative;
+  }
+  .pricing-card .pc-tier-feats li::before {
+    content: "✓"; position: absolute; left: 0;
+    color: var(--good); font-weight: 700;
+  }
+  .pricing-card .pc-more { color: var(--fg-mute); font-style: italic; }
+  .pricing-card .pc-foot {
+    font-size: 0.72rem; color: var(--fg-mute);
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--line);
+    display: flex; flex-direction: column; gap: 0.2rem;
+  }
+  .pricing-card .pc-note {
+    font-size: 0.7rem; color: var(--warn); line-height: 1.4;
+    background: var(--warn-soft); padding: 0.2rem 0.4rem; border-radius: 3px;
+  }
+  .pricing-card .pc-verified {
+    font-size: 0.68rem; color: var(--good); font-weight: 600;
+    background: var(--good-soft); padding: 0.1rem 0.4rem;
+    border-radius: 3px; cursor: help;
+  }
+  .pricing-card .pc-unverified {
+    font-size: 0.68rem; color: var(--warn); font-weight: 600;
+    background: var(--warn-soft); padding: 0.1rem 0.4rem;
+    border-radius: 3px; cursor: help;
+  }
 
   /* Feature chip cluster */
   .feature-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
@@ -1353,6 +1569,14 @@
   </header>
 
   <!-- ════ 一、背景与目标 ════ -->
+  {% if evidence_warnings %}
+  <div class="evidence-banner">
+    <strong>⚠ 数据可信度警告（自动审计）</strong>
+    <ul>
+      {% for w in evidence_warnings %}<li>{{w}}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   <section id="background">
     <div class="sec-head">
       <div class="sec-num">01</div>
@@ -1364,7 +1588,7 @@
     <div class="sec-hero">
       <h3 style="margin:0; font-family:var(--font-display); font-size:1.1rem; color:var(--accent);">📋 分析背景</h3>
       <p style="margin-top:0.5rem; line-height:1.7; color:var(--fg);">{{background}}
-      {% for bs in background_sources %}<a href="#src-{{bs._ref|default('')}}" class="ref">{{bs._ref|default(loop.index)}}</a>{% endfor %}
+      {% for bs in background_sources %}{% if bs._ref %}<a href="#src-{{bs._ref}}" class="ref">{{bs._ref}}</a>{% else %}<span class="ref" style="opacity:.5;">{{loop.index}}</span>{% endif %}{% endfor %}
       </p>
       {% if goals %}
       <h3 style="margin:1.25rem 0 0.6rem; font-family:var(--font-display); font-size:1rem; color:var(--accent);">🎯 本次分析目标</h3>
@@ -1420,7 +1644,7 @@
     <div class="segment-cluster" style="border-left-color: var(--data-{{loop.index0 % 6 + 1}});">
       <div class="cluster-head">
         <h4>🏷 {{cluster.segment}}</h4>
-        <span class="count">{{cluster.competitors|length}} 家 · {{cluster.segment_desc}}</span>
+        <span class="count">{{cluster.competitors|length}} 家</span>
       </div>
       {% if cluster.segment_desc %}
       <p class="cluster-desc">{{cluster.segment_desc}}</p>
@@ -1429,16 +1653,14 @@
         {% for c in cluster.competitors %}
         <div class="cluster-comp-card" style="border-top-color: var(--data-{{loop.index0 % 6 + 1}});">
           <div class="cc-name">
-            <a href="{{c.url}}" target="_blank" style="color: var(--fg); border: 0;">{{(c.icon or c.name)[:2]}} · {{c.name}}</a>
+            <a href="{{c.url}}" target="_blank" style="color: var(--fg); border: 0;">{{c.name}}</a>
             {% if c._refs.tagline %}<a href="#src-{{c._refs.tagline}}" class="ref" style="margin-left:0.3rem;">{{c._refs.tagline}}</a>{% endif %}
           </div>
           <div class="cc-tagline">「{{c.tagline}}」</div>
           <div class="cc-stats">
-            <span class="cc-stat">阶段 <strong>{{c.stage}}</strong></span>
             <span class="cc-stat">成立 <strong>{{c.founded}}</strong></span>
-            <span class="cc-stat">总人数 <strong>{{c.team_size}}</strong></span>
-            <span class="cc-stat">综合分 <strong>{{(c.scores.feature_richness + c.scores.ux + c.scores.pricing_value + c.scores.integration + c.scores.ai_capability + c.scores.momentum)/6|round(1)}}/10</strong></span>
-            <span class="cc-stat">💰 {{c.pricing|default('—')}}</span>
+            {% if c.team_size and c.team_size != '—' %}<span class="cc-stat">团队 <strong>{{c.team_size}}</strong></span>{% endif %}
+            <span class="cc-stat">💰 {{commercial_strategies[c.name].pricing_display|default('—')|truncate(60)}}</span>
           </div>
           <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--fg-mute);">
             🎯 目标用户:
@@ -1456,10 +1678,7 @@
     {# ──── 评分可视化(小白友好的可视化条) ──── #}
     <h3 class="sub-head">2.2 6 家竞品综合实力可视化 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">综合分 = 6 维均值 · 后面 Δ 是与行业均值的差</span></h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 1rem;">
-      综合分 = 6 个评分维度(功能/UX/定价/集成/AI/增长)的平均值。
-      进度条长度 = 综合分;<strong>Δ vs avg</strong> = 与行业平均分 ({{ avg_maturity }}/10) 的差值,
-      <span style="color:var(--good); font-weight:600;">正数</span> = 比平均强,
-      <span style="color:var(--bad); font-weight:600;">负数</span> = 比平均弱。
+      一句话:条越长 = 综合实力越强。绿色数字 = 高于行业平均,红色 = 低于平均。
       <span class="score-bar-tier tier-领先">领先</span> <span class="score-bar-tier tier-中坚">中坚</span> <span class="score-bar-tier tier-跟随">跟随</span> = 三档分布。
     </p>
     {% for c in competitors_ranked %}
@@ -1486,23 +1705,21 @@
     <h3 class="sub-head">2.3 专业术语速查</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.5rem 0 0.5rem;">第一次看这些词不知道啥意思?这里通俗解释 ↓</p>
     <div class="glossary-grid">
-      <div class="glossary-item"><span class="term">BSP</span><div class="explain">Business Solution Provider,WhatsApp 官方授权的中间商。中小公司要找他们才能拿到 WhatsApp API(就像旅行社代理机票)。</div></div>
-      <div class="glossary-item"><span class="term">SaaS</span><div class="explain">Software as a Service,按月付费的在线软件,不用自己装服务器。WATI、Respond.io 都属此类。</div></div>
-      <div class="glossary-item"><span class="term">CTWA 广告</span><div class="explain">Click-to-WhatsApp Ads,Meta 出的新型广告。用户在 Instagram/Facebook 点广告,直接跳到 WhatsApp 对话。转化率比传统广告高 3x。</div></div>
-      <div class="glossary-item"><span class="term">CDP</span><div class="explain">Customer Data Platform,客户数据平台。打通用户在多个渠道的数据,知道同一客户在不同渠道的所有行为。</div></div>
-      <div class="glossary-item"><span class="term">momentum</span><div class="explain">增长势头。综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。</div></div>
-      <div class="glossary-item"><span class="term">API</span><div class="explain">Application Programming Interface,程序之间的"数据服务员"。可以问它要数据或让它干活。</div></div>
-      <div class="glossary-item"><span class="term">Webhook</span><div class="explain">"反向 API"。当某事件发生时,服务器主动推送通知给你。比轮询省资源。</div></div>
-      <div class="glossary-item"><span class="term">Shopify 集成</span><div class="explain">和 Shopify 电商平台无缝对接。可以同步订单、库存、客户,实现 WhatsApp 订单通知。</div></div>
-      <div class="glossary-item"><span class="term">SLA</span><div class="explain">Service Level Agreement,服务等级协议。99.9% SLA 表示一年最多 8 小时停机。</div></div>
-      <div class="glossary-item"><span class="term">SOC2 / HIPAA</span><div class="explain">国际合规认证。SOC2 = 企业数据安全;HIPAA = 美国医疗数据合规。大客户采购必备。</div></div>
+      {% for g in glossary %}
+      <div class="glossary-item"><span class="term">{{g.term}}</span><div class="explain">{{g.explain}}</div></div>
+      {% endfor %}
     </div>
 
     <h3 class="sub-head">2.4 启发点（按竞品分组 · 每家可借鉴的实践）</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       每家竞品的优点合并呈现（不再按角度切分）—— 直接按厂商查阅,后面 [N] 角标跳转来源证据。
     </p>
+    {% set inspir_total = inspiration_by_competitor.values() | map('length') | sum %}
+    {% if inspir_total == 0 %}
+    <div class="swot-empty" style="margin-top:0.8rem;">🔍 优势证据待收集 —— 需要从官网「关于我们/客户案例」页或第三方评测(G2/Trustpilot)提取带来源的优势条目(Step 3)。</div>
+    {% endif %}
     {% for comp_name, group in inspiration_by_competitor.items() %}
+    {% if group|length > 0 %}
     <div class="diff-cluster" style="margin-top:1rem; padding:1rem 1.25rem; background:var(--bg-elev); border:1px solid var(--line); border-radius:var(--radius-md); border-left:4px solid var(--good);">
       <h4 style="margin:0 0 0.6rem; font-size:1rem; color:var(--good); display:flex; align-items:center; gap:0.5rem;">
         <span style="background:var(--good-soft); padding:0.15rem 0.55rem; border-radius:4px; font-size:0.85rem;">{{comp_name}}</span>
@@ -1521,16 +1738,19 @@
         {% endfor %}
       </ul>
     </div>
-    {% endfor %}
-    {% if not inspiration_by_competitor %}
-    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无启发点数据</p>
     {% endif %}
+    {% endfor %}
 
     <h3 class="sub-head">2.5 机会点（按竞品分组 · 每家的弱点 = 我们的差异化机会）</h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       每家竞品的不足合并呈现 —— 直接看哪个细分是我们的差异化机会入口。
     </p>
+    {% set opp_total = opportunity_by_competitor.values() | map('length') | sum %}
+    {% if opp_total == 0 %}
+    <div class="swot-empty" style="margin-top:0.8rem;">🔍 弱点证据待收集 —— 弱点 = 用户负面评价,需从第三方(Reddit/评测站/应用商店评论)提取带来源的条目(Step 3);官网不会自述缺点,工具绝不编造。</div>
+    {% endif %}
     {% for comp_name, group in opportunity_by_competitor.items() %}
+    {% if group|length > 0 %}
     <div class="diff-cluster" style="margin-top:1rem; padding:1rem 1.25rem; background:var(--bg-elev); border:1px solid var(--line); border-radius:var(--radius-md); border-left:4px solid var(--bad);">
       <h4 style="margin:0 0 0.6rem; font-size:1rem; color:var(--bad); display:flex; align-items:center; gap:0.5rem;">
         <span style="background:var(--bad-soft); padding:0.15rem 0.55rem; border-radius:4px; font-size:0.85rem;">{{comp_name}}</span>
@@ -1549,10 +1769,8 @@
         {% endfor %}
       </ul>
     </div>
-    {% endfor %}
-    {% if not opportunity_by_competitor %}
-    <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无机会点数据</p>
     {% endif %}
+    {% endfor %}
 
     <h3 class="sub-head">2.6 SWOT 全图（每家竞品 × 4 维度） <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">带 [N] 来源</span></h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.6rem;">每家竞品的内部优势 / 弱点 + 外部机会 / 技术信号 + 目标用户 + 核心功能 + 定价模式 一览。所有结论带 <span class="ref">N</span> 出处，可点击跳转 Sources。</p>
@@ -1587,35 +1805,43 @@
         {% endif %}
         <div class="swot-block s">
           <h5>💪 优势 S · {{s.strengths|length}} 条</h5>
+          {% if s.strengths %}
           <ul>
             {% for st in s.strengths %}
-            <li>{{st.point}}{% if st._ref %}<a href="#src-{{st._ref}}" class="ref">{{st._ref}}</a>{% endif %}<br><span class="ev">↳ {{st.evidence}}</span></li>
+            <li>{{st.point}}{% if st._ref %}<a href="#src-{{st._ref}}" class="ref">{{st._ref}}</a>{% endif %}{% if st.evidence %}<br><span class="ev">↳ {{st.evidence}}</span>{% endif %}</li>
             {% endfor %}
           </ul>
+          {% else %}<div class="swot-empty">🔍 待 Step 3 从 G2/Trustpilot 等第三方评测提取带来源的优势证据</div>{% endif %}
         </div>
         <div class="swot-block w">
           <h5>⚠ 弱点 W · {{s.weaknesses|length}} 条</h5>
+          {% if s.weaknesses %}
           <ul>
             {% for w in s.weaknesses %}
-            <li>{{w.point}}{% if w._ref %}<a href="#src-{{w._ref}}" class="ref">{{w._ref}}</a>{% endif %}<br><span class="ev">↳ {{w.evidence}}</span></li>
+            <li>{{w.point}}{% if w._ref %}<a href="#src-{{w._ref}}" class="ref">{{w._ref}}</a>{% endif %}{% if w.evidence %}<br><span class="ev">↳ {{w.evidence}}</span>{% endif %}</li>
             {% endfor %}
           </ul>
+          {% else %}<div class="swot-empty">🔍 待 Step 3 从用户社区(Reddit/评测站)提取带来源的痛点证据</div>{% endif %}
         </div>
         <div class="swot-block o">
           <h5>🎯 差异化 O · {{s.differentiators|length}} 条</h5>
+          {% if s.differentiators %}
           <ul>
             {% for d in s.differentiators %}
             <li>{{d.name}}{% if d._ref %}<a href="#src-{{d._ref}}" class="ref">{{d._ref}}</a>{% endif %}</li>
             {% endfor %}
           </ul>
+          {% else %}<div class="swot-empty">🔍 待 Step 3 基于官网公开材料对比提炼差异化定位</div>{% endif %}
         </div>
         <div class="swot-block t">
           <h5>🛠 技术信号 T · {{s.tech_signals|length}} 条</h5>
+          {% if s.tech_signals %}
           <ul>
             {% for t in s.tech_signals %}
             <li>{{t.name}}{% if t._ref %}<a href="#src-{{t._ref}}" class="ref">{{t._ref}}</a>{% endif %}</li>
             {% endfor %}
           </ul>
+          {% else %}<div class="swot-empty">🔍 待爬取 docs/developers 页后自动提取(需官网提供开发者文档)</div>{% endif %}
         </div>
       </div>
       {% endfor %}
@@ -1669,7 +1895,7 @@
     <div class="heatmap">
       <table>
         <thead>
-          <tr><th>竞品</th><th>目标用户</th><th>区域</th><th>规模</th><th>核心市场</th></tr>
+          <tr><th>竞品</th><th>目标用户</th>{% if has_region_data %}<th>区域</th>{% endif %}<th>规模</th><th>核心市场</th><th>成立年份</th></tr>
         </thead>
         <tbody>
           {% for c in competitors %}
@@ -1677,9 +1903,10 @@
           <tr>
             <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
             <td>{{user_positioning[c.name].target_segment|default('—')}}</td>
-            <td>{{user_positioning[c.name].region|default('—')}}</td>
+            {% if has_region_data %}<td>{{user_positioning[c.name].region|default('—')}}</td>{% endif %}
             <td>{{user_positioning[c.name].scale|default('—')}}</td>
             <td>{{user_positioning[c.name].key_market|default('—')}}</td>
+            <td>{{user_positioning[c.name].founded|default('—')}}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -1717,18 +1944,22 @@
       <div class="biz-card">
         <h4>{{c.name}}</h4>
         <div class="biz-row"><strong>💰 模式：</strong>{{commercial_strategies[c.name].model|default('—')}}</div>
-        <div class="biz-row"><strong>💵 定价：</strong>{{commercial_strategies[c.name].pricing_tiers|default('—')|join(' / ')}}</div>
-        <div class="biz-row"><strong>📣 GTM：</strong>{{commercial_strategies[c.name].gtm|default('—')}}</div>
-        <div class="biz-row"><strong>🛡 护城河：</strong>{{commercial_strategies[c.name].moat|default('—')}}</div>
+        <div class="biz-row"><strong>💵 定价：</strong>{{commercial_strategies[c.name].pricing_display|default('—')}}</div>
+        <div class="biz-row"><strong>📣 GTM：</strong>{{commercial_strategies[c.name].gtm|default('—')}}
+          {% for ev in c.gtm_evidence or [] %}{% if ev._ref %}<a href="#src-{{ev._ref}}" class="ref" title="{{ev.quote}}">{{ev._ref}}</a>{% endif %}{% endfor %}
+        </div>
+        <div class="biz-row"><strong>🛡 护城河：</strong>{{commercial_strategies[c.name].moat|default('—')}}
+          {% for ev in c.moat_evidence or [] %}{% if ev._ref %}<a href="#src-{{ev._ref}}" class="ref" title="{{ev.quote}}">{{ev._ref}}</a>{% endif %}{% endfor %}
+        </div>
       </div>
       {% endfor %}
     </div>
 
     <h3 class="sub-head">4.1 6 维评分横向对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">🥇🥈🥉 = 各维度前三名 · 领先 {{leader}} 综合 {{leader_avg}}/10</span></h3>
-    <table class="score-table">
+    <div class="table-scroll"><table class="score-table">
       <thead>
         <tr>
-          <th>竞品 \\ 维度</th>
+          <th>竞品 / 维度</th>
           {% for dim in score_table %}
           <th>{{dim.label}}</th>
           {% endfor %}
@@ -1759,7 +1990,7 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
 
     <h3 class="sub-head">4.2 成立年份时间线 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{founding_year_range}} · {{founding_timeline|length}} 家</span></h3>
     {% if founding_timeline %}
@@ -1776,6 +2007,8 @@
         </div>
       </div>
     </div>
+    {% else %}
+    <p style="color:var(--fg-mute); font-style:italic; font-size:0.85rem; margin:0.3rem 0 0.8rem;">未从官网爬取到可靠的成立年份（需要 Crunchbase/维基百科等第三方证据源，Step 3 补全；不编造年份）。</p>
     {% endif %}
 
     <h3 class="sub-head">4.3 阶段分布 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每个阶段的业务含义 + 策略启示 + 数据来源</span></h3>
@@ -1783,8 +2016,11 @@
       阶段决定竞品的资源/迭代速度/客户类型,直接影响我们的市场切入策略。
       <strong style="color:var(--fg);">数据来源：</strong>每家公司的 <code>stage_source</code> (crunchbase / 官方投资者关系 / linkedin),可在文末 <a href="#sources">§ 来源</a> 核对。
     </p>
+    {% set known_stages = stage_distribution|rejectattr('stage', 'equalto', '—')|list %}
+    {% if known_stages %}
     <div class="stage-bars">
       {% for sd in stage_distribution %}
+      {% if sd.stage != '—' %}
       <div class="stage-bar-row">
         <div class="stage-bar-label">
           {{sd.stage}}
@@ -1804,6 +2040,7 @@
           {% endif %}
         </div>
       </div>
+      {% endif %}
       {% endfor %}
     </div>
     <p style="margin-top:0.8rem; font-size:0.82rem; color:var(--fg-mute);">
@@ -1812,29 +2049,53 @@
         {% if c._refs.stage %}<a href="#src-{{c._refs.stage}}" class="ref">{{c._refs.stage}}</a>{% endif %}
       {% endfor %}
     </p>
+    {% else %}
+    <p style="color:var(--fg-mute); font-style:italic; font-size:0.85rem;">未获取到可靠的阶段信息（需要 Crunchbase/融资数据判断，Step 3 补全；不凭感觉归类）。</p>
+    {% endif %}
 
-    <h3 class="sub-head">4.4 定价明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每家定价 tier + 模式 + 原始字符串 + 来源</span></h3>
-    <table class="pricing-table">
-      <thead>
-        <tr><th>竞品</th><th>💰 模式</th><th>💵 定价 tier（已切分）</th><th>原始定价</th><th>来源</th></tr>
-      </thead>
-      <tbody>
-        {% for c in competitors %}
-        <tr>
-          <td>{{c.name}}</td>
-          <td>{{commercial_strategies[c.name].model|default('—')}}</td>
-          <td>
-            {% for t in commercial_strategies[c.name].pricing_tiers %}
-            <span class="feature-chip" style="background:var(--info-soft); color:var(--info); margin:0.1rem 0.2rem 0.1rem 0; display:inline-block;">{{t}}</span>
-            {% endfor %}
-            {% if not commercial_strategies[c.name].pricing_tiers %}—{% endif %}
-          </td>
-          <td style="font-size:0.8rem; color:var(--fg-mute);">{{c.pricing|default('—')}}</td>
-          <td style="font-size:0.75rem;">{% if c._refs.pricing %}<a href="#src-{{c._refs.pricing}}" class="ref">{{c._refs.pricing}}</a>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <h3 class="sub-head">4.4 定价明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">结构化 tiers(套餐名 + 价格 + 计费 + 来源 URL),币种以官网公示为准</span></h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem;">
+      {% for c in competitors %}
+      <div class="pricing-card">
+        <div class="pc-head">
+          <strong>{{c.name}}</strong>
+          <span class="pc-model">{{commercial_strategies[c.name].model|default('—')}}</span>
+          <span class="pc-currency" title="币种以官网公示价为准;香港公司可能本地客户用 HKD 计费">{{c.pricing_currency|default('USD')}}{% if c.pricing_unit %} · {{c.pricing_unit}}{% endif %}</span>
+        </div>
+        <div class="pc-tiers">
+          {% for t in commercial_strategies[c.name].pricing_tiers %}
+          <div class="pc-tier">
+            <div class="pc-tier-name">{{t.name}}</div>
+            <div class="pc-tier-price">
+              <strong>{{t.price}}</strong>
+              <span class="pc-tier-period">{{t.billing_period}}</span>
+            </div>
+            {% if t.features %}
+            <ul class="pc-tier-feats">
+              {% for f in t.features[:3] %}<li>{{f}}</li>{% endfor %}
+              {% if t.features|length > 3 %}<li class="pc-more">+ {{t.features|length - 3}} 项...</li>{% endif %}
+            </ul>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% if not commercial_strategies[c.name].pricing_tiers %}
+          <div style="color:var(--fg-mute); font-size:0.78rem; padding:0.5rem 0;">— 公开材料未提供具体价格</div>
+          {% endif %}
+        </div>
+        <div class="pc-foot">
+          {% if c._refs.pricing %}<a href="#src-{{c._refs.pricing}}" class="ref">来源 [{{c._refs.pricing}}]</a>{% endif %}
+          {% if c.pricing_verified %}
+          <span class="pc-verified" title="{% if c.pricing_engines %}经 {{c.pricing_engines|join(' + ')}} 交叉验证一致{% endif %}{% if c.pricing_scraped_at %}；抓取于 {{c.pricing_scraped_at}}{% endif %}">✓ 已验证{% if c.pricing_engines %} ({{c.pricing_engines|length}} 引擎){% endif %}</span>
+          {% elif c.pricing and c.pricing != '—' %}
+          <span class="pc-unverified" title="仅单一引擎提取到该价格，未经交叉验证，请以官网为准">⚠ 未验证 · 单引擎</span>
+          {% endif %}
+          {% if c.pricing_addon_note %}<div class="pc-note">ℹ {{c.pricing_addon_note}}</div>{% endif %}
+          {% if c.pricing_crawl_note %}<div class="pc-note">⚠ {{c.pricing_crawl_note}}</div>{% endif %}
+          {% if c.pricing_billing_note %}<div class="pc-note">ℹ {{c.pricing_billing_note}}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
   </section>
 
   <!-- ════ 五、产品设计分析 ════ -->
@@ -1868,8 +2129,13 @@
       </table>
     </div>
 
-    <h3 class="sub-head">5.2 产品功能 · 功能全集(厂商对比)<span style="font-size:0.7rem; color:var(--fg-mute); margin-left:0.5rem; font-weight:400;">{{feature_total_count}} 项功能 · {{feature_catalog_companies|length}} 家竞品 · {{feature_comparison_matrix.categories|length}} 个类别</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">把 6 家竞品的 {{feature_total_count}} 个功能汇集成 <strong>{{feature_comparison_matrix.categories|length}} 个功能类别</strong>。下表<strong>横轴=竞品</strong>,<strong>纵轴=功能</strong>,一眼看清各家的功能覆盖与独有性。颜色越深=支持该功能的竞品越多(浅色=独家)。</p>
+    {% if feature_matrix_mode == 'canonical' %}
+    <h3 class="sub-head">5.2 产品功能 · 行业标准能力矩阵(权威版)<span style="font-size:0.7rem; color:var(--fg-mute); margin-left:0.5rem; font-weight:400;">基于 canonical 行业标准,每行附中文释义 + 行业意义,每个 ✓/? 都有证据</span></h3>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">以<strong>行业标准功能集(canonical feature set)</strong>为行(而非各厂商原始功能),{{feature_canonical_total|default(feature_total_count)}} 个能力 × {{feature_canonical_companies|default(competitors|length)}} 家竞品。判定规则:厂商 <code>feature_catalog</code> 命中 canonical 别名 → ✓ 支持(高置信,附证据 URL);未命中 → ? 未找到公开材料(低置信,附 tooltip 原因)。</p>
+    {% else %}
+    <h3 class="sub-head">5.2 产品功能全集 · 按类别对比<span style="font-size:0.7rem; color:var(--fg-mute); margin-left:0.5rem; font-weight:400;">基于各家官网公开功能清单汇总(本主题未套用行业标准基准)</span></h3>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">共 {{feature_total_count}} 项功能 × {{competitors|length}} 家竞品。按类别分组对比;独家功能单独标注。</p>
+    {% endif %}
  {{section5_2_html|safe}}
 
     <h3 class="sub-head">5.3 交互 &amp; 视觉 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">基于 tagline + 核心功能 + 技术栈 推断的 UI/UX 特征</span></h3>
@@ -2047,12 +2313,12 @@
           <div class="fb-item positive">
             <div>{{p.text}}{% if p._ref %}<a href="#src-{{p._ref}}" class="ref">{{p._ref}}</a>{% endif %}</div>
             <div class="fb-source">
-              {% if p.source %}<a href="{{p.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{p.source_label|default('来源')}}</a>{% else %}{{p.source_label}}{% endif %}
-              · 评分 {{p.count|default('?')}}/10
+              {% if p.source %}<a href="{{p.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{p.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
+              {% if p.count and p.count != '—' %} · 评分 {{p.count}}/10{% endif %}
             </div>
           </div>
           {% endfor %}
-          {% if not fb.positive %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">暂无数据</p>{% endif %}
+          {% if not fb.positive %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">未收集到带来源的真实反馈（需爬取 G2/Capterra/Reddit 评测页后由 Step 3 提取，不编造）</p>{% endif %}
         </div>
         <div class="fb-col negative">
           <h4>✗ 负面反馈</h4>
@@ -2060,16 +2326,16 @@
           <div class="fb-item negative">
             <div>{{n.text}}{% if n._ref %}<a href="#src-{{n._ref}}" class="ref">{{n._ref}}</a>{% endif %}</div>
             <div class="fb-source">
-              {% if n.source %}<a href="{{n.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{n.source_label|default('来源')}}</a>{% else %}{{n.source_label}}{% endif %}
-              · 严重度 {{n.count|default('?')}}/10
+              {% if n.source %}<a href="{{n.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{n.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
+              {% if n.count and n.count != '—' %} · 严重度 {{n.count}}/10{% endif %}
             </div>
           </div>
           {% endfor %}
-          {% if not fb.negative %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">暂无数据</p>{% endif %}
+          {% if not fb.negative %}<p style="color:var(--fg-mute);font-style:italic;font-size:0.85rem;">未收集到带来源的真实反馈（需爬取 G2/Capterra/Reddit 评测页后由 Step 3 提取，不编造）</p>{% endif %}
         </div>
       </div>
 
-      <p class="fb-summary"><strong style="color:var(--accent);">📊 总结：</strong>{{user_feedback[c.name].summary|default('（暂无反馈总结）')}}</p>
+      <p class="fb-summary">{% if user_feedback[c.name].summary and user_feedback[c.name].summary != '—' %}<strong style="color:var(--accent);">📊 总结：</strong>{{user_feedback[c.name].summary}}{% else %}<strong style="color:var(--fg-mute);">📊 总结：</strong><span style="color:var(--fg-mute);">暂无真实反馈可总结 —— 本节只呈现带来源的证据，不编造口碑。</span>{% endif %}</p>
     </div>
     {% endfor %}
   </section>
@@ -2083,11 +2349,11 @@
         <div class="sec-subtitle">Other Competitors Database</div>
       </div>
     </div>
-    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">除正文 6 家深度分析外，本节列出市场上其他主流 WhatsApp 广告 / 客服玩家。涵盖 BSP / 中小 SaaS / 广告投放 / AI Agent / 客服大厂 / 垂直行业 6 大类别，便于建立完整市场地图。每条带原始来源 URL。</p>
+    <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">除正文 {{competitors|length}} 家深度分析外，本节列出「{{topic}}」赛道其他值得关注的玩家，按类别分组，便于建立完整市场地图。每条带原始来源 URL。</p>
 
     {% for cat_group in other_competitors_by_category %}
     <h3 class="sub-head">{{cat_group.category}} <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{cat_group.count}} 家</span></h3>
-    <div class="swot-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+    <div class="swot-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));">
       {% for oc in cat_group.players %}
       <div class="swot-card" style="border-top-color: var(--info);">
         <div class="swot-head">
@@ -2123,7 +2389,15 @@
     </div>
     <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">报告中所有结论都带 <span class="ref">N</span> 出处，以下是完整证据清单（共 {{source_count}} 条）。所有 URL 可直接点击访问。</p>
 
+    {% if sources_html %}
     {{sources_html|safe}}
+    {% else %}
+    <div class="evidence-warning" style="border:1px solid var(--warn); background:var(--warn-soft); color:var(--fg); padding:1rem 1.25rem; border-radius:var(--radius-md); line-height:1.7;">
+      <strong style="color:var(--warn);">⚠ 本报告没有任何带 URL 的来源证据。</strong><br>
+      所有结论均不可追溯 —— 通常是 03-analysis.json 缺失 source/quote 字段(Step 3 未按证据三元组规范填写)。
+      请重跑 /youzi 的 Step 2(爬取证据)+ Step 3(逐字段带 {值, source_url, quote} 提取)后再渲染。
+    </div>
+    {% endif %}
   </section>
 
   <footer>
