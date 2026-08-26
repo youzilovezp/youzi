@@ -1,6 +1,6 @@
 {
-  "topic": "WhatsApp BSP 赛道",
-  "subtitle": "WhatsApp BSP 赛道 — 基于 3 家竞品实时爬取的深度分析",
+  "topic": "WhatsApp BSP 赛道(生产验收)",
+  "subtitle": "WhatsApp BSP 赛道(生产验收) — 基于 3 家竞品实时爬取的深度分析",
   "date": "2026-08-26",
   "competitors": [
     {
@@ -188,6 +188,12 @@
           },
           {
             "category": "其他",
+            "name": "Acquire, engage, and qualify",
+            "desc": "",
+            "source": "https://www.wati.io"
+          },
+          {
+            "category": "其他",
             "name": "About Cookies",
             "desc": "",
             "source": "https://www.wati.io/product"
@@ -340,32 +346,53 @@
       },
       "strengths": [
         {
-          "point": "公开客户规模(见引文)",
+          "point": "16,000 客户/企业",
           "evidence": "官网原文: \"目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。\"",
           "score": 0,
           "source": "https://www.wati.io/about-us"
         },
         {
-          "point": "官网展示合作伙伴/渠道体系",
-          "evidence": "官网原文: \"description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h\"",
+          "point": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+          "evidence": "官网原文: \"GDPR ISO\"",
           "score": 0,
-          "source": "https://www.wati.io/about-us"
+          "source": "https://www.wati.io"
+        },
+        {
+          "point": "官网提供自助免费试用入口",
+          "evidence": "官网原文: \"Book a Demo Try for Free\"",
+          "score": 0,
+          "source": "https://www.wati.io"
         }
       ],
       "weaknesses": [],
       "differentiators": [],
       "gtm_evidence": [
         {
+          "name": "官网提供自助免费试用入口",
+          "quote": "Book a Demo Try for Free",
+          "source": "https://www.wati.io"
+        },
+        {
+          "name": "官网主打预约演示(销售驱动获客)",
+          "quote": "Book a Demo Try for Free",
+          "source": "https://www.wati.io"
+        },
+        {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "description: Discover Wati - your growth partner! Get innovative WhatsApp Messaging solutions and take your biz to new h",
-          "source": "https://www.wati.io/about-us"
+          "quote": "Partners",
+          "source": "https://www.wati.io"
         }
       ],
       "moat_evidence": [
         {
-          "name": "公开客户规模(见引文)",
+          "name": "16,000 客户/企业",
           "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
           "source": "https://www.wati.io/about-us"
+        },
+        {
+          "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+          "quote": "GDPR ISO",
+          "source": "https://www.wati.io"
         }
       ],
       "tech_signals": [
@@ -397,7 +424,7 @@
       "score_basis": "insufficient_evidence",
       "tagline_source": "https://www.wati.io",
       "founded_source": "https://www.wati.io/about-us",
-      "headquarters_source": "https://www.wati.io/product",
+      "headquarters_source": "https://www.wati.io",
       "team_size_source": "",
       "url_resolution": "builtin"
     },
@@ -413,7 +440,7 @@
       "team_size": "—",
       "team_size_quote": "",
       "funding": "—",
-      "pricing": "starter · $79 (/month) / growth · $159 (/month) / advanced · $279 (/month) / starter · $948 (/yr) / advanced · $3,348 (/yr)",
+      "pricing": "starter · $79 (/month) | $948 (/yr) / growth · $159 (/month) / advanced · $279 (/month) | $3,348 (/yr)",
       "pricing_verified": true,
       "pricing_from_cache": false,
       "pricing_unit": "",
@@ -461,7 +488,7 @@
         "playwright"
       ],
       "pricing_source": "https://respond.io/pricing",
-      "pricing_scraped_at": "2026-08-26 13:46 UTC",
+      "pricing_scraped_at": "2026-08-26 14:19 UTC",
       "pricing_vote_detail": [
         {
           "line": "starter · $79/month",
@@ -808,20 +835,20 @@
       },
       "strengths": [
         {
-          "point": "公开客户规模(见引文)",
+          "point": "10k+ 客户/企业",
           "evidence": "官网原文: \"10k+ brands trust respond.io\"",
           "score": 0,
           "source": "https://respond.io"
         },
         {
           "point": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "evidence": "官网原文: \"![GDPR Compliant](https://assets.respond.io/image/GDPR-compliant.svg)![ISO 27001](https://assets.respond.io/image/ISO-27\"",
+          "evidence": "官网原文: \"GDPR CompliantISO 27001\"",
           "score": 0,
           "source": "https://respond.io"
         },
         {
-          "point": "官网提供自助免费试用入口",
-          "evidence": "官网原文: \"[Talk to Sales](https://respond.io/demo)[Start Free Trial](https://app.respond.io/user/register)\"",
+          "point": "已获风险融资(详见融资料)",
+          "evidence": "官网原文: \"New We just raised $62.5M in Series B! 🎉 What it means for you arrow-icon\"",
           "score": 0,
           "source": "https://respond.io"
         }
@@ -831,29 +858,34 @@
       "gtm_evidence": [
         {
           "name": "官网提供自助免费试用入口",
-          "quote": "[Talk to Sales](https://respond.io/demo)[Start Free Trial](https://app.respond.io/user/register)",
+          "quote": "Talk to SalesStart Free Trial",
           "source": "https://respond.io"
         },
         {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "![Partners](https://assets1-proxy.respond.io/api/v1/image/assets%2F11f7a662b80a4675973850b067c01fa5%2Fb594963fa6ad4f7f97",
+          "quote": "Partners",
           "source": "https://respond.io"
         },
         {
           "name": "官网面向开发者/API 优先定位",
-          "quote": "(window,'GTM-N49SZ5V','google\\_tags\\_first\\_party');(function(w,d,s,l){w[l]=w[l]||[];(function(){w[l].push(arguments);})",
+          "quote": "4. Developer Hub Developer Hub Guides and documentation to help you start working with respond.io",
           "source": "https://respond.io"
         }
       ],
       "moat_evidence": [
         {
-          "name": "公开客户规模(见引文)",
+          "name": "10k+ 客户/企业",
           "quote": "10k+ brands trust respond.io",
           "source": "https://respond.io"
         },
         {
           "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "quote": "![GDPR Compliant](https://assets.respond.io/image/GDPR-compliant.svg)![ISO 27001](https://assets.respond.io/image/ISO-27",
+          "quote": "GDPR CompliantISO 27001",
+          "source": "https://respond.io"
+        },
+        {
+          "name": "已获风险融资(详见融资料)",
+          "quote": "New We just raised $62.5M in Series B! 🎉 What it means for you arrow-icon",
           "source": "https://respond.io"
         }
       ],
@@ -885,7 +917,7 @@
       "team_size": "—",
       "team_size_quote": "",
       "funding": "—",
-      "pricing": "Pro · $89 (/mo) / Growth · $39 (/mo) / Enterprise · $399 (/mo) / Free · $0 (/yr) / Pro · $1068 (/yr) / Growth · $468 (/yr) / Enterprise · $4788 (/yr)",
+      "pricing": "Free · $0 (/yr) / Growth · $39 (/mo) | $468 (/yr) / Pro · $89 (/mo) | $1068 (/yr) / Enterprise · $399 (/mo) | $4788 (/yr)",
       "pricing_verified": true,
       "pricing_from_cache": false,
       "pricing_unit": "",
@@ -947,7 +979,7 @@
         "playwright"
       ],
       "pricing_source": "https://www.ycloud.com/pricing",
-      "pricing_scraped_at": "2026-08-26 13:46 UTC",
+      "pricing_scraped_at": "2026-08-26 14:19 UTC",
       "pricing_vote_detail": [
         {
           "line": "Pro · $89 /mo",
@@ -1313,12 +1345,12 @@
         },
         {
           "name": "官网引导联系销售获取报价",
-          "quote": "[Contact sales](https://www.ycloud.com/book-a-demo)[Free Trial](https://www.ycloud.com/console/#/entry/register)",
+          "quote": "Contact salesFree Trial",
           "source": "https://www.ycloud.com"
         },
         {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "![YCloud - Stimulating the potential of WhatsApp API | Product Hunt](https://www.ycloud.com/_next/static/media/tiktokPar",
+          "quote": "AffiliateSolution PartnerTech Partner",
           "source": "https://www.ycloud.com"
         }
       ],
@@ -1432,7 +1464,7 @@
   "opportunities": [],
   "other_competitors": [],
   "executive_summary": "基于 3 家竞品实时爬取:3 条候选市场空白(待 Step 3 复核)。定价 3/3 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
-  "background": "WhatsApp BSP 赛道 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 136 项核心功能。每个功能条目带来源 URL。",
+  "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 137 项核心功能。每个功能条目带来源 URL。",
   "goals": [
     "看清各家功能差异化与共同能力",
     "识别市场空白（所有竞品都没做好的痛点）",
