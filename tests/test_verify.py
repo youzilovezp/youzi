@@ -145,6 +145,33 @@ def _violations_by_gate(rep: dict, gate: str):
     return [v for v in rep["violations"] if v["gate"] == gate]
 
 
+def _pricing_comp(verified=True, engines=("playwright", "crawl4ai"),
+                  hashes=None, scraped_at="2026-08-26 00:00 UTC",
+                  source="https://www.wati.io/pricing", tiers=1):
+    return _one_comp_analysis(
+        pricing="Growth · $59 (/mo)", pricing_verified=verified,
+        pricing_source=source, pricing_scraped_at=scraped_at,
+        pricing_engines=list(engines),
+        pricing_tiers=[{
+            "name": "Growth", "price": "$59", "billing_period": "/mo",
+            "features": [], "source_url": source,
+        }] * tiers,
+    )
+
+
+def _manifest_with_hashes(url, engine_hashes: dict, status="ok"):
+    return {
+        "run": {}, "claims": [], "failures": [],
+        "fetched": {url: {
+            "status": status,
+            "engines": {
+                e: {"ok": True, "chars": 100, "content_hash": h}
+                for e, h in engine_hashes.items()
+            },
+        }},
+    }
+
+
 class TestG1SourceTraceability(unittest.TestCase):
     """G1: 分析引用的每个 source_url 必须在本轮成功抓取集合里。"""
 
@@ -233,6 +260,66 @@ class TestG2QuoteGrep(unittest.TestCase):
                 engines={},
             )
             self.assertEqual(len(_violations_by_gate(rep, "G2")), 1)
+
+
+class TestG3PricingIntegrity(unittest.TestCase):
+    """G3: verified ⇒ ≥2 内容独立引擎 + 时间戳新鲜 + tiers 非空。"""
+
+    def _run(self, analysis, manifest, engines=None):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            return _bundle(Path(d), manifest, analysis, engines or {})
+
+    def test_independent_engines_pass(self):
+        rep = self._run(
+            _pricing_comp(engines=("playwright", "crawl4ai")),
+            _manifest_with_hashes("https://www.wati.io/pricing", {
+                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+        )
+        self.assertTrue(rep["passed"])
+
+    def test_same_hash_two_engines_fail(self):
+        """两引擎拿到同一反爬变体(内容哈希相同)≠ 交叉验证。"""
+        rep = self._run(
+            _pricing_comp(engines=("playwright", "crawl4ai")),
+            _manifest_with_hashes("https://www.wati.io/pricing", {
+                "playwright": "same", "crawl4ai": "same"}),
+        )
+        self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
+
+    def test_single_engine_fail(self):
+        rep = self._run(
+            _pricing_comp(engines=("playwright",)),
+            _manifest_with_hashes("https://www.wati.io/pricing", {
+                "playwright": "aaaa"}),
+        )
+        self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
+
+    def test_stale_timestamp_fail(self):
+        rep = self._run(
+            _pricing_comp(scraped_at="2026-01-01 00:00 UTC"),
+            _manifest_with_hashes("https://www.wati.io/pricing", {
+                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+        )
+        self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
+
+    def test_verified_with_empty_tiers_fail(self):
+        rep = self._run(
+            _pricing_comp(tiers=0),
+            _manifest_with_hashes("https://www.wati.io/pricing", {
+                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+        )
+        self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
+
+    def test_unverified_pricing_not_checked(self):
+        """未验证定价(⚠ 徽章)不受 G3 约束 —— 诚实降级可交付。"""
+        rep = self._run(
+            # source="": 未验证定价不断言来源,否则会先触发 G1
+            _pricing_comp(verified=False, engines=(), scraped_at="",
+                          tiers=0, source=""),
+            _ok_manifest(),
+        )
+        self.assertTrue(rep["passed"])
 
 
 if __name__ == "__main__":

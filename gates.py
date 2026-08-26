@@ -146,3 +146,70 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                     f"quote 未在该 URL 的任何引擎原文中命中: “{quote[:60]}…”",
                     "改写为引擎原文逐字引文(见 02-raw/*.engines.json),或重爬该 URL",
                 )
+
+
+# ── G3 定价完整性 ──
+
+import calendar  # noqa: E402
+import time as _time  # noqa: E402
+
+from verify import TTL_DAYS  # noqa: E402
+
+_TS_FMT = "%Y-%m-%d %H:%M UTC"
+
+
+def _ts_age_days(ts: str) -> float:
+    """UTC 时间戳距今天数;解析失败返回 inf(视为最陈旧)。
+
+    用 calendar.timegm 而非 time.mktime —— 后者按本地时区解析,
+    会把 UTC 时间戳算偏数小时(TTL=14 天粒度下不致命,但没理由错)。
+    """
+    try:
+        t = calendar.timegm(_time.strptime(ts or "", _TS_FMT))
+    except (ValueError, OverflowError):
+        return float("inf")
+    return (_time.time() - t) / 86400.0
+
+
+@register
+def g3_pricing_integrity(analysis, manifest, engine_index, rep: Report):
+    """G3: pricing_verified=true 的三重完整性。
+
+    历史事故:①两引擎拿到同一反爬/区域变体页互证错误价格(关联捕获);
+    ②pricing-cache.json 的 TTL 从未生效,陈旧价格永久 verified。
+    """
+    fetched = manifest.get("fetched") or {}
+    for competitor in analysis.get("competitors") or []:
+        name = competitor.get("name", "?")
+        field = f"competitors[{name}]"
+        if not competitor.get("pricing_verified"):
+            continue  # 未验证定价由 ⚠ 徽章诚实展示,不属于 G3
+        src = (competitor.get("pricing_source") or "").strip()
+        engines = competitor.get("pricing_engines") or []
+        tiers = competitor.get("pricing_tiers") or []
+        if not tiers:
+            rep.hard(
+                "G3", f"{field}.pricing_tiers", src,
+                "pricing_verified=true 但 tiers 为空",
+                "补 tiers 或把 pricing_verified 改为 false",
+            )
+        # 引擎独立性:验证引擎在本轮 manifest 里的内容哈希必须 ≥2 个不同值
+        hashes = set()
+        for e in engines:
+            h = ((fetched.get(src) or {}).get("engines") or {}).get(e, {})
+            if h.get("content_hash"):
+                hashes.add(h["content_hash"])
+        if len(hashes) < 2:
+            rep.hard(
+                "G3", f"{field}.pricing_engines", src,
+                f"verified 定价的内容独立引擎不足({len(hashes)} 个不同哈希,"
+                f"engines={engines})—— 同一变体页被多引擎抓到不算交叉验证",
+                "重爬(换网络环境/等反爬窗口),或降级 pricing_verified=false",
+            )
+        age = _ts_age_days(competitor.get("pricing_scraped_at"))
+        if age > TTL_DAYS:
+            rep.hard(
+                "G3", f"{field}.pricing_scraped_at", src,
+                f"定价证据已陈旧({age:.0f} 天前,TTL={TTL_DAYS} 天)",
+                "重爬定价页刷新证据",
+            )
