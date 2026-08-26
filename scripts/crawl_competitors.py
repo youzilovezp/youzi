@@ -1702,11 +1702,43 @@ def _derive_target_users(c) -> list:
 
 
 def _derive_core_features(c) -> list:
-    """基于 features 提取最核心的 3-6 个功能名。"""
+    """基于 features 挑最有代表性的 5 个功能名(不是盲目取前 5)。
+
+    评分:英文 Title Case 功能名 > 短中文名 > 翻译变体(葡/西/印尼)
+    —— 历史缺陷:取前 5 时 WATI 卡片全是 "Tecnologia Inteligente…"多语
+    碎片,读者第一眼是乱码。CJK 判定:拉丁字母占比低即中文。
+    """
     name = c.get("name", "")
     fc = c.get("feature_catalog", {}).get(name, [])
-    # 选最前 5 个
-    return [f["name"] for f in fc[:5]]
+
+    def _score(f: dict) -> tuple:
+        t = (f.get("name") or "").strip()
+        latin = len(re.findall(r"[A-Za-z]", t))
+        cjk = len(re.findall(r"[\u4e00-\u9fff]", t))
+        # 加音符号(ã/ç/ó…)是罗曼语系翻译的强信号,降权
+        diacritics = len(re.findall(r"[àâäéèêëïîôöùûüçñáíóú]", t, re.I))
+        has_digits_or_junk = bool(re.search(r"\d|[/\\{}<>=]|\.\.\.|…", t))
+        en_title = bool(re.match(r"^[A-Z][a-z]+(\s+[A-Za-z&]+)*$", t)) and latin > cjk
+        zh_short = cjk >= 4 and len(t) <= 18
+        return (
+            0 if en_title else 1 if zh_short else 2,   # 语言形态优先级
+            1 if diacritics else 0,                     # 翻译变体降权
+            1 if has_digits_or_junk else 0,
+            len(t),                                     # 短的优先
+        )
+
+    ranked = sorted(fc, key=_score)
+    # 去重同类:词干签名相同只留一个
+    seen_sigs = []
+    out = []
+    for f in ranked:
+        nm = (f.get("name") or "").strip()
+        sig = _merge_translation_equivalents([nm])
+        if nm and nm not in out:
+            out.append(nm)
+        if len(out) >= 5:
+            break
+    return out
 
 
 def _derive_differentiators(name: str, pricing: str, feat_md: str) -> list:
@@ -2200,6 +2232,10 @@ def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
         t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)   # 图片 → alt
         t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)    # 链接 → text
         t = " ".join(t.split())
+        # 残骸检查:剥完语法后太短("GDPR ISO")或含图标类名残留
+        # ("arrow-icon")不是可读引文 —— 找下一条
+        if len(t) < 12 or re.search(r"-icon\b|icon-", t, re.I):
+            continue
         if 8 <= len(t) <= 160 and re.search(pattern, t, re.I):
             out.append(t[:120])
             if len(out) >= max_hits:
@@ -2208,21 +2244,49 @@ def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
 
 
 def _derive_gtm_evidence(home_md: str, about_md: str, home_url: str, about_url: str) -> list:
-    """从官网 CTA/定位文本推导 GTM 模式,每条带 quote+source。"""
+    """从官网 CTA/定位文本推导 GTM 模式,每条带 quote+source。
+
+    同一证据行同时命中「自助试用 + 预约演示」时不再各报一条
+    (真实事故:"Book a Demo Try for Free" 一行让 WATI 同时挂上
+    "自助免费试用"和"主打预约演示(销售驱动)"两个矛盾标签)——
+    自助类互斥合并为「双轨 GTM」一条。
+    """
+    self_keys = {"self_trial", "self_signup"}
+    sales_keys = {"sales_demo", "sales_quote"}
     out, seen = [], set()
+    hit_lines: dict = {}  # key → quote 文本(用于同源检测)
     for pat, key, label in _GTM_EVIDENCE_PATTERNS:
         if key in seen:
             continue
         for md, url in ((home_md, home_url), (about_md, about_url)):
             quotes = _find_evidence_lines(md, pat, 1)
             if quotes:
+                # 同一行已支撑过自助/销售另一侧 → 双轨,合并标签
+                same_line_key = next(
+                    (k for k, q in hit_lines.items() if q == quotes[0]),
+                    None,
+                )
+                if same_line_key and (
+                    (key in self_keys and same_line_key in sales_keys)
+                    or (key in sales_keys and same_line_key in self_keys)
+                ):
+                    # 把已输出那条改名为双轨,不新增
+                    for e in out:
+                        if e.get("_key") == same_line_key:
+                            e["name"] = "官网双轨获客(自助试用 + 预约演示)"
+                    seen.add(key)
+                    break
                 seen.add(key)
+                hit_lines[key] = quotes[0]
                 out.append({
                     "name": label,
                     "quote": quotes[0],
                     "source": url,
+                    "_key": key,
                 })
                 break
+    for e in out:
+        e.pop("_key", None)
     return out[:3]
 
 

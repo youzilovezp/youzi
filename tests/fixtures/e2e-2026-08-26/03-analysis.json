@@ -52,11 +52,11 @@
         "开发者"
       ],
       "core_features": [
+        "Contact Info",
         "Wati for Support",
-        "Tecnologia Inteligente para Maior Produtividade",
-        "大规模地有效管理WhatsApp消息对话。",
-        "Permita Maior Proximidade Entre Suas Equipes",
-        "Pengalaman pelanggan yang lebih baik"
+        "No Code Chatbots",
+        "Single User Plan",
+        "Manajemen Kontak"
       ],
       "feature_catalog": {
         "WATI": [
@@ -202,14 +202,14 @@
           "source": "https://www.wati.io/about-us"
         },
         {
-          "point": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "evidence": "官网原文: \"GDPR ISO\"",
+          "point": "官网双轨获客(自助试用 + 预约演示)",
+          "evidence": "官网原文: \"Book a Demo Try for Free\"",
           "score": 0,
           "source": "https://www.wati.io"
         },
         {
-          "point": "官网提供自助免费试用入口",
-          "evidence": "官网原文: \"Book a Demo Try for Free\"",
+          "point": "官网展示合作伙伴/渠道体系",
+          "evidence": "官网原文: \"Partner with Us\"",
           "score": 0,
           "source": "https://www.wati.io"
         }
@@ -218,18 +218,13 @@
       "differentiators": [],
       "gtm_evidence": [
         {
-          "name": "官网提供自助免费试用入口",
-          "quote": "Book a Demo Try for Free",
-          "source": "https://www.wati.io"
-        },
-        {
-          "name": "官网主打预约演示(销售驱动获客)",
+          "name": "官网双轨获客(自助试用 + 预约演示)",
           "quote": "Book a Demo Try for Free",
           "source": "https://www.wati.io"
         },
         {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "Partners",
+          "quote": "Partner with Us",
           "source": "https://www.wati.io"
         }
       ],
@@ -238,11 +233,6 @@
           "name": "16,000 客户/企业",
           "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
           "source": "https://www.wati.io/about-us"
-        },
-        {
-          "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-          "quote": "GDPR ISO",
-          "source": "https://www.wati.io"
         }
       ],
       "tech_signals": [
@@ -338,7 +328,7 @@
         "playwright"
       ],
       "pricing_source": "https://respond.io/pricing",
-      "pricing_scraped_at": "2026-08-26 15:20 UTC",
+      "pricing_scraped_at": "2026-08-26 15:32 UTC",
       "pricing_vote_detail": [
         {
           "line": "starter · $79/month",
@@ -391,11 +381,11 @@
         "开发者"
       ],
       "core_features": [
-        "WhatsApp Business API",
+        "Retain",
         "Capture",
         "Convert",
-        "Retain",
-        "Team & Custom Inboxes"
+        "Mobile App",
+        "Team Inbox"
       ],
       "feature_catalog": {
         "Respond.io": [
@@ -577,8 +567,8 @@
           "source": "https://respond.io"
         },
         {
-          "point": "已获风险融资(详见融资料)",
-          "evidence": "官网原文: \"New We just raised $62.5M in Series B! 🎉 What it means for you arrow-icon\"",
+          "point": "官网提供自助免费试用入口",
+          "evidence": "官网原文: \"Talk to SalesStart Free Trial\"",
           "score": 0,
           "source": "https://respond.io"
         }
@@ -593,7 +583,7 @@
         },
         {
           "name": "官网展示合作伙伴/渠道体系",
-          "quote": "Partners",
+          "quote": "Join a growing network of partners with commissions for referrals",
           "source": "https://respond.io"
         },
         {
@@ -611,11 +601,6 @@
         {
           "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
           "quote": "GDPR CompliantISO 27001",
-          "source": "https://respond.io"
-        },
-        {
-          "name": "已获风险融资(详见融资料)",
-          "quote": "New We just raised $62.5M in Series B! 🎉 What it means for you arrow-icon",
           "source": "https://respond.io"
         }
       ],
@@ -709,7 +694,7 @@
         "playwright"
       ],
       "pricing_source": "https://www.ycloud.com/pricing",
-      "pricing_scraped_at": "2026-08-26 15:20 UTC",
+      "pricing_scraped_at": "2026-08-26 15:32 UTC",
       "pricing_vote_detail": [
         {
           "line": "Pro · $89 /mo",
@@ -777,11 +762,11 @@
         "开发者"
       ],
       "core_features": [
-        "WhatsApp Business API Account",
-        "Shared Team Inbox",
+        "Campaign",
+        "Growth Tools",
+        "Generative AI",
         "Lead Generation",
-        "Customer Service",
-        "Growth Tools"
+        "Chatbot Builder"
       ],
       "feature_catalog": {
         "YCloud": [

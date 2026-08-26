@@ -140,7 +140,31 @@ def _classify_angle(text: str) -> str:
 
 
 def _derive_inspiration_points(competitors):
-    """从 strengths 派生 inspiration_points: {angle: [{competitor, good, inspiration, evidence, _ref}]}"""
+    """从 strengths 派生 inspiration_points: {angle: [{competitor, good, inspiration, evidence, _ref}]}
+
+    只保留「动作可借鉴」的 strength(认证/身份/GTM 模式/融资),并给出
+    实质性启示;纯数字事实(客户规模)不进启发点 —— "可借鉴 WATI 的实践:
+    16,000 客户"是废话式复读(读者要的是"怎么做",不是"它有多少客户")。
+    """
+    # 事实型(数字规模)→ 不产生"实践启示",留在 §7 正面反馈即可
+    _FACTUAL_RX = re.compile(r"客户|企业|规模|团队.*见引文", re.I)
+    # 动作型 → 实质性启示(不是复读 point)
+    _ACTION_HINTS = [
+        (r"合规认证|iso|soc2|gdpr",
+         "上线即做国际合规认证(ISO 27001/SOC2/GDPR)——中大客户采购的敲门砖,越早拿成本越低"),
+        (r"官方合作|bsp|meta partner",
+         "尽早拿下 Meta 官方 BSP/Partner 身份 —— 获得 API 配额与客户信任双红利"),
+        (r"融资|series|raised",
+         "用融资叙事建立市场信心(如 \"{fact}\"),配合产品里程碑做 PR 节奏"),
+        (r"免费试用|self.*trial|免费注册",
+         "产品驱动增长:自助免费试用入口 + 信用卡前置,降低获客摩擦"),
+        (r"预约演示|demo|销售驱动",
+         "双轨 GTM:自助试用(小客户)+ 预约演示(中大客户),按客单价分流"),
+        (r"渠道|合作伙伴|partner.*体系|代理商",
+         "建立渠道/代理商体系放大销售触角,尤其出海市场本地化分销"),
+        (r"api.*优先|开发者|developer",
+         "API-first + 开发者文档中心,让技术买家成为内部推动者"),
+    ]
     result: dict = {}
     for c in competitors:
         for s in c.get("strengths", []):
@@ -149,13 +173,23 @@ def _derive_inspiration_points(competitors):
             point = s.get("point", "")
             if not point:
                 continue
+            if _FACTUAL_RX.search(point) and not re.search(
+                r"认证|iso|bsp|partner|meta", point, re.I
+            ):
+                continue  # 纯数字事实不进启发点
+            hint = next(
+                (h for rx, h in _ACTION_HINTS if re.search(rx, point, re.I)),
+                None,
+            )
+            if not hint:
+                continue  # 无实质启示的条目宁可不放(杜绝复读式废话)
             angle = _classify_angle(point)
             result.setdefault(angle, []).append(
                 {
                     "competitor": c["name"],
                     "good": point,
                     "evidence": s.get("evidence", ""),
-                    "inspiration": f"可借鉴 {c['name']} 的实践：{point[:30]}",
+                    "inspiration": hint,
                     "_ref": s.get("_ref", 0),
                 }
             )
@@ -461,10 +495,13 @@ def _derive_product_overview(c):
     )
     desktop = "✓ 支持" if desktop_has_evidence else "— 纯云端"
 
-    # Mobile —— 现代 SaaS 必备,但移动原生 App 较少
+    # Mobile —— 原生 App 需要明示证据;无证据时如实"未明确"而非猜
+    # "✓ 移动端 Web"(三家全同的行 = 零信息量,真实事故:读者质疑这表)
     mobile_app_kw = ["ios", "android", "mobile app", "native mobile"]
-    mobile_has_evidence = any(kw in tech_str_lower for kw in mobile_app_kw)
-    mobile = "✓ 原生 App" if mobile_has_evidence else "✓ 移动端 Web"
+    mobile_has_evidence = any(
+        kw in feat_str_lower or kw in tech_str_lower for kw in mobile_app_kw
+    )
+    mobile = "✓ 原生 App" if mobile_has_evidence else "未明确"
 
     # Other —— API/SDK/集成
     api_has_evidence = any(
@@ -1924,6 +1961,9 @@ def _build_canonical_matrix(competitors, canonical_features):
     #    来源含 feature_catalog + tech_signals(docs 页提取的真实技术能力,
     #    如 WATI docs 的 "REST API"/"Webhooks" —— 历史缺陷:矩阵只看
     #    feature_catalog,docs 页证据完全没参与判定)
+    #    + moat/gtm 证据名(官网已有认证/能力但没进功能清单时,矩阵不该
+    #    判 ? —— 真实事故:Respond/YCloud 的 ISO27001 在护城河证据里,
+    #    data_security 行却显示 ?)
     comp_feat_index: dict = {}
     for c in competitors:
         cname = c["name"]
@@ -1935,6 +1975,15 @@ def _build_canonical_matrix(competitors, canonical_features):
                 part = part.strip()
                 if part and len(part) >= 3:
                     feats = feats + [{"name": part, "source": tsrc, "desc": ""}]
+        for ev_key in ("moat_evidence", "gtm_evidence"):
+            for ev in c.get(ev_key) or []:
+                ename = (ev.get("name") if isinstance(ev, dict) else "") or ""
+                esrc = (ev.get("source") if isinstance(ev, dict) else "") or ""
+                # 拆出括号/斜杠分段(如 "合规认证(ISO/SOC2/GDPR)" → 三段)
+                for part in re.split(r"[（(·/、/]", ename):
+                    part = part.strip(" ()/.、")
+                    if part and len(part) >= 3:
+                        feats = feats + [{"name": part, "source": esrc, "desc": ""}]
         idx: dict = {}
         for f in feats:
             fname = (f.get("name", "") or "").strip()
