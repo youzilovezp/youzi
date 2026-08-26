@@ -700,7 +700,10 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "whatsapp business platform",
             "whatsapp business api account",
             "whatsapp",
-        ],
+        
+            "whatsapp business app coexistence",
+            "whatsapp blue tick",
+            "whatsapp message charges",],
     },
     {
         "id": "whatsapp_calling_api",
@@ -769,7 +772,12 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "sms",
             "email",
             "voice",
-        ],
+        
+            "channels and integrations",
+            "custom channels",
+            "other channels",
+            "chats, calls and emails in one thread",
+            "multiple channels",],
     },
     # ──────────── 营销自动化 (Marketing Automation) ────────────
     {
@@ -843,7 +851,20 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "ctwa",
             "form builder",
             "landing page",
-        ],
+        
+            "growth tools",
+            "lead generation",
+            "growth widgets",
+            "capture",
+            "capture from ads",
+            "capture from website",
+            "capture from social",
+            "capture from offline",
+            "qualify leads",
+            "route leads",
+            "convert",
+            "retain",
+            "acquire and engage leads",],
     },
     # ──────────── AI 客服 (AI / Chatbot) ────────────
     {
@@ -862,7 +883,11 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "ai chatbot",
             "chatbot",
             "nlp",
-        ],
+        
+            "ai-powered query resolution",
+            "conversational ai",
+            "no code chatbots",
+            "chatbot builder",],
     },
     {
         "id": "ai_human_handoff",
@@ -915,7 +940,10 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "manage concurrent customer messages with a unified inbox",
             "agent inbox",
             "multi-agent inbox",
-        ],
+        
+            "shared team inbox",
+            "team & custom inboxes",
+            "caixa de entrada compartilhada",],
     },
     {
         "id": "chat_assignment",
@@ -1021,7 +1049,8 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "woocommerce",
             "magento",
             "e-commerce",
-        ],
+        
+            "native integrations",],
     },
     {
         "id": "hubspot_crm_integration",
@@ -1054,7 +1083,9 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "zapier integration",
             "make integration",
             "automation",
-        ],
+        
+            "integrations",
+            "integration",],
     },
     {
         "id": "rest_api",
@@ -1070,7 +1101,11 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "open api",
             "restful api",
             "public api",
-        ],
+        
+            "developer api",
+            "developer hub",
+            "http requests in workflows",
+            "api management",],
     },
     {
         "id": "webhooks",
@@ -1107,7 +1142,10 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "sales analytics",
             "marketing analytics",
             "reports",
-        ],
+        
+            "reports",
+            "advanced reports",
+            "basic reports",],
     },
     {
         "id": "data_export",
@@ -1145,7 +1183,11 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "workspace",
             "sub-account",
             "iam",
-        ],
+        
+            "system and customized roles",
+            "system roles only",
+            "unlimited users",
+            "team management",],
     },
     {
         "id": "data_security",
@@ -1183,6 +1225,53 @@ _CANONICAL_FEATURES_WHATSAPP = [
             "demo",
             "沙箱",
         ],
+    },
+    {
+        "id": "csat_survey",
+        "name_cn": "满意度调研 CSAT/NPS",
+        "name_en": "CSAT / NPS Surveys",
+        "category": "分析 / Analytics",
+        "importance": "P2 · 体验度量",
+        "desc": "对话结束自动发送满意度调研,收集 CSAT/NPS 反馈。",
+        "why": "客服质量可量化的唯一手段;影响 SLA 考核与服务改进。",
+        "aliases": ["csat", "nps", "csat or nps surveys", "satisfaction survey",
+                     "满意度调研", "满意度调查"],
+    },
+    {
+        "id": "appointments",
+        "name_cn": "预约管理",
+        "name_en": "Book Appointments",
+        "category": "业务自动化",
+        "importance": "P2 · 场景增值",
+        "desc": "在对话中完成预约创建/提醒/改期(服务/医疗/教育场景刚需)。",
+        "why": "预约类业务(诊所/美容/教育)的核心闭环;减少 no-show。",
+        "aliases": ["book appointments", "appointment", "appointments",
+                     "appointment scheduling", "预约管理", "预约",
+                     "renewal reminders"],
+    },
+    {
+        "id": "mobile_app",
+        "name_cn": "移动端 App",
+        "name_en": "Mobile App",
+        "category": "收件箱协作",
+        "importance": "P1 · 随时响应",
+        "desc": "iOS/Android 原生 App,坐席随时随地处理会话。",
+        "why": "客服主管/老板外出时处理紧急会话的刚需;竞品覆盖差异点。",
+        "aliases": ["mobile app", "ios app", "android app", "移动端",
+                     "移动应用", "手机app"],
+    },
+    {
+        "id": "success_services",
+        "name_cn": "客户成功服务",
+        "name_en": "Professional / Success Services",
+        "category": "收件箱协作",
+        "importance": "P2 · 企业服务",
+        "desc": "专属客户成功经理/入驻协助/优先工单等人工服务。",
+        "why": "中大客户续费的关键;判断厂商目标客群(企业级 vs SMB)。",
+        "aliases": ["professional services", "dedicated account manager",
+                     "customer success", "onboarding service",
+                     "self-onboarding", "self-serve onboarding",
+                     "customer service", "customer support"],
     },
 ]
 

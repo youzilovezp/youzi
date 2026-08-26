@@ -1087,6 +1087,92 @@ def _get_fallback_from_builtin(canonical_name: str) -> Dict:
     return {}
 
 
+# 精确垃圾黑名单(全词/全句匹配,不误伤真功能)—— 2026-08-26 真实事故:
+# 131 个"独家功能"里一半是这些(cookie 横幅/计划卡 CTA/页面杂项)
+_JUNK_FEATURE_EXACT = {
+    # cookie / GDPR 同意横幅
+    "about cookies", "always active", "functional", "functional functional",
+    "functional functional always active", "confirm my preferences",
+    "save preferences", "view preferences", "preferences preferences",
+    "manage preferences", "please provide your information",
+    "accept all cookies", "cookie policy",
+    # 计划卡 CTA / 状态标签
+    "upgrade to pro", "upgrade to growth", "upgrade to enterprise",
+    "upgrade to business", "current plan", "compare plans and features",
+    "view demo", "no credit card required", "prices are in usd",
+    "not available for this country", "select plan", "choose your plan",
+    # 页面杂项碎片
+    "empty heading", "key features", "learn more", "see all", "view all",
+    "frequently asked questions", "faqs", "youtube", "ycloud on youtube",
+    "docs and support", "integrations", "analytics analytics",
+    "marketing marketing", "product product", "other channels",
+    "additional charges apply for messages", "permanent storage",
+    "self-onboarding", "assist-onboarding", "whatsapp template",
+    "business initiated", "customer initiated", "service conversation",
+    "generative ai credits", "translation characters", "ai credits",
+    "ai prompt",
+}
+_JUNK_FEATURE_EXACT_LC = _JUNK_FEATURE_EXACT
+
+
+def _merge_translation_equivalents(feats: List[str]) -> List[str]:
+    """合并同一功能的机器翻译变体(多语言站点被引擎全量抓下来)。
+
+    策略:ponytail —— 不做 NLP。词干签名(去变音/剥西葡尾缀/去停用词)
+    后,Jaccard 相似度 ≥0.5 且共享最长词干 ≥5 字符 ⇒ 翻译变体。
+    ("Chatbots sin código" vs "No Code Chatbots":共享 chatbot≥5,
+    相似度 1/3≈0.33 不够 → 用「共享长词干」补位;"Shared Team Inbox"
+    vs "Team Inbox" 相似度 0.67 但最长共享词干 inbox/team <5... )
+    最终规则:相似度 ≥0.6,或(相似度 ≥0.4 且共享词干 ≥6)。
+    宁可少报独家,不可报垃圾独家。
+    """
+    import unicodedata
+
+    _STOP = {"with", "para", "from", "your", "that", "this", "sem",
+             "tanpa", "mais", "mas", "los", "las", "dos", "das", "and",
+             "the", "for", "sin", "com", "sem", "de", "da", "do", "en",
+             "es", "una", "uno"}
+
+    def _stem(w: str) -> str:
+        for suf in ("ções", "ciones", "ção", "ción", "mente", "ando",
+                    "endo", "agem", "ación"):
+            if w.endswith(suf) and len(w) > len(suf) + 2:
+                w = w[: -len(suf)]
+        w = w.rstrip("oae") or w
+        return w[:-1] if len(w) > 4 and w.endswith("s") else w  # 单复数归一
+
+    def _sigs(s: str) -> set:
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+        return {
+            _stem(t)
+            for t in re.findall(r"[a-z]{3,}", s)
+            if t not in _STOP and _stem(t) not in _STOP
+        }
+
+    kept: List[str] = []
+    kept_sigs: List[set] = []
+    for f in feats:
+        sig = _sigs(f)
+        if not sig:
+            continue  # 无有效词干的(纯 CJK 由上层处理;碎片丢弃)
+        dup = False
+        for ks in kept_sigs:
+            inter = sig & ks
+            if not inter:
+                continue
+            sim = len(inter) / len(sig | ks)
+            # 共享一个 ≥6 字符的实词词干(如 chatbots/integraç)
+            # 或整体相似度高 → 翻译变体
+            if sim >= 0.5 or any(len(w) >= 6 for w in inter):
+                dup = True
+                break
+        if not dup:
+            kept.append(f)
+            kept_sigs.append(sig)
+    return kept
+
+
 def _is_real_feature(text: str, min_len: int = 8) -> bool:
     """判断列表项是否真的是产品功能(过滤掉 footer 链接、语言切换等)。
 
@@ -1113,6 +1199,9 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
         or re.search(r"\[[^\]]*$", t)
         or t.startswith("!")  # "!Broadcast" 图片否定语法残留
     ):
+        return False
+    # 精确垃圾黑名单(cookie横幅/计划卡CTA/页面杂项)—— 全句小写匹配
+    if t.lower() in _JUNK_FEATURE_EXACT_LC:
         return False
     # cookie/GDPR 同意横幅菜单("Manage options"/"Manage {vendor\count} vendors" 事故)
     if re.match(r"^manage\s+(options|services|vendors|preferences|consent)", t, re.I):
@@ -1180,6 +1269,10 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     ):
         return False
     if t.endswith((".", "!", "?")) or ". " in t:  # 是句子,不是功能名
+        return False
+    # 营销动词短语(逗号分隔的三连动词:"Acquire, engage, and qualify" ——
+    # 产品卡描述句,不是功能名)
+    if re.match(r"^[A-Z][a-z]+,\s+[a-z]+", t):
         return False
     # API 文档端点(xxxget / xxxpost 是 method 徽章融合;查整行而非首词)
     if re.search(r"[a-z](get|post|put|delete|patch)$", t.strip(), re.I) or re.search(
@@ -1750,6 +1843,17 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                 "engines": {},
                 "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
             }
+            # 报告链接用重定向后落点:内置表的旧路径常是 30x 跳板
+            # (真实事故:wati.io/product → /product-overview/,读者点开
+            # 感觉"链接不准")。落点记在 manifest.fetched.final_url,
+            # 渲染端把 source URL 映射为 final_url(G1/G2 仍按抓取 URL 溯源)
+            fu = None
+            for x in (r.get("all_results") or []):
+                if x.get("final_url"):
+                    fu = x["final_url"]
+                    break
+            if fu and fu != url:
+                m_ent["final_url"] = fu
             for x in (r.get("all_results") or []):
                 if x.get("scraper") and x.get("success") and x.get("markdown"):
                     m_ent["engines"][x["scraper"]] = {
@@ -1954,6 +2058,21 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
     result["founded_source"] = about_url or resolved["url"]
     result["headquarters_source"] = about_url or resolved["url"]
     result["team_size_source"] = about_url or resolved["url"]
+
+    # 报告链接跳板修正:page_urls 里的 30x 跳板换成重定向落点。
+    # manifest.fetched 保留双键(请求 URL + final_url)—— G1 溯源两种
+    # 写法都命中;engines_by_url 同步别名,quote 回查不受影响
+    for kind, purl in list(result["page_urls"].items()):
+        fu = (result["_manifest"]["fetched"].get(purl) or {}).get("final_url")
+        if not fu or fu == purl:
+            continue
+        result["page_urls"][kind] = fu
+        alias = dict(result["_manifest"]["fetched"].get(purl) or {})
+        alias.pop("final_url", None)
+        result["_manifest"]["fetched"][fu] = alias
+        ebu = result["_manifest"]["engines_by_url"]
+        if purl in ebu:
+            ebu[fu] = ebu[purl]
 
     return result
 
@@ -2161,6 +2280,15 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         page_features = _extract_features_from_page(
             features_base_md + "\n" + docs_md
         )
+    # 翻译变体合并:多语言站被引擎全量抓取,"No Code Chatbots"/"Chatbots sin
+    # código"/"Chatbots Sem Código" 是同一功能(真实事故:WATI 4 个语言版本
+    # 各算一个"独家",131 个独家里一半是翻译/垃圾)
+    page_features = [
+        {"category": _classify_feature(n), "name": n, "desc": ""}
+        for n in _merge_translation_equivalents(
+            [f["name"] for f in page_features]
+        )
+    ]
     # 逐条归因:功能文本在哪个页面出现,source 就指向哪个页面的 URL
     # (历史缺陷:全部归到 features 页/首页 —— 从 pricing 页提取的功能
     # 指向了 404 的 features URL,读者点开找不到证据)

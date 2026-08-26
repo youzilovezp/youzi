@@ -1233,6 +1233,49 @@ class TestPlaceholderSectionsHonesty(unittest.TestCase):
         self.assertNotIn('id="other-competitors"', self.html)
 
 
+class TestUniqueFeatureSanity(unittest.TestCase):
+    """5.2.3 独家功能可信度:垃圾形态清仓 + 翻译同义合并。"""
+
+    def test_garbage_shapes_all_rejected(self):
+        """真实事故样本(2026-08-26 报告 131 个'独家'里的一半)。"""
+        from scripts.crawl_competitors import _is_real_feature
+        garbage = [
+            # cookie/GDPR 横幅
+            "About Cookies", "Always active", "Functional Functional Always active",
+            "Confirm my preferences", "Save preferences", "View preferences",
+            "Preferences Preferences", "Please provide your information",
+            # 计划卡 CTA / 状态
+            "Upgrade to Pro", "Upgrade to Growth", "Upgrade to Enterprise",
+            "Current plan", "Compare plans and features", "View Demo",
+            "No Credit Card Required", "Prices are in USD",
+            "Not available for this country",
+            # 杂项页面碎片
+            "Empty Heading", "Key features", "Learn more",
+            "Frequently asked questions", "YCloud on Youtube",
+            "Docs and Support", "INTEGRATIONS", "Analytics Analytics",
+            "Marketing Marketing",
+            # 营销句
+            "Acquire, engage, and qualify",
+        ]
+        for g in garbage:
+            self.assertFalse(_is_real_feature(g), f"应被拒绝: {g!r}")
+
+    def test_multilingual_translations_merged(self):
+        """WATI 葡/西/印尼语翻译 = 同一功能,不得各算一个'独家'。"""
+        from scripts.crawl_competitors import _merge_translation_equivalents
+        feats = ["No Code Chatbots", "Chatbots sin código",
+                 "Chatbots Sem Código", "Chatbot Tanpa Kode",
+                 "Shared Team Inbox", "Team Inbox", "Broadcasts"]
+        merged = _merge_translation_equivalents(feats)
+        # 四种语言的无代码机器人合并为一条
+        bots = [f for f in merged if "hatbot" in f.lower()]
+        self.assertEqual(len(bots), 1, f"翻译未合并: {merged}")
+        # "Team Inbox" 与 "Shared Team Inbox" 词干高度重叠,合并是预期
+        # 行为(消除 respond.io/YCloud 的假独家);Broadcasts 不受影响
+        self.assertIn("Broadcasts", merged)
+        self.assertLessEqual(len(merged), 3, f"合并不足: {merged}")
+
+
 if __name__ == "__main__":
     # 默认 verbose 模式
     unittest.main(verbosity=2)

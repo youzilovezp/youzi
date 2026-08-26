@@ -106,6 +106,8 @@ async def _scrape(
             # 提取内容
             html = await page.content()
             text = await page.evaluate("() => document.body.innerText")
+            # 重定向落点要在 browser.close() 前取(报告链接用,跳板路径不再误人)
+            final_url = page.url
             # 转 markdown(与其他 adapter 一致)— 用 markdownify 降级
             try:
                 import markdownify as _md
@@ -187,6 +189,9 @@ async def _scrape(
                 "markdown": markdown,
                 "screenshot": screenshot_file,
                 "extracted": extracted,
+                # 重定向后落点 —— 报告链接用 final_url,跳板路径
+                # (wati.io/product → /product-overview/)不再让读者觉得"不准"
+                "final_url": final_url,
             }
 
     except Exception as e:

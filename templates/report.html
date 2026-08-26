@@ -1790,6 +1790,7 @@
       {% endfor %}
     </div>
 
+    {% if top_opportunities %}
     <h3 class="sub-head">2.5 Top 3 颠覆性机会 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按 disrupt_score 排序</span></h3>
     <div class="opp-cards">
       {% for o in top_opportunities %}
@@ -1809,6 +1810,14 @@
       </div>
       {% endfor %}
     </div>
+    {% else %}
+    <h3 class="sub-head">2.5 颠覆性机会</h3>
+    <div class="swot-empty" style="margin:0.8rem 0;">
+      🔍 机会清单由 LLM 在 Step 3 基于「市场空白 + 爬取证据 + 技术趋势」生成 ——
+      脚本层绝不模板化编造(历史版本曾是"正确废话"拼接,已删除)。
+      见 references/analysis-framework.md 的 opportunities 生成规范。
+    </div>
+    {% endif %}
   </section>
 
   <!-- ════ 三、产品定位分析 ════ -->
@@ -1887,7 +1896,7 @@
       <div class="biz-card">
         <h4>{{c.name}}</h4>
         <div class="biz-row"><strong>💰 模式：</strong>{{commercial_strategies[c.name].model|default('—')}}</div>
-        <div class="biz-row"><strong>💵 定价：</strong>{{commercial_strategies[c.name].pricing_display|default('—')}}</div>
+        <div class="biz-row"><strong>💵 定价：</strong>见 4.4 定价明细(结构化 tiers + 验证状态)</div>
         <div class="biz-row"><strong>📣 GTM：</strong>{{commercial_strategies[c.name].gtm|default('—')}}
           {% for ev in c.gtm_evidence or [] %}{% if ev._ref %}<a href="#src-{{ev._ref}}" class="ref" title="{{ev.quote}}">{{ev._ref}}</a>{% endif %}{% endfor %}
         </div>
@@ -2005,35 +2014,30 @@
     <p style="color:var(--fg-mute); font-style:italic; font-size:0.85rem;">未获取到可靠的阶段信息（需要 Crunchbase/融资数据判断，Step 3 补全；不凭感觉归类）。</p>
     {% endif %}
 
-    <h3 class="sub-head">4.4 定价明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">结构化 tiers(套餐名 + 价格 + 计费 + 来源 URL),币种以官网公示为准</span></h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem;">
+    <h3 class="sub-head">4.4 定价明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">套餐 × 价格 × 计费周期 · 币种以官网公示为准</span></h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem;">
       {% for c in competitors %}
+      {% set pcs = commercial_strategies[c.name] %}
       <div class="pricing-card">
         <div class="pc-head">
           <strong>{{c.name}}</strong>
-          <span class="pc-model">{{commercial_strategies[c.name].model|default('—')}}</span>
+          <span class="pc-model">{{pcs.model|default('—')}}</span>
           <span class="pc-currency" title="币种以官网公示价为准;香港公司可能本地客户用 HKD 计费">{{c.pricing_currency|default('USD')}}{% if c.pricing_unit %} · {{c.pricing_unit}}{% endif %}</span>
         </div>
-        <div class="pc-tiers">
-          {% for t in commercial_strategies[c.name].pricing_tiers %}
-          <div class="pc-tier">
-            <div class="pc-tier-name">{{t.name}}</div>
-            <div class="pc-tier-price">
-              <strong>{{t.price}}</strong>
-              <span class="pc-tier-period">{{t.billing_period}}</span>
-            </div>
-            {% if t.features %}
-            <ul class="pc-tier-feats">
-              {% for f in t.features[:3] %}<li>{{f}}</li>{% endfor %}
-              {% if t.features|length > 3 %}<li class="pc-more">+ {{t.features|length - 3}} 项...</li>{% endif %}
-            </ul>
-            {% endif %}
-          </div>
-          {% endfor %}
-          {% if not commercial_strategies[c.name].pricing_tiers %}
-          <div style="color:var(--fg-mute); font-size:0.78rem; padding:0.5rem 0;">— 公开材料未提供具体价格</div>
-          {% endif %}
-        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+          <tbody>
+            {% for t in pcs.pricing_tiers %}
+            <tr style="border-bottom:1px solid var(--line);">
+              <td style="padding:0.4rem 0.2rem; font-weight:600; white-space:nowrap;">{{t.name}}</td>
+              <td style="padding:0.4rem 0.2rem; text-align:right; font-family:var(--font-mono); font-weight:700; white-space:nowrap;">{{t.price}}</td>
+              <td style="padding:0.4rem 0.2rem; color:var(--fg-mute); font-size:0.75rem; white-space:nowrap;">{{t.billing_period}}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if not pcs.pricing_tiers %}
+        <div style="color:var(--fg-mute); font-size:0.78rem; padding:0.5rem 0;">— 公开材料未提供具体价格</div>
+        {% endif %}
         <div class="pc-foot">
           {% if c._refs.pricing %}<a href="#src-{{c._refs.pricing}}" class="ref">来源 [{{c._refs.pricing}}]</a>{% endif %}
           {% if c.pricing_verified %}
