@@ -1562,28 +1562,78 @@ _DEFAULT_FEATURE_ALIASES = {
 def _auto_detect_aliases(competitors):
     """自动检测:同名功能出现在 ≥2 家厂商 → 自动合并到 canonical。
 
-    Returns:
-        dict: 同 feature_aliases 格式
+    叠加翻译变体聚类:各家多语言页会产出 "Gestión de contactos API" /
+    "Manajemen Kontak API" / "Contact Management" 这类同一功能的翻译,
+    词干签名(与 crawl_competitors._merge_translation_equivalents 同算法)
+    聚成一组后按"出现厂商数 ≥2"判定共性 —— 否则每家都"独家"同一个功能。
     """
     from collections import defaultdict
 
+    from scripts.crawl_competitors import _merge_translation_equivalents
+
     name_to_vendors: dict = defaultdict(set)
+    # 第一遍:收集全部名字
+    all_names: list = []
     for c in competitors:
         comp = c.get("name", "")
         for feat in c.get("feature_catalog", {}).get(comp, []):
             fname = feat.get("name", "").strip()
             if fname:
+                all_names.append(fname)
                 name_to_vendors[fname].add(comp)
 
+    # 翻译聚类:名字 → 代表名(组内首个出现的)
+    rep_of: dict = {}
+    kept = _merge_translation_equivalents(all_names)
+    consumed = list(all_names)  # 逐个映射到 kept 代表
+    ki = 0
+    for name in all_names:
+        pass
+    # 朴素贪心:每个原名归属到第一个与它词干签名相似的 kept 代表
+    import unicodedata as _ud
+    import re as _re
+
+    def _sigs_of(s):
+        s = _ud.normalize("NFKD", s)
+        s = "".join(ch for ch in s if not _ud.combining(ch)).lower()
+        stop = {"with", "para", "from", "your", "that", "this", "sem",
+                "tanpa", "mais", "mas", "los", "las", "dos", "das", "and",
+                "the", "for", "sin", "com", "de", "da", "do", "en", "es",
+                "una", "uno"}
+        def stem(w):
+            for suf in ("ções", "ciones", "ção", "ción", "mente", "ando",
+                        "endo", "agem", "ación"):
+                if w.endswith(suf) and len(w) > len(suf) + 2:
+                    w = w[: -len(suf)]
+            w = w.rstrip("oae") or w
+            return w[:-1] if len(w) > 4 and w.endswith("s") else w
+        return {stem(t) for t in _re.findall(r"[a-z]{3,}", s)
+                if t not in stop and stem(t) not in stop}
+
+    kept_sigs = [(k, _sigs_of(k)) for k in kept]
+    for name in all_names:
+        ns = _sigs_of(name)
+        best = name
+        for k, ks in kept_sigs:
+            inter = ns & ks
+            if inter and (len(inter) / len(ns | ks) >= 0.5
+                          or any(len(w) >= 6 for w in inter)):
+                best = k
+                break
+        rep_of[name] = best
+
     auto: dict = {}
+    # 按代表名聚合厂商
+    rep_vendors: dict = defaultdict(set)
     for name, vendors in name_to_vendors.items():
+        rep_vendors[rep_of.get(name, name)].update(vendors)
+    for rep, vendors in rep_vendors.items():
         if len(vendors) >= 2:
-            # 同名出现在 2+ 家 → 自动合并
-            vlist = sorted(vendors)
-            auto[name] = {
-                "aliases": [name],
-                "rationale": f'自动检测: "{name}" 在 {len(vendors)} 家厂商出现 — '
-                f"{', '.join(vlist)}。",
+            members = [n for n in name_to_vendors if rep_of.get(n, n) == rep]
+            auto[rep] = {
+                "aliases": sorted(set(members)),
+                "rationale": f'自动检测: {len(members)} 个同义表述(含翻译变体)'
+                             f'在 {len(vendors)} 家厂商出现。',
                 "_auto_detected": True,
             }
     return auto
@@ -2086,6 +2136,30 @@ def _apply_evidence_notes_overrides(canonical_features, evidence_notes):
         )
 
 
+def _feat_sigs(s: str) -> set:
+    """功能名词干签名(与 crawl_competitors._merge_translation_equivalents
+    同算法)—— 跨家翻译变体对齐用。"""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch)).lower()
+    stop = {"with", "para", "from", "your", "that", "this", "sem",
+            "tanpa", "mais", "mas", "los", "las", "dos", "das", "and",
+            "the", "for", "sin", "com", "de", "da", "do", "en", "es",
+            "una", "uno"}
+
+    def stem(w):
+        for suf in ("ções", "ciones", "ção", "ción", "mente", "ando",
+                    "endo", "agem", "ación"):
+            if w.endswith(suf) and len(w) > len(suf) + 2:
+                w = w[: -len(suf)]
+        w = w.rstrip("oae") or w
+        return w[:-1] if len(w) > 4 and w.endswith("s") else w
+
+    return {stem(t) for t in re.findall(r"[a-z]{3,}", s)
+            if t not in stop and stem(t) not in stop}
+
+
 def _find_unique_features(competitors, feature_aliases=None):
     """每家独有的功能(其他家都没有)。
 
@@ -2113,7 +2187,22 @@ def _find_unique_features(competitors, feature_aliases=None):
                 alias_index[key] = canonical
 
     def _canon(name: str) -> str:
-        return alias_index.get(name.strip().lower(), name)
+        key = name.strip().lower()
+        if key in alias_index:
+            return alias_index[key]
+        # 未注册别名的名字:尝试与已注册 canonical 模糊(词干签名)对齐 ——
+        # 某家的葡语变体只在它自己那里出现(提取侧合并不了跨家),这里
+        # 对齐后它就不再"独家"(与别家的英文版本是同一功能)
+        ns = _feat_sigs(key)
+        if ns:
+            for canon_key in alias_index:
+                inter = ns & _feat_sigs(canon_key)
+                if inter and (
+                    len(inter) / len(ns | _feat_sigs(canon_key)) >= 0.5
+                    or any(len(w) >= 6 for w in inter)
+                ):
+                    return alias_index[canon_key]
+        return name
 
     # 反向索引:每个 canonical(feature, category) → 提供者列表
     feat_to_comps: dict = {}

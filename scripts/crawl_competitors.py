@@ -1270,6 +1270,24 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
         return False
     if t.endswith((".", "!", "?")) or ". " in t:  # 是句子,不是功能名
         return False
+    # 截断残句(引擎切片切在半途,真实事故:"AI-powered query resolution and"
+    # /"Acquire and engage leads, personalise"/"Saya sangat"/"Envio de Modelos w")
+    if re.search(r"\b(and|with|the|a|de|del|para|yang|dari|to)\s*$", t, re.I):
+        return False
+    # 单字母残尾("Template Submission w")
+    if re.search(r"\s[a-z]$", t):
+        return False
+    # 无实义开头短语("Trusted by …"/"Mais de … clientes satisfeitos" 营销残句)
+    if re.match(r"^(trusted by|mais de|powered by|selected by|highly praised)\b", t, re.I):
+        return False
+    # 剩余残句形态(2026-08-26 三轮实测):"Saya sangat"/"Pricing article"/
+    # "Select quantity"/"Envio de Modelos w"/"Template Submission w"
+    if t.lower() in {
+        "saya sangat", "pricing article", "select quantity",
+        "contact info", "analytics", "customer service",
+        "customer support", "product development", "product & development",
+    }:
+        return False
     # 营销动词短语(逗号分隔的三连动词:"Acquire, engage, and qualify" ——
     # 产品卡描述句,不是功能名)
     if re.match(r"^[A-Z][a-z]+,\s+[a-z]+", t):
@@ -1586,6 +1604,12 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         # cookie/GDPR 按钮融合("CancelSave My Preferences")
         if re.search(r"cancel\s*save|save my preferences|accept\s*all|manage\s*cookies?", t, re.I):
             continue
+        # 垃圾黑名单同样管束套餐提取通道(真实事故:定价页 CTA 状态标签
+        # "View Demo"/"Current plan"/"About Cookies"/"Saya sangat"/
+        # "Select quantity" 经此通道混进独家功能)—— 提前到所有放行
+        # 逻辑之前,不给任何通道机会
+        if t.lower() in _JUNK_FEATURE_EXACT_LC:
+            continue
         words = t.split()
         if t.lower() in _NAV_WORDS or (
             len(words) == 1 and not _is_real_feature(t)
@@ -1607,14 +1631,13 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
             len(words) >= 2
             and all(w[0].isupper() or w in ("&", "and", "of", "for") for w in words)
         ) and not re.fullmatch(
-            r"[A-Z][A-Za-z]*(?:\s+[A-Za-z(&]+)*"
-            r"(?:\s+included|enabled|assistance|support|management|connectivity)?$",
+            # 收紧版兜底:Title Case 开头 + 仅限白名单小写后缀
+            # (included/enabled/assistance/…)。"Saya sangat"/"Select quantity"
+            # 这类任意小写残留不再放行
+            r"[A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+)*"
+            r"(?:\s+(?:included|enabled|assistance|support|management|connectivity|rates|discounts))?$",
             t,
         ):
-            continue
-        # 垃圾黑名单同样管束套餐提取通道(真实事故:定价页 CTA 状态标签
-        # "View Demo"/"Current plan"/"About Cookies" 经此通道混进独家功能)
-        if t.lower() in _JUNK_FEATURE_EXACT_LC:
             continue
         key = t.lower()
         if key not in seen:
