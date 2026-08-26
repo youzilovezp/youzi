@@ -1795,6 +1795,13 @@ _DISCOVER_PATTERNS = {
     ),
     "about": re.compile(r"^about|about[-\s]us|company|our[-\s]story|team$|关于|公司", re.I),
     "docs": re.compile(r"^docs?$|documentation|developers?|api[-\s]docs", re.I),
+    # 口碑/案例页(§7 用户反馈的真实引语来源;G2/Trustpilot 全反爬,
+    # 官网 testimonials/customers 是可达的金矿 —— WATI 实测 10k 字符)
+    "testimonials": re.compile(
+        r"testimonials?|customer[-\s]?stor(y|ies)|case[-\s]?stud|success[-\s]?stor"
+        r"|customers$|reviews?|口碑|客户案例|用户评价", re.I),
+    # 博客/更新页(§6 迭代信号来源:产品动态/版本发布常发在博客)
+    "blog": re.compile(r"^blog$|blogs?/|news|changelog|release[-\s]?notes?|updates?|博客|动态", re.I),
 }
 
 
@@ -1825,7 +1832,15 @@ def _discover_urls(home_md: str, base_url: str) -> Dict[str, str]:
             if kind in found:
                 continue
             if pat.search(text) or pat.search(full.replace(base_url.rstrip("/"), "", 1).split("?")[0]):
-                found[kind] = full.split("?")[0].split("#")[0]
+                url_clean = full.split("?")[0].split("#")[0]
+                # testimonials/blog 只收"栏目页"(路径 ≤2 段),不收深链文章
+                # (真实事故:respond.io 首页 Customers 卡片链接到具体案例
+                # 文章,整页 CSS 垃圾,口碑提取归零)
+                if kind in ("testimonials", "blog"):
+                    depth = len([p for p in urlparse(url_clean).path.split("/") if p])
+                    if depth > 2:
+                        continue
+                found[kind] = url_clean
     return found
 
 
@@ -2069,7 +2084,7 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             )
         )
 
-    for kind in ("pricing", "features", "about", "docs"):
+    for kind in ("pricing", "features", "about", "docs", "testimonials", "blog"):
         guess = guess_urls.get(kind)
         if kind == "about" and not guess:
             best_md, best_url, best_score = "", "", -1
@@ -2199,8 +2214,149 @@ _GTM_EVIDENCE_PATTERNS = [
      "官网面向开发者/API 优先定位"),
 ]
 
-_MOAT_EVIDENCE_PATTERNS = [
-    # (正则, 证据句) —— 客观资产:客户数/认证/官方身份/融资/规模
+# ── §7 用户反馈 / §6 迭代信号:从 testimonials/customers/blog 页提取 ──
+
+# 客户引语形态:引号包住的长句(≥30 字符,含情感/效果词)或 "人名, 公司" 署名行
+_QUOTE_LINE_RX = re.compile(r"[\"“]([^\"”]{30,240})[\"”]")
+_QUOTE_SENTIMENT_RX = re.compile(
+    r"helped|love|great|amazing|excellent|improve|increase|boost|saved"
+    r"|seamless|easy to|recommend|satisfied|帮助|提升|节省|满意|推荐", re.I)
+# 量化效果("185% Increase in Leads"/"reduced response time by 40%")
+_METRIC_RX = re.compile(
+    r"\d[\d.,]*\s*%\s*(?:increase|decrease|reduction|growth|improvement"
+    r"| uplift|boost|more|less|faster|ROI)"
+    r"|(?:reduc\w+|increas\w+|improv\w+|boost\w*)\w*\s+(?:response time|"
+    r"sales|leads|conversions?|productivity|efficiency)[^\n]{0,30}?\bby\s+\d", re.I)
+
+
+def _extract_user_feedback(testimonials_md: str, source_url: str) -> List[Dict]:
+    """从口碑/案例页提取带来源的客户引语与量化效果(§7 真实数据)。
+
+    每条: {kind: quote|metric, text, source}。引语保留原文逐字,
+    量化效果(YCloud "185% Increase in Leads" 类)单列 —— 都是
+    官网公示的客户反馈,可点开核对。
+    """
+    out, seen = [], set()
+    seen_metrics: set = set()  # 同一 % 数字只留一条最佳(标题/正文/复读变体)
+    if not testimonials_md or not source_url:
+        return out
+    for raw in testimonials_md.split("\n"):
+        t = raw.strip().strip("*_`#> ")
+        t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)
+        t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
+        # 引擎 frontmatter 残留("title: …"/"date: …" 前缀)不是正文
+        t = re.sub(r"^(?:title|description|url|hostname|sitename|date)\s*:\s*", "", t, flags=re.I)
+        # 行尾按钮残词
+        t = re.sub(r"\s*Read\s*$", "", t, flags=re.I)
+        t = " ".join(t.split())
+        if not t or len(t) > 300 or t.lower().startswith(("http", "date:")):
+            continue
+        # 标题复读形态("X by 50%X by 50%")去重 —— 引擎拼接事故
+        half = t[: len(t) // 2]
+        if len(t) >= 20 and t.endswith(half[len(half)//2:]):
+            t = half.strip()
+        # 带引号的引语
+        m = _QUOTE_LINE_RX.search(t)
+        if m and _QUOTE_SENTIMENT_RX.search(m.group(1)):
+            q = m.group(1)[:200]
+            if q not in seen:
+                seen.add(q)
+                out.append({"kind": "quote", "text": q, "source": source_url})
+            continue
+        mm = _METRIC_RX.search(t)
+        if mm:
+            # 同数字指标去重:同一 % 值只留最先(最干净)的一条 ——
+            # 案例卡的标题/正文/复读版是同一事实
+            pct = re.search(r"\d[\d.,]*\s*%", t)
+            key = pct.group(0) if pct else t[:40]
+            if key in seen_metrics:
+                continue
+            seg = t[:160]
+            if seg not in seen:
+                seen.add(seg)
+                seen_metrics.add(key)
+                out.append({"kind": "metric", "text": seg, "source": source_url})
+            continue
+        # 无引号的直陈句(口语化评价:"Creating automated chatbot flows is
+        # very easy…" —— WATI case-studies 主形态,真实客户原话)
+        if (
+            len(t) >= 40
+            and _QUOTE_SENTIMENT_RX.search(t)
+            and not _META_LINE_RX.match(t)
+            and not re.match(r"^(?:confira|pendapat|descubra|来自|我司|受到|在快速)", t)
+            # 功能改进建议列表项("- Improve multi-user functionality")
+            # 是产品 roadmap,不是客户评价
+            and not re.match(r"^[-–]\s+(?:improve|add|fix|support|include)", t, re.I)
+        ):
+            # 排除多语言翻译行:与已收引语词干高度重叠的跳过
+            sig = set(re.findall(r"[a-z]{4,}", t.lower()))
+            dup = any(
+                len(sig & set(re.findall(r"[a-z]{4,}", o["text"].lower())))
+                >= max(len(sig), 4) * 0.6
+                for o in out
+            )
+            if not dup and t not in seen:
+                seen.add(t)
+                out.append({"kind": "quote", "text": t[:200], "source": source_url})
+    return out[:6]
+
+
+# 博客/更新页的迭代信号:带日期的标题行(YYYY-MM / Mon YYYY / "New feature:")
+_RELEASE_HEAD_RX = re.compile(
+    r"(20\d{2}[-/年.]\s?\d{1,2}|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+20\d{2}\b"
+    r"|\d+\s+ago|·\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d)", re.I)
+_FEATURE_NEWS_RX = re.compile(
+    r"new\s+(?:feature|integration|capability|release|version|api|ai)"
+    r"|introducing|now\s+(?:available|supports?)|launch(?:ed|es)?"
+    r"|v\d+\.\d+|新功能|上线|发布|新增", re.I)
+# 内容标题信号(博客列表的文章行:描述句/指南/对比/策略 —— 内容营销节奏
+# 也是迭代活跃度的代理指标;比"功能发布"词覆盖面大得多)
+_ARTICLE_HEAD_RX = re.compile(
+    r"\b(?:learn|discover|master|guide|how\s+to|compare|top\s*\d+|"
+    r"strateg|tips?|best|practical|explains?)\b|教学|指南|攻略|对比", re.I)
+
+
+def _extract_product_momentum(blog_md: str, source_url: str) -> List[Dict]:
+    """从博客/更新页提取迭代信号(§6 真实数据)。
+
+    每条: {title, when, source} —— 标题行(优先带日期的;纯功能发布
+    词也算),密度与近期性直接反映产品迭代速度(比拍脑袋 momentum
+    分数可信)。
+    """
+    out, seen = [], set()
+    if not blog_md or not source_url:
+        return out
+    for raw in blog_md.split("\n"):
+        t = raw.strip().strip("*_`#> ").lstrip("-").strip()
+        t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)
+        t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
+        t = re.sub(r"^(?:title|description|url|date)\s*:\s*\"?([^\"]*)\"?", r"\1", t, flags=re.I)
+        t = re.sub(r"\s*Read\s*$", "", t, flags=re.I)
+        t = " ".join(t.split())
+        if not (15 <= len(t) <= 140):
+            continue
+        dm = _RELEASE_HEAD_RX.search(t)
+        fm = _FEATURE_NEWS_RX.search(t)
+        am = _ARTICLE_HEAD_RX.search(t)
+        # 日期形态:正文日期 > frontmatter 残留;"date: 2026-06-17" 的
+        # 纯日期行不是标题,跳过
+        when = ""
+        if dm:
+            when = dm.group(0)
+        if re.fullmatch(r"[\d\s:\-/\.\"]+|date[^\w]*", t, re.I):
+            continue  # 纯日期行
+        if not dm and not fm and not am:
+            continue
+        if t.lower() in seen:
+            continue
+        seen.add(t.lower())
+        out.append({"title": t[:120], "when": when, "source": source_url})
+        if len(out) >= 12:
+            break
+    return out
+
+
+_MOAT_EVIDENCE_PATTERNS = [    # (正则, 证据句) —— 客观资产:客户数/认证/官方身份/融资/规模
     (r"\d[\d,.+]*\s*(?:k\+?|m\+?|\+)?\s*(?:teams|businesses|customers|companies|brands|merchants|users|企业|客户|家)", "customers", None),
     (r"(soc\s*2|iso\s*27001|gdpr|hipaa|合格认证|数据安全认证)", "compliance", "持有国际合规认证(SOC2/ISO27001/GDPR)"),
     (r"(official\s+(?:business|solution|tech)\s+partner|meta\s+partner|bsp\b|官方(合作伙伴|服务商)|官方授权)", "official_partner", "Meta 官方合作伙伴/BSP 身份"),
@@ -2615,6 +2771,17 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         ),
         "tech_signals": _derive_tech_signals(
             docs_md, scraped.get("page_urls", {}).get("docs", "")
+        ),
+        # §7 真实用户反馈(官网 testimonials/customers 客户引语 + 量化效果;
+        # G2/Trustpilot 反爬不可达时的诚实替代源 —— 官网公示,可点开核对)
+        "user_feedback": _extract_user_feedback(
+            scraped["raw_markdown"].get("testimonials", ""),
+            scraped.get("page_urls", {}).get("testimonials", ""),
+        ),
+        # §6 迭代信号(博客/更新页的带日期功能发布行 —— 比 momentum 占位分可信)
+        "product_momentum": _extract_product_momentum(
+            scraped["raw_markdown"].get("blog", ""),
+            scraped.get("page_urls", {}).get("blog", ""),
         ),
         "scores": {
             "feature_richness": 5,

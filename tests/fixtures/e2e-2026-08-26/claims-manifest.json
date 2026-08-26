@@ -1,8 +1,8 @@
 {
  "run": {
   "topic": "WhatsApp BSP 赛道(生产验收)",
-  "started_at": "2026-08-26 15:30 UTC",
-  "finished_at": "2026-08-26 15:32 UTC",
+  "started_at": "2026-08-26 15:58 UTC",
+  "finished_at": "2026-08-26 16:01 UTC",
   "pipeline_version": "2.0"
  },
  "fetched": {
@@ -11,13 +11,13 @@
    "engines": {
     "playwright": {
      "ok": true,
-     "chars": 151792,
-     "content_hash": "94f8ad1caefb021a"
+     "chars": 155191,
+     "content_hash": "87d84bb35d70f0e2"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 50017,
-     "content_hash": "b340952215ce0d0b"
+     "content_hash": "3ea94b1ff73f19b8"
     },
     "trafilatura": {
      "ok": true,
@@ -25,7 +25,7 @@
      "content_hash": "2d313e1785c23332"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC",
+   "fetched_at": "2026-08-26 15:58 UTC",
    "final_url": "https://www.wati.io/"
   },
   "https://www.wati.io/pricing": {
@@ -34,20 +34,20 @@
     "playwright": {
      "ok": true,
      "chars": 75000,
-     "content_hash": "53fcc88adf64a1ab"
+     "content_hash": "a5eb4988c3ff964a"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 75017,
-     "content_hash": "57ad7d474d48db23"
+     "content_hash": "aaab4be2423ca4b2"
     },
     "trafilatura": {
      "ok": true,
      "chars": 19756,
-     "content_hash": "c8149a6c6236dd14"
+     "content_hash": "a7cc2c227efb2a39"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC",
+   "fetched_at": "2026-08-26 15:58 UTC",
    "final_url": "https://www.wati.io/pricing/"
   },
   "https://www.wati.io/product": {
@@ -56,21 +56,21 @@
     "playwright": {
      "ok": true,
      "chars": 155978,
-     "content_hash": "3244b4264a957f69"
+     "content_hash": "22dc0ef036802eb7"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 50017,
-     "content_hash": "472b7b8dc2e142ce"
+     "content_hash": "ee83cfb0e0fa9212"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC",
+   "fetched_at": "2026-08-26 15:59 UTC",
    "final_url": "https://www.wati.io/product-overview/"
   },
   "https://www.wati.io/about": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:59 UTC"
   },
   "https://www.wati.io/about-us": {
    "status": "ok",
@@ -86,12 +86,12 @@
      "content_hash": "933a4470fec5bdc9"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:59 UTC"
   },
   "https://www.wati.io/company": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:59 UTC"
   },
   "https://docs.wati.io": {
    "status": "ok",
@@ -103,24 +103,56 @@
     },
     "crawl4ai": {
      "ok": true,
-     "chars": 19715,
-     "content_hash": "c07b878287508012"
+     "chars": 25017,
+     "content_hash": "df95dee85d8974c2"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 15:59 UTC"
+  },
+  "https://www.wati.io/case-studies": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 4204,
+     "content_hash": "a9ba816664f91466"
+    },
+    "newspaper3k": {
+     "ok": true,
+     "chars": 1223,
+     "content_hash": "b7e8621800e8c0b9"
+    }
+   },
+   "fetched_at": "2026-08-26 15:59 UTC"
+  },
+  "https://www.wati.io/blog": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 665,
+     "content_hash": "8b16a1bfc522ec99"
+    },
+    "newspaper3k": {
+     "ok": true,
+     "chars": 544,
+     "content_hash": "1873c4a54bcfee94"
+    }
+   },
+   "fetched_at": "2026-08-26 16:00 UTC"
   },
   "https://www.wati.io/": {
    "status": "ok",
    "engines": {
     "playwright": {
      "ok": true,
-     "chars": 151792,
-     "content_hash": "94f8ad1caefb021a"
+     "chars": 155191,
+     "content_hash": "87d84bb35d70f0e2"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 50017,
-     "content_hash": "b340952215ce0d0b"
+     "content_hash": "3ea94b1ff73f19b8"
     },
     "trafilatura": {
      "ok": true,
@@ -128,7 +160,7 @@
      "content_hash": "2d313e1785c23332"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:58 UTC"
   },
   "https://www.wati.io/product-overview/": {
    "status": "ok",
@@ -136,15 +168,15 @@
     "playwright": {
      "ok": true,
      "chars": 155978,
-     "content_hash": "3244b4264a957f69"
+     "content_hash": "22dc0ef036802eb7"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 50017,
-     "content_hash": "472b7b8dc2e142ce"
+     "content_hash": "ee83cfb0e0fa9212"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:59 UTC"
   },
   "https://www.wati.io/pricing/": {
    "status": "ok",
@@ -152,20 +184,20 @@
     "playwright": {
      "ok": true,
      "chars": 75000,
-     "content_hash": "53fcc88adf64a1ab"
+     "content_hash": "a5eb4988c3ff964a"
     },
     "crawl4ai": {
      "ok": true,
      "chars": 75017,
-     "content_hash": "57ad7d474d48db23"
+     "content_hash": "aaab4be2423ca4b2"
     },
     "trafilatura": {
      "ok": true,
      "chars": 19756,
-     "content_hash": "c8149a6c6236dd14"
+     "content_hash": "a7cc2c227efb2a39"
     }
    },
-   "fetched_at": "2026-08-26 15:31 UTC"
+   "fetched_at": "2026-08-26 15:58 UTC"
   },
   "https://respond.io": {
    "status": "ok",
@@ -186,7 +218,7 @@
      "content_hash": "53885dd505543cbb"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC",
+   "fetched_at": "2026-08-26 16:00 UTC",
    "final_url": "https://respond.io/"
   },
   "https://respond.io/pricing": {
@@ -208,7 +240,7 @@
      "content_hash": "81db81b97195b63b"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:00 UTC"
   },
   "https://respond.io/features": {
    "status": "ok",
@@ -224,7 +256,7 @@
      "content_hash": "6d179ac20d27d2f9"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC",
+   "fetched_at": "2026-08-26 16:00 UTC",
    "final_url": "https://respond.io/"
   },
   "https://respond.io/about": {
@@ -241,7 +273,7 @@
      "content_hash": "1f8515a9d0e5cd0d"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:00 UTC"
   },
   "https://respond.io/about-us": {
    "status": "ok",
@@ -257,7 +289,7 @@
      "content_hash": "1f8515a9d0e5cd0d"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:00 UTC"
   },
   "https://respond.io/company": {
    "status": "failed",
@@ -268,7 +300,44 @@
      "content_hash": "29d949149e18ca20"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:00 UTC"
+  },
+  "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 84181,
+     "content_hash": "4f44cd308251b194"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 25017,
+     "content_hash": "ac53c23f99b65ba7"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 6128,
+     "content_hash": "4d5d40d367f39ba6"
+    }
+   },
+   "fetched_at": "2026-08-26 16:00 UTC"
+  },
+  "https://respond.io/blog/alternatives-messagebird": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 25017,
+     "content_hash": "e7ce82ea80b04dff"
+    },
+    "newspaper3k": {
+     "ok": true,
+     "chars": 23576,
+     "content_hash": "d4612bb9b1cbeb18"
+    }
+   },
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://respond.io/": {
    "status": "ok",
@@ -284,7 +353,7 @@
      "content_hash": "6d179ac20d27d2f9"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:00 UTC"
   },
   "https://www.ycloud.com": {
    "status": "ok",
@@ -305,7 +374,7 @@
      "content_hash": "39f60b8d44d5d494"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC",
+   "fetched_at": "2026-08-26 16:01 UTC",
    "final_url": "https://www.ycloud.com/"
   },
   "https://www.ycloud.com/pricing": {
@@ -313,8 +382,8 @@
    "engines": {
     "playwright": {
      "ok": true,
-     "chars": 86306,
-     "content_hash": "ca581de02df541f1"
+     "chars": 88057,
+     "content_hash": "756a32207b4199b1"
     },
     "crawl4ai": {
      "ok": true,
@@ -327,7 +396,7 @@
      "content_hash": "e2fabeb8767a9865"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://www.ycloud.com/features": {
    "status": "ok",
@@ -343,7 +412,7 @@
      "content_hash": "36a9e7f1c95b82ff"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://www.ycloud.com/about": {
    "status": "ok",
@@ -359,7 +428,7 @@
      "content_hash": "43be93392d56b75d"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://www.ycloud.com/about-us": {
    "status": "ok",
@@ -375,12 +444,28 @@
      "content_hash": "43be93392d56b75d"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://www.ycloud.com/company": {
    "status": "failed",
    "engines": {},
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
+  },
+  "https://www.ycloud.com/blog": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 2187,
+     "content_hash": "44a7225c67e9ea0b"
+    },
+    "newspaper3k": {
+     "ok": true,
+     "chars": 281,
+     "content_hash": "862bf02087f4f838"
+    }
+   },
+   "fetched_at": "2026-08-26 16:01 UTC"
   },
   "https://www.ycloud.com/": {
    "status": "ok",
@@ -401,7 +486,7 @@
      "content_hash": "39f60b8d44d5d494"
     }
    },
-   "fetched_at": "2026-08-26 15:32 UTC"
+   "fetched_at": "2026-08-26 16:01 UTC"
   }
  },
  "claims": [
@@ -532,7 +617,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[1].price",
@@ -545,7 +630,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[2].price",
@@ -558,7 +643,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[3].price",
@@ -571,7 +656,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_tiers[4].price",
@@ -584,7 +669,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[0].line",
@@ -597,7 +682,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[1].line",
@@ -610,7 +695,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[2].line",
@@ -623,7 +708,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[3].line",
@@ -636,7 +721,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].pricing_vote_detail[4].line",
@@ -649,7 +734,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:00 UTC"
   },
   {
    "field": "competitors[1].gtm_evidence[0]",
@@ -772,7 +857,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[1].price",
@@ -785,7 +870,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[2].price",
@@ -798,7 +883,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[3].price",
@@ -811,7 +896,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[4].price",
@@ -824,7 +909,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[5].price",
@@ -837,7 +922,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_tiers[6].price",
@@ -850,7 +935,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[0].line",
@@ -863,7 +948,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[1].line",
@@ -876,7 +961,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[2].line",
@@ -889,7 +974,7 @@
     "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[3].line",
@@ -898,10 +983,11 @@
    "quote": "Billed $0 /yr",
    "engine": "",
    "verified_by": [
-    "crawl4ai"
+    "crawl4ai",
+    "playwright"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[4].line",
@@ -913,7 +999,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[5].line",
@@ -925,7 +1011,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].pricing_vote_detail[6].line",
@@ -937,7 +1023,7 @@
     "crawl4ai"
    ],
    "from_cache": false,
-   "scraped_at": "2026-08-26 15:32 UTC"
+   "scraped_at": "2026-08-26 16:01 UTC"
   },
   {
    "field": "competitors[2].gtm_evidence[0]",

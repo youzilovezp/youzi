@@ -2213,25 +2213,22 @@
     </div>
     {% endif %}
 
-    {% if scores_real %}
-    <h3 class="sub-head">6.1 整体数据增长 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">行业平均 momentum + 扩张趋势</span></h3>
+    {% if data_growth.key_growth_points or data_growth.release_timeline %}
+    <h3 class="sub-head">6.1 产品迭代信号 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">官方博客/更新日志的公开发布记录</span></h3>
     <div class="growth-hero" style="padding:1.25rem 1.5rem;">
       <p style="font-size:1rem; line-height:1.7; color:var(--fg); margin:0;">{{data_growth.overall|default('（暂无整体数据）')}}</p>
     </div>
 
-    <h3 class="sub-head">6.2 关键增长点 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按 momentum 评分排名</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
-      momentum 评分综合了产品迭代速度、客户增长、媒体声量。10 分 = 爆炸增长,3 分 = 停滞。
-    </p>
+    <h3 class="sub-head">6.2 发布密度对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">公开渠道可见的产品动态条数</span></h3>
     <div class="growth-grid">
       {% for kp in data_growth.key_growth_points %}
       <div class="growth-card" style="padding:1rem 1.25rem;">
         <div class="signal" style="font-size:0.92rem; font-weight:600; margin-bottom:0.5rem;">{{kp.signal}}</div>
-        <div class="value" style="font-family:var(--font-display); font-size:1.6rem; color:var(--accent); font-weight:700; margin-bottom:0.4rem;">{{kp.value}}/10</div>
+        <div class="value" style="font-family:var(--font-display); font-size:1.6rem; color:var(--accent); font-weight:700; margin-bottom:0.4rem;">{{kp.value}} 条</div>
         <div class="source" style="font-size:0.78rem; color:var(--fg-mute);">
           来源：
           {% if kp.source %}
-            <a href="{{kp.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ 原始链接</a>
+            <a href="{{kp.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ 官方渠道</a>
           {% else %}
             未知
           {% endif %}
@@ -2240,14 +2237,24 @@
       {% endfor %}
     </div>
 
-    <h3 class="sub-head">6.3 增长总结 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">基于 momentum 评分的行业洞察</span></h3>
+    {% if data_growth.release_timeline %}
+    <h3 class="sub-head">6.3 近期发布时间线 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">带日期的产品动态(博客/更新日志)</span></h3>
+    <div style="margin:0.5rem 0 1rem;">
+      {% for r in data_growth.release_timeline %}
+      <div style="display:flex; gap:0.8rem; padding:0.45rem 0.75rem; margin-bottom:0.35rem; background:var(--bg-soft); border-radius:6px; align-items:baseline;">
+        <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--accent); white-space:nowrap; min-width:90px;">{{r.when or '—'}}</span>
+        <span style="font-size:0.85rem; color:var(--fg); flex:1;">{{r.title}}</span>
+        <span style="font-size:0.75rem; color:var(--fg-mute); white-space:nowrap;">{{r.vendor}}{% if r.source %} · <a href="{{r.source}}" target="_blank" style="color:var(--info);">↗</a>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <p class="growth-summary" style="font-size:0.95rem; line-height:1.8; padding:1rem 1.25rem; background:var(--bg-soft); border-radius:8px; border-left:4px solid var(--accent);">{{data_growth.summary|default('（暂无增长总结）')}}</p>
     {% else %}
     <h3 class="sub-head">6.1 增长与市场细分</h3>
     <div class="swot-empty" style="margin:0.8rem 0;">
-      🔍 增长/细分洞察待 Step 3 基于证据评估 —— momentum 评分与市场细分依赖
-      真实评分与 stage 数据(当前均为占位),为避免"行业平均 5.0/10"这类
-      伪结论,本节不展示推导内容。
+      🔍 {{data_growth.overall|default('增长/细分洞察待 Step 3 基于证据评估 —— 当前无真实评分与 stage 数据,为避免伪结论,本节不展示推导内容。')}}
     </div>
     {% endif %}
   </section>

@@ -1,7 +1,7 @@
 {
   "topic": "WhatsApp BSP 赛道(生产验收)",
   "subtitle": "WhatsApp BSP 赛道(生产验收) — 基于 3 家竞品实时爬取的深度分析",
-  "date": "2026-08-26",
+  "date": "2026-08-27",
   "competitors": [
     {
       "name": "WATI",
@@ -253,6 +253,20 @@
           "source": "https://docs.wati.io"
         }
       ],
+      "user_feedback": [
+        {
+          "kind": "quote",
+          "text": "I was looking for an easy-to-use and easy-to-set-up personal assistant, and I found Wati. I was able to set up my account in less than 72 hours, which is a huge plus for me. The interface is also very",
+          "source": "https://www.wati.io/case-studies"
+        }
+      ],
+      "product_momentum": [
+        {
+          "title": "WhatsApp教学｜一次学懂15个隐藏WhatsApp功能 WhatsApp一直致力改善用户的聊天…",
+          "when": "",
+          "source": "https://www.wati.io/blog"
+        }
+      ],
       "scores": {
         "feature_richness": 5,
         "ux": 5,
@@ -328,7 +342,7 @@
         "playwright"
       ],
       "pricing_source": "https://respond.io/pricing",
-      "pricing_scraped_at": "2026-08-26 15:32 UTC",
+      "pricing_scraped_at": "2026-08-26 16:00 UTC",
       "pricing_vote_detail": [
         {
           "line": "starter · $79/month",
@@ -605,6 +619,50 @@
         }
       ],
       "tech_signals": [],
+      "user_feedback": [
+        {
+          "kind": "metric",
+          "text": "How Lamarsa Coffee Used Chat Commerce to Improve Sales by 50%",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "A Malaysian coffee equipment retailer grew sales 50%, increased leads 10x and cut response times 38% while managing conversations across 6 countries via respond.io.",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "A Mitsubishi Motors dealer with 47 branches relied on agents' personal phone numbers for WhatsApp, causing inconsistent service. After implementing respond.io's automation, it has grown revenue by 23%",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "When Lamarsa Coffee was searching for a business messaging solutions provider that could streamline customer communication and shorten its sales cycle with automation, a respond.io customer recommende",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "Conversations are Monitored and Measured for Quality Improvement",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "Consolidating all channels on respond.io and adjusting routing and assignment strategies over time have improved first response times by 38% since Lamarsa Coffee began tracking this metric. Resolution",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        }
+      ],
+      "product_momentum": [
+        {
+          "title": "Now that you know how to send promotional messages on respond.io, let's explore how you can use its advanced AI and Auto",
+          "when": "",
+          "source": "https://respond.io/blog/alternatives-messagebird"
+        },
+        {
+          "title": "The Best Solution for Maximum Value",
+          "when": "",
+          "source": "https://respond.io/blog/alternatives-messagebird"
+        }
+      ],
       "scores": {
         "feature_richness": 5,
         "ux": 5,
@@ -694,7 +752,7 @@
         "playwright"
       ],
       "pricing_source": "https://www.ycloud.com/pricing",
-      "pricing_scraped_at": "2026-08-26 15:32 UTC",
+      "pricing_scraped_at": "2026-08-26 16:01 UTC",
       "pricing_vote_detail": [
         {
           "line": "Pro · $89 /mo",
@@ -727,9 +785,10 @@
           "line": "Free · Billed $0 /yr (Current plan)",
           "raw_line": "Billed $0 /yr",
           "engines": [
-            "crawl4ai"
+            "crawl4ai",
+            "playwright"
           ],
-          "independent_votes": 1
+          "independent_votes": 2
         },
         {
           "line": "Pro · Billed $1068 /yr (Upgrade to Pro)",
@@ -757,16 +816,15 @@
         }
       ],
       "target_users": [
-        "营销团队",
         "客服中心",
         "开发者"
       ],
       "core_features": [
-        "Campaign",
         "Growth Tools",
         "Generative AI",
         "Lead Generation",
-        "Chatbot Builder"
+        "Chatbot Builder",
+        "Customer Service"
       ],
       "feature_catalog": {
         "YCloud": [
@@ -799,18 +857,6 @@
             "name": "Growth Tools",
             "desc": "",
             "source": ""
-          },
-          {
-            "category": "营销",
-            "name": "Campaign",
-            "desc": "",
-            "source": "https://www.ycloud.com"
-          },
-          {
-            "category": "其他",
-            "name": "Product & Development",
-            "desc": "",
-            "source": "https://www.ycloud.com"
           },
           {
             "category": "其他",
@@ -896,6 +942,44 @@
         }
       ],
       "tech_signals": [],
+      "user_feedback": [],
+      "product_momentum": [
+        {
+          "title": "Team YCloud · Jul 2, 2026",
+          "when": "· Jul 2",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Compare the top 10 WhatsApp API, chatbot and AI agent providers in China by features, pricing, free trials, pros, cons a",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "This article explains how to create Meta Click to WhatsApp Ads (CTWA) workflow with YCloud.",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "This article explains how to create TikTok Click to WhatsApp Ads (CTWA) workflow with YCloud.",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Learn how to set up, create and run Facebook Ads in Meta Ads Manager, track key metrics, and scale campaigns effectively",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Learn how to set up, create and run Click-to-WhatsApp Ads (CTWA) on Facebook and Instagram to generate and convert more ",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Discover 10 practical CTWA strategies to improve Click to WhatsApp Ads performance, generate quality leads, and drive mo",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        }
+      ],
       "scores": {
         "feature_richness": 5,
         "ux": 5,
@@ -1022,7 +1106,7 @@
   "opportunities": [],
   "other_competitors": [],
   "executive_summary": "基于 3 家竞品实时爬取:4 条候选市场空白(待 Step 3 复核)。定价 3/3 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
-  "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 61 项核心功能。每个功能条目带来源 URL。",
+  "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 59 项核心功能。每个功能条目带来源 URL。",
   "goals": [
     "看清各家功能差异化与共同能力",
     "识别市场空白（所有竞品都没做好的痛点）",

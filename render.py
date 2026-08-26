@@ -617,22 +617,34 @@ def _is_placeholder_swot(item: dict) -> bool:
 
 
 def _derive_user_feedback(c):
-    """从真实的 strengths/weaknesses 派生用户反馈小结(带诚实来源标签)。
+    """从真实的 strengths/weaknesses + 官网口碑页派生用户反馈(带诚实来源标签)。
 
     - 只收有真实证据(有 text 且非占位)的条目
     - source_label 从 URL 域名推导,绝不硬编码 "G2 / 评测 / 官方"
-    - strengths/weaknesses 的 source 就是该论断的出处;没有 source 的不渲染链接
+    - 新版:官网 testimonials 页的客户引语/量化效果(c.user_feedback,
+      爬虫层 _extract_user_feedback 产出)作为第一优先数据 —— 那是
+      真实客户说的话,比 strengths(公司自述资产)更接近"用户反馈"
     """
-    pos = [
-        {
+    pos = []
+    # 官网口碑页引语优先(真实客户声音)
+    for fb in (c.get("user_feedback") or [])[:4]:
+        label = "客户引语" if fb.get("kind") == "quote" else "量化效果"
+        pos.append({
+            "text": fb.get("text", ""),
+            "source": fb.get("source", ""),
+            "source_label": _source_label_for_url(fb.get("source", "")) + f" · {label}",
+            "count": "—",
+        })
+    # strengths 补充(公司自述,次优先)
+    for s in c.get("strengths", [])[:3]:
+        if _is_placeholder_swot(s) or len(pos) >= 5:
+            continue
+        pos.append({
             "text": s.get("point", ""),
             "source": s.get("source", ""),
-            "source_label": _source_label_for_url(s.get("source", "")),
+            "source_label": _source_label_for_url(s.get("source", "")) + " · 官网自述",
             "count": s.get("score", "—"),
-        }
-        for s in c.get("strengths", [])[:3]
-        if not _is_placeholder_swot(s)
-    ]
+        })
     neg = [
         {
             "text": w.get("point", ""),
@@ -2286,30 +2298,57 @@ def _find_unique_features(competitors, feature_aliases=None):
 
 
 def _derive_data_growth(competitors):
-    """从 competitors.scores.momentum 派生数据增长。"""
+    """§6 数据增长:真实迭代信号优先,占位 momentum 分不产出伪结论。
+
+    数据源优先级:
+      1. c.product_momentum(博客/更新页带日期的功能发布行,爬虫层
+         _extract_product_momentum 产出)—— 密度/近期性 = 真实迭代速度
+      2. 无该数据时:scores.momentum 是占位分 → 输出诚实提示
+         (历史缺陷:占位 5 分推导"行业平均 5.0/10 扩张期"伪结论)
+    """
     if not competitors:
-        return {"overall": "—", "summary": "—", "key_growth_points": []}
-    avg_mom = sum(c["scores"].get("momentum", 0) for c in competitors) / len(
-        competitors
-    )
-    top3 = sorted(
-        competitors, key=lambda c: c["scores"].get("momentum", 0), reverse=True
-    )[:3]
-    points = [
-        {
-            "signal": f"{c['name']} 增长势头评分 {c['scores'].get('momentum', 0)}/10",
-            "value": c["scores"].get("momentum", 0),
-            "source": c.get("url", ""),
+        return {"overall": "—", "summary": "—", "key_growth_points": [],
+                "release_timeline": []}
+    has_real = any(c.get("product_momentum") for c in competitors)
+    if not has_real:
+        return {
+            "overall": ("增长洞察需要真实数据:官方博客/更新日志的发布频率"
+                        "(待爬取 blog/changelog 页)或 LLM Step 3 基于证据的"
+                        " momentum 评估 —— 占位评分不产出行业结论。"),
+            "summary": "—",
+            "key_growth_points": [],
+            "release_timeline": [],
         }
-        for c in top3
-    ]
-    summary = f"行业平均 momentum = {avg_mom:.1f}/10。前 3 名：" + "、".join(
-        c["name"] for c in top3
+    # 各家发布时间线(近 12 条/家) + 发布密度对比
+    timeline = []
+    density = {}
+    for c in competitors:
+        pm = c.get("product_momentum") or []
+        density[c["name"]] = len(pm)
+        for it in pm[:6]:
+            timeline.append({
+                "vendor": c["name"],
+                "title": it.get("title", ""),
+                "when": it.get("when", ""),
+                "source": it.get("source", ""),
+            })
+    active = [n for n, d in density.items() if d > 0]
+    summary = (
+        f"公开渠道可见的产品动态:{'、'.join(active)} "
+        f"共 {sum(density.values())} 条近期发布信号"
+        f"({' / '.join(f'{n} {d} 条' for n, d in density.items() if d)})。"
+        "发布密度高 = 迭代活跃;无公开动态 ≠ 停滞(可能未开博客)。"
     )
     return {
-        "overall": f"行业整体处于扩张期，平均 momentum {avg_mom:.1f}/10。",
+        "overall": summary,
         "summary": summary,
-        "key_growth_points": points,
+        "key_growth_points": [
+            {"signal": f"{n} 近期产品动态 {d} 条",
+             "value": d, "source": next(
+                 (c.get("url") for c in competitors if c["name"] == n), "")}
+            for n, d in sorted(density.items(), key=lambda kv: -kv[1]) if d
+        ],
+        "release_timeline": timeline[:18],
     }
 
 
