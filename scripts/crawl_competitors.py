@@ -372,6 +372,16 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             pm = _PERIOD_STRICT_RX.search(ctx_word)
             period = pm.group(0) if pm else ""
             ctx_line = f"{line} ({ctx_word[:40]})"
+        # 套餐名恢复(途径 0,行内):"Growth $39/mo" 形态 —— 行内就带套餐名,
+        # 但历史上只有「标题/裸行恢复」两条路径,行内名被静默丢弃
+        # (真实事故:YCloud 式 "$39/mo + Growth 同行" 全部 tier name = —)
+        if not plan:
+            _stripped = re.sub(
+                _PRICE_TOKEN_RX.pattern, "", line, flags=_PRICE_TOKEN_RX.flags
+            ).strip(" ·-—|/()")
+            m0 = _PLAN_NAME_RX.search(_stripped)
+            if m0 and len(m0.group(0)) <= 20:
+                plan = _dedupe_plan_name(m0.group(0).strip())
         # 套餐名恢复(途径 2):行内显式标注 "(Upgrade to Pro)" /
         # "升级到专业版" —— YCloud 定价页把套餐名放括号里
         if not plan:
@@ -713,6 +723,34 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         }
         for p in sorted(ordered_parts, key=_row_key)
     ][:8]
+
+    # 展示串按已排序 tiers 重新生成:同套餐的月付/年付合并成一项
+    # "Growth · $39 (/mo) | $468 (/yr)" —— 投票行原始顺序曾是
+    # $0/yr · $39/mo · $468/yr · $89/mo… 交错乱序(真实事故:YCloud
+    # §4 商业策略定价串像乱码)
+    if tiers and _has_real_prices(tiers):
+        _groups: list = []
+        for t in tiers:
+            if (
+                _groups
+                and t["name"] != "—"
+                and _groups[-1][0]["name"] == t["name"]
+            ):
+                _groups[-1].append(t)
+            else:
+                _groups.append([t])
+        _parts = []
+        for g in _groups:
+            _seg = " | ".join(
+                f"{t['price']} ({t['billing_period']})"
+                if t["billing_period"] and t["billing_period"] != "—"
+                else t["price"]
+                for t in g
+            )
+            _parts.append(f"{g[0]['name']} · {_seg}" if g[0]["name"] != "—" else _seg)
+        _regen = " / ".join(_parts)
+        if len(_regen) <= 160:
+            pricing = _regen
 
     # 无公开价格时的套餐名降级:很多站(尤其中国 SaaS)有套餐结构但
     # 不公示数字(Meebot:专业版/企业版/定制版)—— 输出套餐名 + "价格未公开",
@@ -1994,13 +2032,28 @@ _MOAT_EVIDENCE_PATTERNS = [
 ]
 
 
+# frontmatter / meta 行是页面摘要,不是页面正文证据 —— "description: ... your
+# growth partner" 曾让 partner 模式误匹配成 GTM 证据(真实事故:WATI 的
+# "官网展示合作伙伴/渠道体系"引文是 meta description)
+_META_LINE_RX = re.compile(r"^(description|title|taxonomy|keywords?|author|og:|twitter:)\s*[:：]", re.I)
+
+
 def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
-    """在 markdown 里找命中行,返回 [(quote, ...)] —— quote 是原文行。"""
+    """在 markdown 里找命中行,返回 [(quote, ...)] —— quote 是原文行。
+
+    引文清理:![alt](url)→alt、[text](url)→text(读者看到的是残骸语法,
+    真实事故:respond.io 合规认证引文整条是图片链接 markdown)。
+    """
     if not md:
         return []
     out = []
     for raw in md.split("\n"):
         t = raw.strip().strip("*_`#> ")
+        if _META_LINE_RX.match(t):
+            continue
+        t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)   # 图片 → alt
+        t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)    # 链接 → text
+        t = " ".join(t.split())
         if 8 <= len(t) <= 160 and re.search(pattern, t, re.I):
             out.append(t[:120])
             if len(out) >= max_hits:
@@ -2045,11 +2098,24 @@ def _derive_moat_evidence(home_md: str, about_md: str, pricing_md: str,
                 seen.add(key)
                 text = re.sub(r"\s+", " ", quotes[0])
                 if label is None:
-                    # 客户数/团队规模:label 用通用句式,具体数字在 quote 里
+                    # 客户数/团队规模:把量级提进标签,读者不用展开引文找数字
+                    # (真实事故:三家都显示"公开客户规模(见引文)" —— 无信息量)
                     if re.search(r"employees|people|团队|员工", text, re.I):
-                        lab = "公开团队规模(见引文)"
+                        m_n = re.search(
+                            r"(\d[\d,.]*\s*(?:k\+?|m\+?|万\+?|\+)?)\s*(?:名\s*)?(?:employees|people|团队|员工|人)",
+                            text, re.I)
+                        lab = (
+                            f"{m_n.group(1).strip()} 团队规模"
+                            if m_n else "公开团队规模(见引文)"
+                        )
                     else:
-                        lab = "公开客户规模(见引文)"
+                        m_n = re.search(
+                            r"(\d[\d,.]*\s*(?:k\+?|m\+?|万\+?|\+)?)\s*(?:家|teams|businesses|customers|companies|brands|merchants|企业|客户)",
+                            text, re.I)
+                        lab = (
+                            f"{m_n.group(1).strip()} 客户/企业"
+                            if m_n else "公开客户规模(见引文)"
+                        )
                 else:
                     lab = label
                 out.append({"name": lab, "quote": text, "source": url})

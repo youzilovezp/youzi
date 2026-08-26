@@ -1601,10 +1601,14 @@
         <span class="info-chip"><span class="lbl">功能总数</span><span class="val">{{feature_total_count}} 项</span></span>
         <span class="info-chip"><span class="lbl">机会</span><span class="val">{{opportunity_count}} 个</span></span>
         <span class="info-chip"><span class="lbl">市场空白</span><span class="val">{{gap_count}} 条</span></span>
+        {% if scores_real %}
         <span class="info-chip"><span class="lbl">综合领先</span><span class="val">{{leader}} {{leader_avg}}/10</span></span>
         <span class="info-chip"><span class="lbl">平均成熟度</span><span class="val">{{avg_maturity}}/10</span></span>
+        {% endif %}
         <span class="info-chip"><span class="lbl">独立来源</span><span class="val">{{source_count}} 条</span></span>
+        {% if segments_summary|length > 1 %}
         <span class="info-chip"><span class="lbl">市场细分</span><span class="val">{{segments_summary|length}} 类</span></span>
+        {% endif %}
       </div>
       <h3 style="margin:1.5rem 0 0.6rem; font-family:var(--font-display); font-size:1rem; color:var(--accent);">📐 分析方法与数据流</h3>
       <ol style="color: var(--fg-soft); line-height: 1.85; padding-left: 1.4rem; font-size:0.92rem;">
@@ -1894,6 +1898,7 @@
       {% endfor %}
     </div>
 
+    {% if scores_real %}
     <h3 class="sub-head">4.1 6 维评分横向对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">🥇🥈🥉 = 各维度前三名 · 领先 {{leader}} 综合 {{leader_avg}}/10</span></h3>
     <div class="table-scroll"><table class="score-table">
       <thead>
@@ -1930,6 +1935,14 @@
         {% endfor %}
       </tbody>
     </table></div>
+    {% else %}
+    <h3 class="sub-head">4.1 6 维评分横向对比</h3>
+    <div class="swot-empty" style="margin:0.8rem 0;">
+      🔍 评分待 Step 3 基于证据评估 —— 当前爬取轮次未产生真实 6 维评分,
+      为避免占位分伪装成权威排名(全 5 分 + 奖牌),本节不展示评分表。
+      补全方式:LLM Step 3 基于 02-raw 证据打分后重渲染。
+    </div>
+    {% endif %}
 
     <h3 class="sub-head">4.2 成立年份时间线 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{founding_year_range}} · {{founding_timeline|length}} 家</span></h3>
     {% if founding_timeline %}
@@ -2179,8 +2192,8 @@
       </div>
     </div>
 
+    {% if segments_summary|length > 1 or (segments_summary and segments_summary[0].label not in ("其他", "其他 / 待识别", "未知", "暂未分类")) %}
     <h3 class="sub-head">6.0 市场细分全景 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{segments_summary|length}} 个细分赛道</span></h3>
-    {% if segments_summary %}
     <div class="segment-grid">
       {% for seg in segments_summary %}
       <div class="segment-card">
@@ -2196,6 +2209,7 @@
     </div>
     {% endif %}
 
+    {% if scores_real %}
     <h3 class="sub-head">6.1 整体数据增长 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">行业平均 momentum + 扩张趋势</span></h3>
     <div class="growth-hero" style="padding:1.25rem 1.5rem;">
       <p style="font-size:1rem; line-height:1.7; color:var(--fg); margin:0;">{{data_growth.overall|default('（暂无整体数据）')}}</p>
@@ -2224,6 +2238,14 @@
 
     <h3 class="sub-head">6.3 增长总结 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">基于 momentum 评分的行业洞察</span></h3>
     <p class="growth-summary" style="font-size:0.95rem; line-height:1.8; padding:1rem 1.25rem; background:var(--bg-soft); border-radius:8px; border-left:4px solid var(--accent);">{{data_growth.summary|default('（暂无增长总结）')}}</p>
+    {% else %}
+    <h3 class="sub-head">6.1 增长与市场细分</h3>
+    <div class="swot-empty" style="margin:0.8rem 0;">
+      🔍 增长/细分洞察待 Step 3 基于证据评估 —— momentum 评分与市场细分依赖
+      真实评分与 stage 数据(当前均为占位),为避免"行业平均 5.0/10"这类
+      伪结论,本节不展示推导内容。
+    </div>
+    {% endif %}
   </section>
 
   <!-- ════ 七、用户反馈分析 ════ -->
@@ -2279,7 +2301,8 @@
     {% endfor %}
   </section>
 
-  <!-- ════ 八、其他竞品资料库 ════ -->
+  <!-- ════ 八、其他竞品资料库(无数据时整节隐藏 —— 空章节 = 目录噪音) ════ -->
+  {% if other_competitors %}
   <section id="other-competitors">
     <div class="sec-head">
       <div class="sec-num">08</div>
@@ -2290,8 +2313,7 @@
     </div>
     <p style="color: var(--fg-mute); font-size: 0.88rem; margin: 0.5rem 0 1rem;">除正文 {{competitors|length}} 家深度分析外，本节列出「{{topic}}」赛道其他值得关注的玩家，按类别分组，便于建立完整市场地图。每条带原始来源 URL。</p>
 
-    {% for cat_group in other_competitors_by_category %}
-    <h3 class="sub-head">{{cat_group.category}} <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{cat_group.count}} 家</span></h3>
+    {% for cat_group in other_competitors_by_category %}    <h3 class="sub-head">{{cat_group.category}} <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">{{cat_group.count}} 家</span></h3>
     <div class="swot-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));">
       {% for oc in cat_group.players %}
       <div class="swot-card" style="border-top-color: var(--info);">
@@ -2316,6 +2338,7 @@
     </div>
     {% endfor %}
   </section>
+  {% endif %}
 
   <!-- ════ 📚 Sources (所有引用汇总) ════ -->
   <section id="sources">

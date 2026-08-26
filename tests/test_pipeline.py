@@ -1120,6 +1120,119 @@ class TestFeatureAttributionAllEngines(unittest.TestCase):
         self.assertTrue(entry.get("pricing_addon_note"))
 
 
+class TestEvidenceQuality(unittest.TestCase):
+    """报告可读性:引文干净 + 标签带数字 + 定价串按套餐分组。"""
+
+    def test_meta_description_not_evidence(self):
+        """frontmatter/meta 行不是页面证据 —— WATI 'growth partner' 误匹配 GTM。"""
+        from scripts.crawl_competitors import _find_evidence_lines
+        md = (
+            "---\ndescription: Discover Wati - your growth partner! Get innovative solutions\n"
+            "title: Wati\n---\n"
+            "# Wati\nTrusted by 8000+ teams worldwide\n"
+        )
+        hits = _find_evidence_lines(md, r"partner", 2)
+        self.assertEqual(hits, [])  # meta 行不命中
+        hits2 = _find_evidence_lines(md, r"trusted by", 2)
+        self.assertTrue(hits2)  # 正文照常命中
+
+    def test_quote_strips_markdown_images_links(self):
+        """引文里的 ![alt](url) / [text](url) 替换为 alt/text,不再渲染残骸。"""
+        from scripts.crawl_competitors import _find_evidence_lines
+        md = "![GDPR Compliant](https://assets.respond.io/image/GDPR.svg) compliant badge\n"
+        hits = _find_evidence_lines(md, r"gdpr", 1)
+        self.assertEqual(hits, ["GDPR Compliant compliant badge"])
+
+    def test_moat_label_contains_number(self):
+        """客户规模标签提取数字 —— '公开客户规模(见引文)' → '16000+ 客户/企业'。"""
+        from scripts.crawl_competitors import _derive_moat_evidence
+        out = _derive_moat_evidence(
+            "超过 16,000 家企业客户的信赖\n", "", "",
+            "https://x.com", "", "",
+        )
+        customers = [e for e in out if "客户" in e["name"] or "规模" in e["name"]]
+        self.assertTrue(customers)
+        self.assertIn("16,000", customers[0]["name"])
+
+    def test_pricing_display_grouped_by_plan(self):
+        """定价展示串按套餐分组:同年付/月付合并到同一套餐下,不再交错乱序。"""
+        from scripts.crawl_competitors import _extract_pricing_evidence
+        md = (
+            "# Pricing\nFree $0/yr\nGrowth $39/mo\nGrowth billed $468/yr\n"
+            "Pro $89/mo\nPro billed $1068/yr\nEnterprise $399/mo\n"
+        )
+        r = {"all_results": [
+            {"scraper": e, "success": True, "markdown": md}
+            for e in ("crawl4ai", "playwright")
+        ]}
+        ev = _extract_pricing_evidence(r, "https://x.com/pricing")
+        # Growth 的 $39 与 $468 必须相邻(同套餐分组),不与 Pro 价交错
+        p = ev["pricing"]
+        self.assertLess(abs(p.find("$39") - p.find("$468")), 40,
+                        f"Growth 月/年价不相邻: {p}")
+        self.assertLess(p.find("$39"), p.find("$89"))
+
+
+class TestPlaceholderSectionsHonesty(unittest.TestCase):
+    """占位数据(全 5 分/未分类 stage/空 other_competitors)不得渲染伪权威章节。"""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        minimal = {
+            "topic": "t", "executive_summary": "x",
+            "competitors": [
+                {"name": "A", "url": "https://a.com", "tagline": "t",
+                 "scores": {k: 5 for k in (
+                     "feature_richness", "ux", "pricing_value",
+                     "integration", "ai_capability", "momentum")}},
+                {"name": "B", "url": "https://b.com", "tagline": "t",
+                 "scores": {k: 5 for k in (
+                     "feature_richness", "ux", "pricing_value",
+                     "integration", "ai_capability", "momentum")}},
+                {"name": "C", "url": "https://c.com", "tagline": "t",
+                 "scores": {k: 5 for k in (
+                     "feature_richness", "ux", "pricing_value",
+                     "integration", "ai_capability", "momentum")}},
+            ],
+            "sources": [],
+            "market_segments": [],
+        }
+        cls.dir = tempfile.TemporaryDirectory()
+        p = Path(cls.dir.name) / "m.json"
+        p.write_text(json.dumps(minimal, ensure_ascii=False), encoding="utf-8")
+        out = Path(cls.dir.name) / "r.html"
+        import subprocess
+        subprocess.run(
+            [sys.executable, str(ROOT / "render.py"), "--input", str(p),
+             "--output", str(out), "--no-check"],
+            check=True, capture_output=True)
+        cls.html = out.read_text(encoding="utf-8")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dir.cleanup()
+
+    def test_no_medals_for_placeholder_scores(self):
+        self.assertNotIn("🥇", self.html)
+        self.assertIn("评分待 Step 3", self.html)
+        # 评分表体不渲染(CSS 里的 .rank-1 类定义除外)
+        self.assertNotIn('<td class="score-cell', self.html)
+
+    def test_no_fake_composite_stats(self):
+        self.assertNotIn("综合领先", self.html)
+        self.assertNotIn("平均成熟度", self.html)
+        self.assertNotIn("行业平均 momentum", self.html)
+
+    def test_no_uncategorized_segment_bucket(self):
+        self.assertNotIn("其他 / 待识别", self.html)
+        self.assertNotIn("暂未分类", self.html)
+
+    def test_empty_other_competitors_section_hidden(self):
+        self.assertNotIn("0 家市场全景玩家", self.html)
+        self.assertNotIn('id="other-competitors"', self.html)
+
+
 if __name__ == "__main__":
     # 默认 verbose 模式
     unittest.main(verbosity=2)

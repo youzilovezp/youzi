@@ -261,8 +261,14 @@ def _derive_user_positioning(c):
         "target_segment": "、".join(users) if users else "—",
         # 历史缺陷:这里曾硬编码 region="全球" —— 数据里没有就如实写未采集,不猜
         "region": c.get("region") or "未采集",
-        "scale": "中小企业" if stage in ("早期", "成长期") else "中大型企业",
-        "key_market": stage if stage else "—",
+        # scale 由 stage 推断;stage 缺失("—"/空)时不再兜底"中大型企业"
+        # (真实事故:三家全是占位 stage,§3.2 规模列全是"中大型企业" = 伪事实)
+        "scale": (
+            "中小企业" if stage in ("早期", "成长期")
+            else "中大型企业" if stage in ("成熟期", "巨头")
+            else "—"
+        ),
+        "key_market": stage if stage and stage != "—" else "—",
         "founded": founded,  # 加 founded 字段,§3.2 显示
     }
 
@@ -3416,6 +3422,12 @@ def normalize(data: dict) -> dict:
     data["competitor_count"] = len(data["competitors"])
     data["opportunity_count"] = len(data["opportunities"])
     data["gap_count"] = len(data["gaps"])
+    # 评分真实性:任一竞品有非占位分(Step 3 已评)才渲染评分/排名/momentum
+    # 派生章节 —— 全占位时 4.1 奖牌表与 6.x momentum 结论都是伪权威
+    data["scores_real"] = any(
+        c.get("scores_confidence") == "normal"
+        for c in data["competitors"]
+    )
 
     # 平均成熟度（六维综合均值）
     if data["competitors"]:
