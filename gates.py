@@ -98,14 +98,33 @@ def g1_source_traceability(analysis, manifest, engine_index, rep: Report):
 
 _STRENGTH_QUOTE_RX = re.compile(r'官网原文:\s*"(.+?)"\s*"?$')
 
+# 与 crawl_competitors._find_evidence_lines 同款 markdown 清洗 —— 引文展示侧
+# 已把 ![alt](url)→alt / [text](url)→text,回查侧必须同样归一化,否则
+# 清洗后的干净引文永远 grep 不到含原始语法的引擎原文(G2 闭环自抓)
+import functools  # noqa: E402
+
+_MD_IMG_RX = re.compile(r"!\[([^\]]*)\]\([^)]+\)")
+_MD_LNK_RX = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+
+
+@functools.lru_cache(maxsize=64)
+def _norm_md_stripped(md: str) -> str:
+    s = _MD_IMG_RX.sub(r"\1", md)
+    s = _MD_LNK_RX.sub(r"\1", s)
+    return norm_ws(s)
+
 
 def _quote_grep(quote: str, url: str, engine_index: dict) -> bool:
-    """quote 在该 URL 任一引擎原文中归一化命中。"""
+    """quote 在该 URL 任一引擎原文中归一化命中。
+
+    两级归一化:空白折叠(折行/多空格)+ markdown 链接语法剥离
+    (与证据侧 _find_evidence_lines 的清洗对称)。
+    """
     q = norm_ws(quote)
     if not q:
         return True  # 空 quote 由 G4 管
     for md in (engine_index.get(url) or {}).values():
-        if q in norm_ws(md):
+        if q in norm_ws(md) or q in _norm_md_stripped(md):
             return True
     return False
 

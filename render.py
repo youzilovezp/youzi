@@ -356,9 +356,11 @@ def _derive_commercial_strategies(c):
         model = "未公开"
 
     # 展示串:模板直接用,避免对 dict 列表 join 出 Python repr(历史 bug)。
-    # 去重("未公开 / 未公开 / 未公开" 只显示一次);per-user 计价时标注单位
+    # 去重("未公开 / 未公开 / 未公开" 只显示一次);per-user 计价时标注单位。
+    # 套餐名保留并分组:同套餐的月付/年付合并 "Growth $39·/mo|$468·/yr",
+    # 无名的裸价格串曾是 "$0/yr / $39/mo / $468/yr…" 交错乱码
     unit = (c.get("pricing_unit") or "").strip()
-    display_parts, seen_disp = [], set()
+    groups: list = []
     for t in structured_tiers:
         if t["price"] != "—":
             seg = f"{t['price']}" + (
@@ -366,9 +368,25 @@ def _derive_commercial_strategies(c):
             )
         else:
             seg = t["name"][:40]
+        name = (t.get("name") or "").strip()
+        if name and name != "—" and groups and groups[-1][0] == name:
+            groups[-1][1].append(seg)
+        else:
+            groups.append((name if name and name != "—" else "", [seg]))
+    display_parts, seen_disp = [], set()
+    seen_prices = set()  # "未公开"类无名价格只显示一次(历史去重语义)
+    for name, segs in groups:
+        seg = (" ".join([name] if name else []) + " " + "|".join(segs)).strip() \
+            if len(segs) > 1 else ((f"{name} " if name else "") + segs[0]).strip()
         if seg in seen_disp:
             continue
+        if (
+            not any(re.search(r"\d", p) for p in segs)
+            and all(p in seen_prices for p in segs)
+        ):
+            continue  # 无数字价格(未公开/—)重复段:跳过
         seen_disp.add(seg)
+        seen_prices.update(segs)
         display_parts.append(seg)
     pricing_display = " / ".join(display_parts) or "—"
     if unit and pricing_display != "—":
@@ -3858,7 +3876,13 @@ def self_check(data, html_str):
                     "product-design",
                     "data-growth",
                     "user-feedback",
-                    "other-competitors",
+                    # other-competitors 无数据时整节隐藏(空"0 家"章节 =
+                    # 目录噪音),有数据才要求渲染
+                    *(
+                        ["other-competitors"]
+                        if data.get("other_competitors")
+                        else []
+                    ),
                     "sources",
                 ]
             ),
