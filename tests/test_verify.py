@@ -322,5 +322,114 @@ class TestG3PricingIntegrity(unittest.TestCase):
         self.assertTrue(rep["passed"])
 
 
+class TestG4MissingHonesty(unittest.TestCase):
+    """G4: 失败有记录;缺失字段不断言来源。"""
+
+    def _run(self, manifest, analysis, engines=None):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            return _bundle(Path(d), manifest, analysis, engines or {})
+
+    def test_failed_fetch_without_failure_record(self):
+        m = _ok_manifest(urls_failed=["https://www.wati.io/pricing"])
+        rep = self._run(m, _one_comp_analysis())  # failures 列表为空 = 静默吞掉
+        self.assertEqual(len(_violations_by_gate(rep, "G4")), 1)
+
+    def test_failed_fetch_with_failure_record_passes(self):
+        m = _ok_manifest(urls_failed=["https://www.wati.io/pricing"])
+        m["failures"] = [{
+            "competitor": "WATI", "url": "https://www.wati.io/pricing",
+            "kind": "pricing", "error": "404",
+        }]
+        rep = self._run(m, _one_comp_analysis())
+        self.assertEqual(len(_violations_by_gate(rep, "G4")), 0)
+
+    def test_missing_value_with_source_asserted(self):
+        """founded="—" 却断言 founded_source → 读者点开找不到任何东西。"""
+        rep = self._run(
+            _ok_manifest(urls_ok=["https://www.wati.io/about"]),
+            _one_comp_analysis(
+                founded="—", founded_source="https://www.wati.io/about",
+                headquarters="—", headquarters_source="",
+                team_size="—", team_size_source="",
+            ),
+        )
+        v = _violations_by_gate(rep, "G4")
+        self.assertEqual(len(v), 1)
+        self.assertIn("founded_source", v[0]["field"])
+
+    def test_value_with_source_passes(self):
+        rep = self._run(
+            _ok_manifest(urls_ok=["https://www.wati.io/about"]),
+            _one_comp_analysis(
+                founded="2019", founded_source="https://www.wati.io/about",
+            ),
+        )
+        self.assertEqual(len(_violations_by_gate(rep, "G4")), 0)
+
+
+class TestG5Antifabrication(unittest.TestCase):
+    """G5: 已知伪造引文黑名单 / repr 泄漏 / 占位符。"""
+
+    def _run(self, analysis):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            return _bundle(Path(d), _ok_manifest(), analysis)
+
+    def test_blacklisted_strength_quote(self):
+        rep = self._run(_one_comp_analysis(strengths=[{
+            "point": "p",
+            "evidence": '官网原文: "Pricing gets expensive at scale"',
+            "score": 0, "source": "",
+        }]))
+        self.assertEqual(len(_violations_by_gate(rep, "G5")), 1)
+
+    def test_repr_leak_in_field(self):
+        rep = self._run(_one_comp_analysis(tagline="['Best', 'tool']"))
+        self.assertEqual(len(_violations_by_gate(rep, "G5")), 1)
+
+    def test_placeholder_in_opportunities(self):
+        a = _one_comp_analysis()
+        a["opportunities"] = [{"title": "待补充", "inspiration": ""}]
+        rep = self._run(a)
+        self.assertEqual(len(_violations_by_gate(rep, "G5")), 1)
+
+    def test_clean_analysis_passes(self):
+        rep = self._run(_one_comp_analysis())
+        self.assertTrue(rep["passed"])
+
+
+class TestG6UrlHygiene(unittest.TestCase):
+    """G6: URL 格式(硬) + 跨竞品域名(警告)。"""
+
+    def _run(self, analysis, manifest=None, engines=None):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            return _bundle(Path(d), manifest or _ok_manifest(), analysis, engines)
+
+    def test_malformed_url_hard_fail(self):
+        rep = self._run(_one_comp_analysis(
+            pricing_source="notaurl", pricing="x",
+        ))
+        self.assertEqual(len(_violations_by_gate(rep, "G6")), 1)
+
+    def test_cross_competitor_domain_warning_only(self):
+        rep = self._run(_one_comp_analysis(
+            founded="2019",
+            founded_source="https://competitor-x.com/about",
+        ), manifest=_ok_manifest(urls_ok=["https://competitor-x.com/about"]))
+        self.assertEqual(len(_violations_by_gate(rep, "G6")), 0)  # 仅警告
+        w = [x for x in rep["warnings"] if x["gate"] == "G6"]
+        self.assertEqual(len(w), 1)
+
+    def test_subdomain_of_own_site_no_warning(self):
+        m = _ok_manifest(urls_ok=["https://docs.wati.io/api"])
+        rep = self._run(_one_comp_analysis(
+            tech_signals=[{"name": "REST API", "source": "https://docs.wati.io/api"}],
+        ), manifest=m)
+        self.assertEqual(
+            len([x for x in rep["warnings"] if x["gate"] == "G6"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
