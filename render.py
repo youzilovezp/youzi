@@ -375,11 +375,40 @@ def _group_opportunity_by_competitor(opportunity_points, competitors):
 _FEATURE_ZH = [
     ("team inbox", "团队收件箱"),
     ("shared inbox", "共享收件箱"),
+    ("unified inbox", "统一收件箱"),
     ("broadcast", "批量群发"),
     ("campaign", "营销活动"),
     ("chatbot", "聊天机器人"),
     ("chat bot", "聊天机器人"),
     ("automation", "自动化"),
+    ("flow builder", "流程编排器"),
+    ("rule engine", "规则引擎"),
+    ("a/b testing", "A/B 测试"),
+    ("ab testing", "A/B 测试"),
+    ("pr summary", "PR 摘要"),
+    ("pull request", "拉取请求 (PR)"),
+    ("inline comment", "行内评论"),
+    ("code review", "代码审查"),
+    ("code completion", "代码补全"),
+    ("code generation", "代码生成"),
+    ("code interpreter", "代码解释器"),
+    ("vulnerability", "漏洞检测"),
+    ("security scan", "安全扫描"),
+    ("ide plugin", "IDE 插件"),
+    ("ide integration", "IDE 集成"),
+    ("self-host", "私有化部署"),
+    ("self host", "私有化部署"),
+    ("on-premise", "本地部署"),
+    ("on-prem", "本地部署"),
+    ("air-gapped", "隔离网络部署"),
+    ("air gapped", "隔离网络部署"),
+    ("customer journey", "客户旅程"),
+    ("journey", "客户旅程"),
+    ("transcript", "通话转写"),
+    ("verification", "身份验证"),
+    ("voice code", "语音验证码"),
+    ("2fa", "双因素认证"),
+    ("otp", "一次性验证码"),
     ("workflow", "工作流"),
     ("no-code", "无代码"),
     ("no code", "无代码"),
@@ -444,6 +473,8 @@ _FEATURE_ZH = [
     ("report", "报表"),
     ("notification", "消息通知"),
     ("inbox", "收件箱"),
+    ("email", "邮件发送"),
+    ("sms", "短信发送"),
     ("bot", "机器人"),
     ("ai", "AI 能力"),
 ]
@@ -459,7 +490,8 @@ def _feature_zh(name: str) -> str:
         if " " in key or "-" in key:
             if key in low:
                 return zh
-        elif re.search(rf"\b{re.escape(key)}\b", low):
+        # 单词键容忍复数("broadcasts" 命中 "broadcast")
+        elif re.search(rf"\b{re.escape(key)}s?\b", low):
             return zh
     return ""
 
@@ -1723,9 +1755,22 @@ _DEFAULT_FEATURE_ALIASES = {
             "团队共享收件箱",
             "Team Inbox",
             "Shared Inbox",
+            "Unified Inbox",
             "协作收件箱",
             "Agent Inbox",
             "Multi-Agent Inbox",
+            "Inbox",
+        ],
+        # substr:句子型功能名(如 "…unifies them in a team inbox")做词边界包含匹配
+        "substr": [
+            "team inbox",
+            "shared inbox",
+            "unified inbox",
+            "collaborative inbox",
+            "agent inbox",
+            "agent console",
+            "inbox",
+            "收件箱",
         ],
         "rationale": "本质都是「多坐席共享同一个对话列表」,各家产品命名不同。",
     },
@@ -1736,6 +1781,12 @@ _DEFAULT_FEATURE_ALIASES = {
             "Chat Assignment",
             "Conversation Routing",
             "Conversation Assignment",
+        ],
+        "substr": [
+            "conversation routing",
+            "route conversations",
+            "chat assignment",
+            "对话分配",
         ],
         "rationale": "把进入的对话按规则分配到坐席(团队/优先级/语言)。",
     },
@@ -1908,6 +1959,14 @@ _DEFAULT_FEATURE_ALIASES = {
             "Channels API",
             "渠道聚合",
         ],
+        "substr": [
+            "omnichannel",
+            "multi-channel",
+            "multichannel",
+            "centralize chats",
+            "unifies them",
+            "渠道统一",
+        ],
         "rationale": "统一接入 WhatsApp/SMS/Email/Voice/Messenger 等多渠道。",
     },
     "数据导出 (Data Export)": {
@@ -1952,6 +2011,175 @@ _DEFAULT_FEATURE_ALIASES = {
         ],
         "rationale": "SOC2/HIPAA/ISO27001 等合规审计必需。",
     },
+    # ── 通用功能家族(R2-D)——「所有竞品都有」的基础能力,爬虫常把官网
+    # 功能描述抓成句子("…to targeted customers"),exact 别名命不中就被判
+    # 成某家独家。substr 列表只放高置信短语(词边界匹配),勿加泛词。
+    "批量群发与营销活动 (Broadcast & Campaigns)": {
+        "aliases": [
+            "Broadcast",
+            "Broadcasts",
+            "Broadcast Messages",
+            "Bulk Messaging",
+            "营销活动",
+            "群发",
+            "广播",
+        ],
+        "substr": [
+            "broadcast",
+            "bulk messaging",
+            "bulk sends",
+            "campaign",
+            "群发",
+            "广播",
+            "营销活动",
+        ],
+        "rationale": "向批量客户/受众发送营销消息 —— 广播/群发/营销活动是同一能力的不同叫法。",
+    },
+    "消息模板 (Message Templates)": {
+        "aliases": [
+            "Message Templates",
+            "Template Messages",
+            "模板消息",
+            "消息模板",
+        ],
+        "substr": ["message template", "template message", "模板消息", "消息模板"],
+        "rationale": "预审批的消息模板(如 WhatsApp Template Message)批量触达。",
+    },
+    "联系人管理 (Contact Management)": {
+        "aliases": ["Contact Management", "Contacts", "联系人管理", "客户管理"],
+        "substr": [
+            "contact management",
+            "contacts and contact",
+            "联系人管理",
+            "客户管理",
+        ],
+        "rationale": "联系人/客户资料的增删改查与分组管理。",
+    },
+    "客户分群 (Segmentation)": {
+        "aliases": [
+            "Segmentation",
+            "Customer Segmentation",
+            "Audience Segmentation",
+            "客户分群",
+        ],
+        "substr": ["segmentation", "客户分群", "受众分群"],
+        "rationale": "按标签/行为把联系人切分为受众群,定向触达。",
+    },
+    "AI 对话机器人 (AI Chatbot)": {
+        "aliases": ["AI Chatbot", "AI Chatbots", "AI Bot", "AI Bots", "聊天机器人"],
+        "substr": ["chatbot", "chat bot", "ai-powered bot", "ai bot", "聊天机器人"],
+        "rationale": "AI 机器人自动应答/筛选线索/处理常见问题。",
+    },
+    "自动化工作流 (Automation Workflow)": {
+        "aliases": [
+            "Automation Workflow",
+            "Marketing Automation",
+            "Customer Journeys",
+            "自动化工作流",
+            "客户旅程",
+        ],
+        "substr": [
+            "automation",
+            "automated customer journey",
+            "customer journey",
+            "journey builder",
+            "workflow",
+            "自动化",
+            "工作流",
+        ],
+        "rationale": "触发器+动作的自动化流程(营销自动化/客户旅程/工作流同源)。",
+    },
+    "数据分析 (Analytics)": {
+        "aliases": [
+            "Analytics",
+            "Conversation Analytics",
+            "Data Insights",
+            "数据分析",
+            "数据洞察",
+        ],
+        "substr": ["analytics", "insights", "数据分析", "数据洞察"],
+        "rationale": "对话/营销/转化数据的报表与洞察。",
+    },
+    "IDE 插件 (IDE Plugin)": {
+        "aliases": ["IDE Plugin", "IDE Integration", "VS Code Extension", "IDE 插件"],
+        "substr": [
+            "vs code",
+            "vscode",
+            "ide plugin",
+            "ide integration",
+            "jetbrains",
+            "visual studio",
+            "cursor",
+        ],
+        "rationale": "在 IDE/编辑器里直接使用(VS Code/Cursor/JetBrains 集成)。",
+    },
+    "AI 代码审查 (AI Code Review)": {
+        "aliases": [
+            "AI Code Review",
+            "Automated Code Review",
+            "Automated AI Review",
+            "AI 代码审查",
+            "自动代码审查",
+        ],
+        "substr": [
+            "ai code review",
+            "automated code review",
+            "code review",
+            "ai review",
+            "代码审查",
+        ],
+        "rationale": "AI 自动审查代码变更(PR diff)并给结论 —— 该品类各家的核心能力。",
+    },
+    "安全扫描 (Security Scanning)": {
+        "aliases": [
+            "Security Scanning",
+            "Vulnerability Scan",
+            "SAST",
+            "安全扫描",
+            "漏洞扫描",
+        ],
+        "substr": [
+            "security scan",
+            "vulnerab*",
+            "sast",
+            "secrets",
+            "安全扫描",
+            "漏洞扫描",
+        ],
+        "rationale": "代码安全扫描(漏洞/密钥泄漏/SAST/依赖风险)。",
+    },
+    "代码托管与项目集成 (Git Hosting Integration)": {
+        "aliases": ["GitHub Integration", "GitLab Integration", "代码托管集成"],
+        "substr": [
+            "github",
+            "gitlab",
+            "bitbucket",
+            "jira",
+            "linear",
+            "代码托管集成",
+        ],
+        "rationale": "对接代码托管/issue 跟踪平台(GitHub/GitLab/Jira/Linear)。",
+    },
+    "私有化部署 (Self-Hosting & On-Premise)": {
+        "aliases": [
+            "Self-Hosting",
+            "Self-Hosted",
+            "On-Premise",
+            "Air-gapped",
+            "私有化部署",
+        ],
+        "substr": [
+            "self-host",
+            "self host",
+            "on-premise",
+            "on-prem",
+            "air-gapped",
+            "air gapped",
+            "single-tenant",
+            "私有化部署",
+        ],
+        "rationale": "自营部署(云内/本地/隔离网),数据不出企业边界。",
+    },
 }
 
 
@@ -1976,9 +2204,12 @@ def _auto_detect_aliases(competitors):
                 all_names.append(fname)
                 name_to_vendors[fname].add(comp)
 
+    # 主题域 omnipresent token 不作同义判据(同 _find_unique_features)
+    dom_stops = _domain_stop_tokens(all_names)
+
     # 翻译聚类:名字 → 代表名(组内首个出现的)
     rep_of: dict = {}
-    kept = _merge_translation_equivalents(all_names)
+    kept = _merge_translation_equivalents(all_names, stops=dom_stops)
     # 朴素贪心:每个原名归属到第一个与它词干签名相似的 kept 代表
     import unicodedata as _ud
     import re as _re
@@ -2043,10 +2274,8 @@ def _auto_detect_aliases(competitors):
         ns = _sigs_of(name)
         best = name
         for k, ks in kept_sigs:
-            inter = ns & ks
-            if inter and (
-                len(inter) / len(ns | ks) >= 0.5 or any(len(w) >= 6 for w in inter)
-            ):
+            inter = (ns & ks) - dom_stops
+            if inter and (len(inter) / len(ns | ks) >= 0.5 or _fuzzy_single_ok(inter)):
                 best = k
                 break
         rep_of[name] = best
@@ -2134,6 +2363,156 @@ def _merge_alias_layers(user_aliases, auto_aliases, default_aliases):
     return merged
 
 
+# ── 别名解析(共享)——exact 命中 + 句子型功能名的子串词边界匹配 ──
+
+_SUBSTR_RX_CACHE: dict = {}
+
+
+def _alias_substr_list(feature_aliases) -> list:
+    """收集各 canonical 的 substr 列表 → [(substr_lower, canonical), ...]。"""
+    out: list = []
+    seen: set = set()
+    for canonical, info in (feature_aliases or {}).items():
+        if not isinstance(info, dict):
+            continue
+        for s in info.get("substr", []):
+            key = str(s).strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                out.append((key, canonical))
+    return out
+
+
+def _alias_exact_indexes(feature_aliases):
+    """(exact, auto):人工层(user+default)与自动检测层的精确索引分开建。
+
+    解析优先级:人工 exact > 家族 substr > 自动 exact > fuzzy ——
+    自动检测是推断层,不得遮蔽人工维护的通用功能家族(否则句子型名字被
+    auto 组的原始句名 exact 命中,curated 双语 canonical 永远到不了)。
+    """
+    exact: dict = {}
+    auto: dict = {}
+    for canonical, info in (feature_aliases or {}).items():
+        rationale = info.get("rationale", "") if isinstance(info, dict) else ""
+        is_auto = isinstance(info, dict) and info.get("_auto_detected")
+        aliases = info.get("aliases", []) if isinstance(info, dict) else [canonical]
+        for alias in [canonical, *aliases]:
+            key = str(alias).strip().lower()
+            if not key:
+                continue
+            if is_auto:
+                auto.setdefault(key, (canonical, rationale))
+            else:
+                exact[key] = (canonical, rationale)
+    return exact, auto
+
+
+def _substr_hit(name_low: str, substrs) -> str | None:
+    """词边界包含匹配:ascii 别名容忍末尾复数 s;以 ``*`` 结尾的条目按词干
+    前缀匹配("vulnerab*" 命中 vulnerabilities);CJK 别名直接 in。
+
+    多个家族命中时取「出现位置最早、其次别名最长」—— 句子型功能名的
+    主题词通常在前("route conversations" 优于句尾的泛词)。
+    """
+    best = None  # (pos, -len, canonical)
+    for s, canonical in substrs:
+        prefix = s.endswith("*")
+        key = s[:-1] if prefix else s
+        if not key:
+            continue
+        if re.search(r"[\u4e00-\u9fff]", key):
+            pos = name_low.find(key)
+            if pos < 0:
+                continue
+        else:
+            rx = _SUBSTR_RX_CACHE.get(s)
+            if rx is None:
+                if prefix:
+                    rx = re.compile(rf"(?<![a-z0-9]){re.escape(key)}[a-z]*")
+                else:
+                    rx = re.compile(rf"(?<![a-z0-9]){re.escape(key)}s?(?![a-z0-9])")
+                _SUBSTR_RX_CACHE[s] = rx
+            m = rx.search(name_low)
+            if not m:
+                continue
+            pos = m.start()
+        cand = (pos, -len(key), canonical)
+        if best is None or cand < best:
+            best = cand
+    return best[2] if best else None
+
+
+def _domain_stop_tokens(all_names) -> set:
+    """主题域/高频泛 token,不能作为「两名同义」的判据 —— 否则含同一泛词
+    ('whatsapp'/'customer'/'code')的不同功能被吸进同一个 canonical,独家
+    面板出现张冠李戴的代表名。判据:出现次数 > max(3, 35% 名字数)。
+    (纯比例阈值不够:50 个名字里 6 个含 'whatsapp' 只有 12%,照样吸组。)"""
+    from collections import Counter
+
+    tok_names: Counter = Counter()
+    names = [n for n in all_names if n]
+    for nm in names:
+        low = nm.lower()
+        toks = set(re.findall(r"[a-z]{3,}", low))
+        toks |= set(re.findall(r"[\u4e00-\u9fff]{2,}", low))
+        for t in toks:
+            tok_names[t] += 1
+    n = len(names)
+    if not n:
+        return set()
+    thresh = max(3, 0.35 * n)
+    return {t for t, c in tok_names.items() if c > thresh}
+
+
+# SaaS 命名高频泛词干 —— 单凭其中任一个词不足以判「两名同义」
+# ("Coding agent integration" ↔ "Git Hosting Integration" 只共享 integration)。
+# 注意条目必须是 _feat_sigs 词干化后的形态(stem 只剥复数 s/葡语后缀/尾部 oae)。
+_FUZZY_WEAK_STEMS = {
+    "integr",
+    "integration",
+    "platform",
+    "manag",
+    "management",
+    "support",
+    "tool",
+    "toolbox",
+    "servic",
+    "connect",
+    "connection",
+    "channel",
+    "custom",
+    "customer",
+    "client",
+    "user",
+    "featur",
+    "provid",
+    "provider",
+    "solution",
+    "enterpris",
+    "enterprise",
+    "cloud",
+    "applic",
+    "application",
+    "dashboard",
+    "report",
+    "messag",
+    "convers",
+    "conversation",
+    "workflow",
+    "automat",
+    "automation",
+    "analyt",
+    "analytic",
+}
+
+
+def _fuzzy_single_ok(inter) -> bool:
+    """单 token 判同义的门槛:交集里存在 ≥6 字符且非泛词干的 token。"""
+    return any(
+        len(w) >= 6 and w not in _FUZZY_WEAK_STEMS and not w.isdigit() for w in inter
+    )
+
+
 def _build_feature_comparison_matrix(competitors, feature_aliases=None):
     """构造 § 5.2 的厂商对比矩阵。
 
@@ -2163,17 +2542,14 @@ def _build_feature_comparison_matrix(competitors, feature_aliases=None):
         default_aliases=_DEFAULT_FEATURE_ALIASES,
     )
     feature_aliases = effective_aliases  # 后续逻辑直接使用合并后的
-    # 解析 aliases → 反向索引: alias_text_lower → (canonical_name, rationale)
-    alias_index: dict = {}
-    if feature_aliases:
-        for canonical, info in feature_aliases.items():
-            rationale = info.get("rationale", "") if isinstance(info, dict) else ""
-            for alias in (
-                info.get("aliases", []) if isinstance(info, dict) else [canonical]
-            ):
-                key = alias.strip().lower()
-                if key:
-                    alias_index[key] = (canonical, rationale)
+    # 解析 aliases → 人工层(user+default)与自动层分开的精确索引
+    exact_index, auto_index = _alias_exact_indexes(feature_aliases)
+    # substr 家族(句子型功能名的词边界包含匹配)+ canonical → rationale
+    substrs = _alias_substr_list(feature_aliases)
+    canon_rationale = {
+        canonical: (info.get("rationale", "") if isinstance(info, dict) else "")
+        for canonical, info in (feature_aliases or {}).items()
+    }
 
     # 收集所有 category 和 feature(只遍历一次,避免重复计数)
     cat_features = {}  # cat -> list of merged feature dict
@@ -2191,12 +2567,19 @@ def _build_feature_comparison_matrix(competitors, feature_aliases=None):
             fdesc = feat.get("desc", "")
             fref = feat.get("_ref", 0)
 
-            # 查 alias 表:用 canonical_name 作为合并键
-            lookup = alias_index.get(fname.strip().lower())
-            if lookup:
-                canonical_name, rationale = lookup
+            # 查 alias 表:人工 exact > 家族 substr > 自动 exact > 保持原名
+            key_l = fname.strip().lower()
+            if key_l in exact_index:
+                canonical_name, rationale = exact_index[key_l]
             else:
-                canonical_name, rationale = fname, ""
+                sc = _substr_hit(key_l, substrs)
+                if sc:
+                    canonical_name = sc
+                    rationale = canon_rationale.get(sc, "")
+                elif key_l in auto_index:
+                    canonical_name, rationale = auto_index[key_l]
+                else:
+                    canonical_name, rationale = fname, ""
 
             cat_features.setdefault(cat, [])
             # 累计 coverage(每个厂商每个 canonical 功能只算 1 次)
@@ -2635,17 +3018,20 @@ def _feat_sigs(s: str) -> set:
     }
 
 
-def _merge_translation_equivalents(feats: list) -> list:
+def _merge_translation_equivalents(feats: list, stops=()) -> list:
     """合并同一功能的机器翻译变体(多语言站点产出同一功能的翻译)。
 
     自 V1 提取单体移植,语义不变:词干签名后 Jaccard ≥0.5,
     或共享 ≥6 字符实词词干 ⇒ 翻译变体,保留组内首个。
+    stops: 主题域 omnipresent token(如 'whatsapp')不参与判重。
     宁可少报独家,不可报垃圾独家。
     """
     kept: list = []
     kept_sigs: list = []
     for f in feats:
-        sig = _feat_sigs(f)
+        sig = _feat_sigs(f) - set(stops)
+        if not sig:
+            sig = _feat_sigs(f)  # 域词也是唯一信息时退回全签名(不误删)
         if not sig:
             continue  # 无有效词干的(纯 CJK 由上层处理;碎片丢弃)
         dup = False
@@ -2656,7 +3042,7 @@ def _merge_translation_equivalents(feats: list) -> list:
             sim = len(inter) / len(sig | ks)
             # 共享一个 ≥6 字符的实词词干(如 chatbots/integraç)
             # 或整体相似度高 → 翻译变体
-            if sim >= 0.5 or any(len(w) >= 6 for w in inter):
+            if sim >= 0.5 or _fuzzy_single_ok(inter):
                 dup = True
                 break
         if not dup:
@@ -2684,38 +3070,54 @@ def _find_unique_features(competitors, feature_aliases=None):
     )
     feature_aliases = effective
 
-    alias_index: dict = {}
-    for canonical, info in (feature_aliases or {}).items():
-        for alias in info.get("aliases", []) if isinstance(info, dict) else [canonical]:
-            key = alias.strip().lower()
-            if key:
-                alias_index[key] = canonical
+    exact_index, auto_index = _alias_exact_indexes(feature_aliases)
+    exact_canon = {k: v[0] for k, v in exact_index.items()}
+    auto_canon = {k: v[0] for k, v in auto_index.items()}
+    substrs = _alias_substr_list(feature_aliases)
+
+    # 主题域 omnipresent token(如 'whatsapp')不作 fuzzy 判据 ——
+    # 否则含域词的不同功能被吸进同一 canonical,独家面板代表名张冠李戴
+    all_feat_names = [
+        feat.get("name", "")
+        for c in competitors
+        for feat in c.get("feature_catalog", {}).get(c.get("name", ""), [])
+    ]
+    stops = _domain_stop_tokens(all_feat_names)
 
     def _canon(name: str) -> str:
         key = name.strip().lower()
-        if key in alias_index:
-            return alias_index[key]
+        # 解析优先级与矩阵一致:人工 exact > 家族 substr > 自动 exact > fuzzy
+        if key in exact_canon:
+            return exact_canon[key]
+        sc = _substr_hit(key, substrs)
+        if sc:
+            return sc
+        if key in auto_canon:
+            return auto_canon[key]
         # 未注册别名的名字:尝试与已注册 canonical 模糊(词干签名)对齐 ——
         # 某家的葡语变体只在它自己那里出现(提取侧合并不了跨家),这里
         # 对齐后它就不再"独家"(与别家的英文版本是同一功能)
-        ns = _feat_sigs(key)
+        ns = _feat_sigs(key) - stops
         if ns:
-            for canon_key in alias_index:
-                inter = ns & _feat_sigs(canon_key)
+            for canon_key in exact_canon:
+                inter = ns & (_feat_sigs(canon_key) - stops)
                 if inter and (
                     len(inter) / len(ns | _feat_sigs(canon_key)) >= 0.5
-                    or any(len(w) >= 6 for w in inter)
+                    or _fuzzy_single_ok(inter)
                 ):
-                    return alias_index[canon_key]
+                    return exact_canon[canon_key]
         return name
 
-    # 反向索引:每个 canonical(feature, category) → 提供者列表
+    # 反向索引:每个 canonical → 提供者列表。
+    # 独家判定只看 canonical(不看 category)—— 各家把同一功能归到不同
+    # 类别(AI vs 机器人)是分析侧的分类口径差异,不能让「所有竞品都有」
+    # 的功能因为类别不同而每家都"独家"一次。
     feat_to_comps: dict = {}
     for c in competitors:
         comp = c["name"]
         for feat in c.get("feature_catalog", {}).get(comp, []):
             canon = _canon(feat.get("name", ""))
-            key = (canon.lower(), feat.get("category", ""))
+            key = canon.lower()
             if comp not in feat_to_comps.setdefault(key, []):
                 feat_to_comps[key].append(comp)
 
@@ -2723,23 +3125,26 @@ def _find_unique_features(competitors, feature_aliases=None):
     for c in competitors:
         comp = c["name"]
         unique = []
+        seen_canons: set = set()
         for feat in c.get("feature_catalog", {}).get(comp, []):
             canon = _canon(feat.get("name", ""))
-            key = (canon.lower(), feat.get("category", ""))
-            if len(feat_to_comps.get(key, [])) == 1:
-                unique.append(
-                    {
-                        "name": canon,
-                        # 页面逐字存在的原始写法 —— 读者 Ctrl+F 能找到;
-                        # canon 是合并/翻译代表名,页面上往往搜不到
-                        "text_orig": feat.get("text_orig", "") or feat.get("name", ""),
-                        "category": feat.get("category", ""),
-                        "desc": feat.get("desc", ""),
-                        "_ref": feat.get("_ref", 0),
-                        "_owner": comp,  # 这条独家功能属于这家
-                        "_source": feat.get("source", ""),  # 原始来源 URL
-                    }
-                )
+            key = canon.lower()
+            if key in seen_canons or len(feat_to_comps.get(key, [])) != 1:
+                continue
+            seen_canons.add(key)
+            unique.append(
+                {
+                    "name": canon,
+                    # 页面逐字存在的原始写法 —— 读者 Ctrl+F 能找到;
+                    # canon 是合并/翻译代表名,页面上往往搜不到
+                    "text_orig": feat.get("text_orig", "") or feat.get("name", ""),
+                    "category": feat.get("category", ""),
+                    "desc": feat.get("desc", ""),
+                    "_ref": feat.get("_ref", 0),
+                    "_owner": comp,  # 这条独家功能属于这家
+                    "_source": feat.get("source", ""),  # 原始来源 URL
+                }
+            )
         result[comp] = unique
     return result
 
@@ -3276,7 +3681,7 @@ def _render_section5_2_html(matrix, unique_features):
         '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.7;">'
         "<strong>行 = 功能</strong>(共 "
         f"{sum(c['total_features'] for c in cats)}"
-        " 个),<strong>列 = 竞品</strong>(6 家)。"
+        f" 个),<strong>列 = 竞品</strong>({n_vendors} 家)。"
         "✓=支持 / —=不支持。<strong>颜色越深=支持者越多</strong>(独家功能高亮 ⭐)。"
         '<strong style="color:var(--accent);">每个 ✓ 旁边的 [N] 是该厂商自己的来源证据</strong>,可点击跳转到文末原始来源。'
         "</p>"
@@ -3546,10 +3951,12 @@ def _render_unique_features_panel(unique_features):
                 and orig.strip().lower() != str(u.get("name", "")).strip().lower()
                 else ""
             )
+            uzh = _feature_zh(u["name"])
+            uzh_html = f'<span class="feat-zh">{html.escape(uzh)}</span>' if uzh else ""
             out.append(
                 f'<div class="unique-feature-row">'
                 f'<div class="ufr-head">'
-                f'<span class="ufr-name">⭐ {html.escape(u["name"])}{orig_html}</span>'
+                f'<span class="ufr-name">⭐ {html.escape(u["name"])}{uzh_html}{orig_html}</span>'
                 f'<span class="ufr-meta">{cat_html}<span class="ufr-owner">📌 {html.escape(owner)}</span></span>'
                 f"</div>"
                 f'<div class="ufr-evidence">{ref_html}{verify_html}</div>'

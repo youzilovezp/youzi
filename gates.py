@@ -83,6 +83,15 @@ def _evidence_fields(competitor: dict):
             u = (f.get("source") or "").strip() if isinstance(f, dict) else ""
             if u:
                 yield f"competitors[{name}].feature_catalog[{cname}][{i}].source", u
+    # product_momentum(§6 数据增强):date/text 必须锚定真实抓到的页面
+    for i, pm in enumerate(competitor.get("product_momentum") or []):
+        u = (
+            (pm.get("source") or pm.get("source_url") or "").strip()
+            if isinstance(pm, dict)
+            else ""
+        )
+        if u:
+            yield f"competitors[{name}].product_momentum[{i}].source", u
 
 
 def iter_evidence_urls(competitor: dict):
@@ -190,6 +199,17 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                         f"competitors[{name}].differentiators[{i}].quote",
                         (d.get("source_url") or d.get("source") or "").strip(),
                         d["quote"],
+                    )
+                )
+        # product_momentum:title 必须在该 source 页任一引擎原文中逐字命中
+        # (§6 时间线的数据增强与 5.2.3 独家功能同一条 quote 铁律)
+        for i, pm in enumerate(competitor.get("product_momentum") or []):
+            if isinstance(pm, dict) and pm.get("title"):
+                checks.append(
+                    (
+                        f"competitors[{name}].product_momentum[{i}].title",
+                        (pm.get("source") or pm.get("source_url") or "").strip(),
+                        pm["title"],
                     )
                 )
         # 定价来自缓存回退(反爬 starved)时,vote 行是上一轮成功运行的证据,
