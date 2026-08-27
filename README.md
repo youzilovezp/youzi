@@ -2,7 +2,7 @@
 
 <img src="assets/youzi-logo.svg?v=3" width="110" alt="youzi logo"/>
 
-# 🍊 youzi · 竞品颠覆性分析工具
+# 🍊 youzi · 竞品情报收集工具
 
 **`/youzi <主题>` → 自动挖出赛道顶尖竞品 → 逐一深度拆解 → 精美 HTML 报告 + 颠覆性机会清单**（支持 Claude Code / opencode / Codex / EasyCode 四平台）
 
