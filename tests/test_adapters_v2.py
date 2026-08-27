@@ -58,3 +58,20 @@ def test_recommend_scrapers_firecrawl_priority(monkeypatch):
 def test_url_type_scrapers_whitelisted():
     for engs in adapters._URL_TYPE_SCRAPERS.values():
         assert set(engs) <= LIVE, engs
+
+
+def test_ladder_whitelisted_and_excludes_used(monkeypatch):
+    from scripts import sufficiency
+
+    monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
+    for ut in sufficiency._ENGINE_LADDER_EXTRA:
+        ladder = sufficiency.ladder_engines(ut, already_used=[])
+        assert set(ladder) <= LIVE, (ut, ladder)
+        assert sufficiency.ladder_engines(ut, already_used=ladder) == []
+
+
+def test_ladder_firecrawl_first_with_key(monkeypatch):
+    from scripts import sufficiency
+
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "k")
+    assert sufficiency.ladder_engines("pricing", already_used=[])[0] == "firecrawl"
