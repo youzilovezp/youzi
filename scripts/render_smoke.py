@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pre-commit smoke test · /youzi 工程
 
-用 examples/online-collab-demo.json 跑 render.py 全流程（保留自检），
+用 tests/fixtures/e2e-2026-08-26/03-analysis.json 跑 render.py 全流程（保留自检），
 确认 templates/report.html 在最近的改动后仍能正确渲染（0 未解析标签 + 7 section 齐全）。
 
 退出码 = render.py 退出码（0 = 自检全通过；非 0 = 模板解析失败 / 输入不合法 / 自检有 ✗）。
@@ -22,7 +22,7 @@ cmd = [
     "python3",
     "render.py",
     "--input",
-    "examples/online-collab-demo.json",
+    "tests/fixtures/e2e-2026-08-26/03-analysis.json",
     "--output",
     str(SMOKE_OUT),
     # 注意：不传 --no-check，让自检真的跑起来

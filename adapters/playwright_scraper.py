@@ -92,6 +92,10 @@ async def _scrape(
             "extracted": None,
         }
 
+    # C-bug 修复:原实现 browser.close() 只在 happy path 执行,任何异常
+    # (goto 超时/截图失败/LLM 提取炸)都泄漏 chromium 进程。用 finally
+    # 兜底:happy path 关闭后置 None,异常路径由 finally 补关。
+    browser = None
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(
@@ -323,6 +327,7 @@ async def _scrape(
                         extracted = {"_error": f"LLM extract failed: {e}"}
 
             await browser.close()
+            browser = None  # 已关闭,防止 finally 重复关
 
             return {
                 "success": True,
@@ -346,6 +351,14 @@ async def _scrape(
             "screenshot": None,
             "extracted": None,
         }
+    finally:
+        if browser is not None:
+            # 异常路径(含 CancelledError 等 BaseException)兜底关浏览器;
+            # playwright driver 可能已随 async with 退出而停,关闭失败忽略
+            try:
+                await browser.close()
+            except Exception:
+                pass
 
 
 def scrape(

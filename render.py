@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-youzi · 零依赖 HTML 报告渲染器
+youzi · HTML 报告渲染器
 
-读取 analysis JSON + report.html 模板，输出精美 HTML 报告。
-无任何第三方依赖（不用 jinja2 / 不用 npm）。
+读取 analysis JSON + report.html 模板（Jinja2，autoescape 开启），输出单文件 HTML 报告。
+模板引擎使用 jinja2（见 Template 类）；不依赖 npm/前端构建。
 
 Usage:
     python3 render.py --input 03-analysis.json --output report.html
@@ -46,14 +46,12 @@ SCORE_DIMS = [
 
 
 # ============================================================
-# 模板引擎：手写递归下降解析器
-# 支持：
-#   {{ var.path }}       - 转义变量
-#   {{! var.path }}      - 原始 HTML（不转义）
+# 模板引擎：Jinja2（autoescape）
+#   {{ var.path }}       - 自动转义变量
+#   {{ var.path|safe }}  - 原始 HTML（仅用于 Python 侧已转义的预渲染片段）
 #   {% for x in path %}...{% endfor %}  - 循环
 #   {% if expr %}...{% endif %}         - 条件
-#   {{ loop.index }}     - 当前循环索引（1-based）
-#   {% if x %}body{% endif %}
+#   缺失字段经 ChainableUndefined 退化为 ''
 # ============================================================
 class Template:
     """Jinja2 渲染器。
@@ -112,6 +110,56 @@ def _truncate_with_ellipsis(text: str, max_len: int) -> str:
     if len(safe) <= max_len:
         return safe
     return safe[:max_len] + "…"
+
+
+# ============================================================
+# 安全:不可信输入(竞品爬取数据)的 URL 白名单 + 递归清洗
+# ============================================================
+def _safe_url(url) -> str:
+    """URL 协议白名单:仅放行 http:// / https:// / # 锚点。
+
+    javascript:/data:/vbscript: 等可执行协议一律降级为空串 ——
+    竞品数据是不可信输入,直出 href 即存储型 XSS。
+    """
+    if not url or not isinstance(url, str):
+        return ""
+    u = url.strip()
+    if u.startswith("#"):
+        return u
+    low = u.lower()
+    if low.startswith("http://") or low.startswith("https://"):
+        return u
+    return ""
+
+
+_URL_FIELD_KEYS = {"url", "source", "source_url", "pricing_url", "pricing_source"}
+
+
+def _sanitize_urls(obj) -> None:
+    """递归清洗 data 中所有 URL 字段(url/source/*_source/source_url/pricing_url)。
+
+    在 normalize 最初调用 —— 之后所有派生字段拿到的都是已清洗值。
+    对 URL 字段值做协议白名单,其余字段原样保留。
+    """
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, str) and (k in _URL_FIELD_KEYS or k.endswith("_source")):
+                obj[k] = _safe_url(v)
+            elif k == "validation_sources" and isinstance(v, list):
+                obj[k] = [_safe_url(u) if isinstance(u, str) else u for u in v]
+            else:
+                _sanitize_urls(v)
+    elif isinstance(obj, list):
+        for it in obj:
+            _sanitize_urls(it)
+
+
+def _ref_num(v) -> int:
+    """证据角标号强制转 int —— 插值进 href="#src-N"/正文前杜绝属性注入。"""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
 
 
 # ============================================================
@@ -818,6 +866,9 @@ def _derive_commercial_strategies(c):
         "pricing_tiers": structured_tiers,
         "plans": plans,
         "pricing_display": pricing_display,
+        # 定价页真实来源(URL 已在 normalize 阶段过白名单清洗;无数据=空串,
+        # 模板如实显示"未采集",绝不用 官网/pricing 拼接冒充)
+        "pricing_source": c.get("pricing_source") or c.get("pricing_url") or "",
         # GTM: 走 Go-to-Market 角度
         "gtm": _derive_gtm(c, diff_names),
         # 护城河:从 strengths 推断
@@ -3262,12 +3313,19 @@ def _render_sources_html(sources_by_kind):
             )
             # 来源类型徽章:渲染时未做实际可达性检测,绝不标"可访问"冒充已验证
             kind_tag = "👤 用户社区" if s.get("verified") == "user" else "🤖 官方页面"
+            url = _safe_url(s.get("url", ""))
+            url_html = html.escape(url, quote=True)
+            link_html = (
+                f'<a href="{url_html}" target="_blank" rel="noopener noreferrer">{url_html}</a>'
+                if url
+                else '<span style="color:var(--fg-mute);">（来源 URL 未通过安全校验,已省略）</span>'
+            )
             parts.append(
-                f'<div class="source-item" id="src-{s["idx"]}">'
-                f'<span class="src-num">{s["idx"]}</span>'
+                f'<div class="source-item" id="src-{_ref_num(s["idx"])}">'
+                f'<span class="src-num">{_ref_num(s["idx"])}</span>'
                 f'<span class="src-claim">{comp_part}{html.escape(s.get("claim", ""))}</span>'
                 f'<div class="src-meta">'
-                f'<a href="{html.escape(s["url"])}" target="_blank">{html.escape(s["url"])}</a>'
+                f"{link_html}"
                 f'<span style="background:var(--bg-soft); color:var(--fg-mute); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.7rem; margin-left:0.5rem;">{kind_tag}</span>'
                 f"</div></div>"
             )
@@ -3744,10 +3802,9 @@ def _render_section5_2_html(matrix, unique_features):
                         1,
                     )
             # ── 功能行 ──
+            f_ref = _ref_num(f.get("_ref", 0))
             ref_html = (
-                f'<a href="#src-{f.get("_ref", 0)}" class="ref">{f["_ref"]}</a>'
-                if f.get("_ref")
-                else ""
+                f'<a href="#src-{f_ref}" class="ref">{f_ref}</a>' if f_ref else ""
             )
             desc_html = (
                 f'<div class="feat-desc">{html.escape(desc)}</div>' if desc else ""
@@ -3765,14 +3822,14 @@ def _render_section5_2_html(matrix, unique_features):
                     cls = f"feature-cell share-{min(n, 6)}"
                     # 该厂商自己的来源 [N]
                     vrefs = f.get("_vendor_refs") or {}
-                    vref = vrefs.get(cn, 0)
+                    vref = _ref_num(vrefs.get(cn, 0))
                     ref_html = (
                         f'<a href="#src-{vref}" class="cell-ref">{vref}</a>'
                         if vref
                         else ""
                     )
                     out.append(
-                        f'<td class="{cls}" title="{n}/{n_vendors} 家支持 · {cn} 来源 [{vref or "?"}]">'
+                        f'<td class="{cls}" title="{n}/{n_vendors} 家支持 · {html.escape(cn, quote=True)} 来源 [{vref or "?"}]">'
                         f'<span class="cell-mark">✓</span>{ref_html}</td>'
                     )
                 else:
@@ -3892,8 +3949,8 @@ def _render_unique_features_panel(unique_features):
         )
         for u in sourced:
             owner = u.get("_owner", c_name)
-            ref_n = u.get("_ref", 0)
-            source_url = u.get("_source", "")
+            ref_n = _ref_num(u.get("_ref", 0))
+            source_url = _safe_url(u.get("_source", ""))
             desc = u.get("desc", "") or ""
             cat = u.get("category", "") or ""
             orig = (u.get("text_orig") or "").strip()
@@ -3930,7 +3987,7 @@ def _render_unique_features_panel(unique_features):
                 else '<span style="color:var(--bad); font-size:0.72rem;">⚠ 无来源</span>'
             )
             verify_html = (
-                f'<a href="{html.escape(source_url)}" target="_blank" rel="noopener" class="tsr-verify" title="点击访问 {html.escape(owner)} 官方页面验证">↗ 原文</a>'
+                f'<a href="{html.escape(source_url, quote=True)}" target="_blank" rel="noopener noreferrer" class="tsr-verify" title="点击访问 {html.escape(owner, quote=True)} 官方页面验证">↗ 原文</a>'
                 if source_url
                 else ""
             )
@@ -4174,6 +4231,10 @@ def normalize(data: dict) -> dict:
     data.setdefault("background", "")
     data.setdefault("goals", [])
 
+    # ── 安全:先清洗不可信 URL 字段(javascript: 等协议降级为空串),
+    #    再做任何派生 —— 之后所有 href 插值拿到的都是白名单内 URL ──
+    _sanitize_urls(data)
+
     # ── 先修复数据(脏 feature / 空 SWOT / 默认分),再做 source 收集 ──
     _repair_competitors(data["competitors"])
 
@@ -4192,6 +4253,7 @@ def normalize(data: dict) -> dict:
         "tagline" 条目 = 角标定位全部错位的观感。
         现在每个论断一个条目,点击落地即所见。
         """
+        url = _safe_url(url)  # 防御纵深:javascript: 等协议绝不进来源区
         if not url:
             return 0
         key = (url, (claim or "")[:80], competitor)

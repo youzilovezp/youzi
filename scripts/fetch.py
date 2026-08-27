@@ -132,7 +132,9 @@ def _merged_ok(result: Dict) -> bool:
     return bool(result.get("success") and result.get("markdown"))
 
 
-def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
+def fetch_competitor(
+    name: str, out_dir: Path, budget_s: float = None, topic: str = ""
+) -> Dict:
     """采集单个竞品全部证据页。预算内不充分则沿升级梯重爬定价页。"""
     budget_s = sufficiency.COMPETITOR_BUDGET_SECONDS if budget_s is None else budget_s
     t0 = time.monotonic()
@@ -151,6 +153,16 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
 
     raw_dir = out_dir / "02-raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
+    # 同域多竞品(www 前缀/子路径差异)可能解析出同一 cname → 落盘文件互相覆盖。
+    # 已存在的引擎原文不属于本竞品(base URL 不在其中)时,追加短 hash 后缀。
+    eng_file = raw_dir / f"{cname}.engines.json"
+    if eng_file.exists():
+        try:
+            existing = json.loads(eng_file.read_text(encoding="utf-8"))
+        except Exception:
+            existing = {}
+        if base not in (existing or {}):
+            cname = f"{cname}_{hashlib.sha256(base.encode('utf-8')).hexdigest()[:6]}"
     fetched: Dict[str, Dict] = {}
     failures: List[Dict] = []
     pages: Dict[str, Dict] = {}
@@ -353,7 +365,7 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
     manifest_path = out_dir / "claims-manifest.json"
     manifest = {
         "run": {
-            "topic": "",
+            "topic": topic,
             "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
             "pipeline_version": "3.0",
         },
@@ -369,6 +381,8 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
             manifest = old
         except Exception:
             pass
+    if topic:
+        manifest.setdefault("run", {})["topic"] = topic
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8"
     )
@@ -389,13 +403,14 @@ def main() -> int:
     ap.add_argument(
         "--budget", type=float, default=None, help="每竞品墙钟预算秒数(默认 300)"
     )
+    ap.add_argument("--topic", default="", help="分析主题(写入台账 run.topic)")
     args = ap.parse_args()
     out_dir = Path(args.out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     ok = True
     for n in [x.strip() for x in args.competitors.split(",") if x.strip()]:
         t0 = time.time()
-        r = fetch_competitor(n, out_dir, budget_s=args.budget)
+        r = fetch_competitor(n, out_dir, budget_s=args.budget, topic=args.topic)
         insuff = [k for k, v in r["pages"].items() if not v["sufficient"]]
         print(
             f"[{'✓' if r['pages'] else '✗'} {r['name']}] {time.time() - t0:5.1f}s | "

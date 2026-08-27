@@ -255,6 +255,19 @@ def _build_adapter_registry():
 # ============================================================
 # 核心：并行爬取 + 智能合并
 # ============================================================
+def _accepts_kwarg(fn, name: str) -> bool:
+    """fn 是否接受名为 name 的关键字参数(显式声明或 **kwargs)。"""
+    import inspect
+
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in params or any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    )
+
+
 async def _scrape_one(name: str, scrape_fn, url: str, **kwargs) -> Dict[str, Any]:
     """包装单个 scraper 调用，捕获异常。
 
@@ -312,7 +325,7 @@ async def _scrape_parallel(
     for name in enabled:
         if name not in registry:
             continue
-        module, supports_screenshot, supports_login, supports_prompt = registry[name]
+        module, supports_screenshot, supports_login, _supports_prompt = registry[name]
 
         if not module.is_available():
             continue
@@ -321,11 +334,13 @@ async def _scrape_parallel(
             continue
 
         kwargs = {}
-        # max_chars / prompt —— 仅对接受的 scraper 传
+        # max_chars —— 仅对接受的 scraper 传
         if name not in ("playwright",):
             kwargs["max_chars"] = max_chars
-        if supports_prompt and prompt and name == "playwright":
-            kwargs["prompt"] = prompt
+        # C3 修复:此处曾给 playwright 传 kwargs["prompt"],但
+        # playwright_scraper.scrape() 无 prompt 参数 → TypeError 被
+        # _scrape_one 的 except 吞掉,主力引擎静默缺席。prompt 已由下方
+        # extract_prompt=prompt 正确传递,哑弹分支删除。
         if supports_screenshot and need_screenshot:
             if name == "playwright":
                 kwargs["screenshot_path"] = f"/tmp/youzi_{url_hash(url)}.png"
@@ -333,9 +348,13 @@ async def _scrape_parallel(
                 kwargs["screenshot"] = True
         if supports_login:
             kwargs["extract_prompt"] = prompt
-            kwargs["timeout"] = int(timeout * 1000)
+            kwargs["timeout"] = int(timeout * 1000)  # playwright 用毫秒
+        elif _accepts_kwarg(module.scrape, "timeout"):
+            # C4 修复:timeout 原先只传给 playwright,jina/firecrawl/
+            # newspaper3k 用各自硬编码值。签名接受的引擎统一下发(秒)。
+            kwargs["timeout"] = timeout
 
-        tasks.append(_scrape_one(name, module.scrape, url, **kwargs))
+        tasks.append((name, _scrape_one(name, module.scrape, url, **kwargs)))
 
     if not tasks:
         return [
@@ -351,17 +370,40 @@ async def _scrape_parallel(
             }
         ]
 
-    # 并行执行（带超时）
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # 并行执行,带总预算(C4 修复:原 gather 无总超时,一个慢引擎 —
+    # 如 newspaper3k 的无超时 download —— 会永久挂起拖死整个 scrape_smart)。
+    # 总预算 = 单引擎超时的 1.5 倍,给最慢引擎留余量;超时的引擎记为
+    # 失败结果并取消,已完成引擎的结果保留。
+    overall_timeout = timeout * 1.5
+    task_objs = [asyncio.ensure_future(c) for _, c in tasks]
+    done, pending = await asyncio.wait(task_objs, timeout=overall_timeout)
+    for t in pending:
+        t.cancel()
+    if pending:
+        # 等取消落定,避免 "Task was destroyed but it is pending" 警告
+        await asyncio.gather(*pending, return_exceptions=True)
 
     final = []
-    for r in results:
-        if isinstance(r, Exception):
+    for (name, _), t in zip(tasks, task_objs):
+        if t in pending or t.cancelled():
             final.append(
                 {
                     "success": False,
-                    "scraper": "unknown",
-                    "error": str(r),
+                    "scraper": name,
+                    "error": f"{name} 超时(总预算 {overall_timeout:.0f}s),已取消",
+                    "markdown": "",
+                    "html": "",
+                    "text": "",
+                    "screenshot": None,
+                    "extracted": None,
+                }
+            )
+        elif t.exception() is not None:
+            final.append(
+                {
+                    "success": False,
+                    "scraper": name,
+                    "error": str(t.exception()),
                     "markdown": "",
                     "html": "",
                     "text": "",
@@ -370,7 +412,7 @@ async def _scrape_parallel(
                 }
             )
         else:
-            final.append(r)
+            final.append(t.result())
     return final
 
 
@@ -699,7 +741,10 @@ def scrape_with_fallback(
             result["scraper"] = "firecrawl"
             return result
         last_error = result.get("error", "firecrawl failed")
-    if need_login or playwright_scraper.is_available():
+    # C-bug 修复:原为 `need_login or playwright_scraper.is_available()`,
+    # playwright 未安装时 need_login=True 也会硬调 → 必炸。是否可调用
+    # 只取决于 is_available();need_login 只影响路由选择,不构成调用资格。
+    if playwright_scraper.is_available():
         screenshot_path = f"/tmp/youzi_{url_hash(url)}.png" if need_screenshot else None
         result = playwright_scraper.scrape(
             url, screenshot_path=screenshot_path, extract_prompt=prompt, timeout=30000

@@ -28,10 +28,16 @@ def is_available() -> bool:
         return False
 
 
-def scrape(url: str, max_chars: int = 50000, **kwargs) -> dict:
+def scrape(url: str, max_chars: int = 50000, timeout: float = 45.0, **kwargs) -> dict:
     """用 Jina Reader 抓取 URL(返回 LLM 友好的 markdown)。
 
     免费层:无 API key 时可限流使用(建议加 API key 提高限额)。
+
+    Args:
+        url: 目标 URL
+        max_chars: 返回内容最大字符数
+        timeout: HTTP 超时(秒)。C4 修复:原硬编码 45s,改为调用方可下发
+                 (scrape_smart 会把单引擎 timeout 传进来);默认值保持原行为。
     """
     try:
         # r.jina.ai 是公开的 reader 入口,加 X-Return-Format 头
@@ -44,7 +50,7 @@ def scrape(url: str, max_chars: int = 50000, **kwargs) -> dict:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
-        resp = requests.get(reader_url, headers=headers, timeout=45)
+        resp = requests.get(reader_url, headers=headers, timeout=timeout)
         resp.raise_for_status()
         markdown = resp.text
 

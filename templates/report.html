@@ -1878,7 +1878,7 @@
           {% for c in competitors %}
 
           <tr>
-            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank" rel="noopener noreferrer">{{c.name}}</a></td>
             <td>{{user_positioning[c.name].target_segment|default('—')}}</td>
             {% if has_region_data %}<td>{{user_positioning[c.name].region|default('—')}}</td>{% endif %}
             <td>{{user_positioning[c.name].scale|default('—')}}</td>
@@ -1995,7 +1995,7 @@
               {% endif %}
             </summary>
             <dl class="ev-detail">
-              <dt>定价页</dt><dd>{% if pcs.pricing_source %}<a href="{{pcs.pricing_source}}" target="_blank" rel="noopener">{{pcs.pricing_source}}</a>{% elif c._pricing_url %}{{c._pricing_url}}{% else %}{{c.url}}/pricing{% endif %}</dd>
+              <dt>定价页</dt><dd>{% if pcs.pricing_source %}<a href="{{pcs.pricing_source}}" target="_blank" rel="noopener noreferrer">{{pcs.pricing_source}}</a>{% else %}未采集{% endif %}</dd>
               <dt>抓取时间</dt><dd>{{c.pricing_scraped_at|default('—')}}</dd>
               <dt>交叉验证引擎</dt><dd>{{c.pricing_engines|join(' + ') if c.pricing_engines else '—'}}</dd>
             </dl>
@@ -2030,7 +2030,7 @@
           {% for c in competitors %}
           {% set po = product_overview[c.name] %}
           <tr>
-            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank" rel="noopener noreferrer">{{c.name}}</a></td>
             <td>{{product_overview[c.name].web|default('—')}}</td>
             <td>{{product_overview[c.name].desktop|default('—')}}</td>
             <td>{{product_overview[c.name].mobile|default('—')}}</td>
@@ -2088,7 +2088,7 @@
         <tbody>
           {% for c in competitors %}
           <tr>
-            <td class="feature-name"><a href="{{c.url}}" target="_blank">{{c.name}}</a></td>
+            <td class="feature-name"><a href="{{c.url}}" target="_blank" rel="noopener noreferrer">{{c.name}}</a></td>
             <td>
               {% for t in c.tech_signals %}
               <div class="tech-signal-row">
@@ -2096,7 +2096,7 @@
                   <span class="tsr-name">⚙ {{t.name}}</span>
                   <span class="tsr-refs">
                     {% if t._ref %}<a href="#src-{{t._ref}}" class="ref" title="文末对应证据">证据 {{t._ref}}</a>{% endif %}
-                    {% if t.source %}<a href="{{t.source}}" target="_blank" rel="noopener" class="tsr-verify" title="点击访问原始来源核验">↗ 原文</a>{% endif %}
+                    {% if t.source %}<a href="{{t.source}}" target="_blank" rel="noopener noreferrer" class="tsr-verify" title="点击访问原始来源核验">↗ 原文</a>{% endif %}
                     {% if t.engine %}<span style="font-size:0.62rem; color:var(--fg-mute); border:1px solid var(--line); border-radius:3px; padding:0 0.3rem;">{{t.engine}}</span>{% endif %}
                   </span>
                 </div>
@@ -2135,7 +2135,7 @@
         <div class="players">
           {% for p in seg.players %}<span class="player-chip">{{p}}</span>{% endfor %}
         </div>
-        {% if seg.source %}<div style="font-size:0.72rem; color:var(--info); margin-top:0.4rem;"><a href="{{seg.source}}" target="_blank">↗ 来源</a></div>{% endif %}
+        {% if seg.source %}<div style="font-size:0.72rem; color:var(--info); margin-top:0.4rem;"><a href="{{seg.source}}" target="_blank" rel="noopener noreferrer">↗ 来源</a></div>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -2156,7 +2156,7 @@
         <div class="source" style="font-size:0.78rem; color:var(--fg-mute);">
           来源：
           {% if kp.source %}
-            <a href="{{kp.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ 官方渠道</a>
+            <a href="{{kp.source}}" target="_blank" rel="noopener noreferrer" style="color:var(--info);">↗ 官方渠道</a>
           {% else %}
             未知
           {% endif %}
@@ -2172,7 +2172,7 @@
       <div style="display:flex; gap:0.8rem; padding:0.45rem 0.75rem; margin-bottom:0.35rem; background:var(--bg-soft); border-radius:6px; align-items:baseline;">
         <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--accent); white-space:nowrap; min-width:90px;">{{r.when or '—'}}</span>
         <span style="font-size:0.85rem; color:var(--fg); flex:1;">{{r.title}}</span>
-        <span style="font-size:0.75rem; color:var(--fg-mute); white-space:nowrap;">{{r.vendor}}{% if r.source %} · <a href="{{r.source}}" target="_blank" style="color:var(--info);">↗</a>{% endif %}</span>
+        <span style="font-size:0.75rem; color:var(--fg-mute); white-space:nowrap;">{{r.vendor}}{% if r.source %} · <a href="{{r.source}}" target="_blank" rel="noopener noreferrer" style="color:var(--info);">↗</a>{% endif %}</span>
       </div>
       {% endfor %}
     </div>
@@ -2213,7 +2213,7 @@
           <div class="fb-item positive">
             <div>{{p.text}}{% if p._ref %}<a href="#src-{{p._ref}}" class="ref">{{p._ref}}</a>{% endif %}</div>
             <div class="fb-source">
-              {% if p.source %}<a href="{{p.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{p.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
+              {% if p.source %}<a href="{{p.source}}" target="_blank" rel="noopener noreferrer" style="color:var(--info);">↗ {{p.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
               {% if p.count and p.count != '—' %} · 评分 {{p.count}}/10{% endif %}
             </div>
           </div>
@@ -2226,7 +2226,7 @@
           <div class="fb-item negative">
             <div>{{n.text}}{% if n._ref %}<a href="#src-{{n._ref}}" class="ref">{{n._ref}}</a>{% endif %}</div>
             <div class="fb-source">
-              {% if n.source %}<a href="{{n.source}}" target="_blank" rel="noopener" style="color:var(--info);">↗ {{n.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
+              {% if n.source %}<a href="{{n.source}}" target="_blank" rel="noopener noreferrer" style="color:var(--info);">↗ {{n.source_label|default('来源')}}</a>{% else %}无来源链接{% endif %}
               {% if n.count and n.count != '—' %} · 严重度 {{n.count}}/10{% endif %}
             </div>
           </div>
@@ -2259,7 +2259,7 @@
         <div class="swot-head">
           <div class="swot-mark" style="background: var(--info);">{{oc.name[:2]}}</div>
           <div>
-            <h4><a href="{{oc.url}}" target="_blank" style="color: var(--fg); border: 0;">{{oc.name}}</a></h4>
+            <h4><a href="{{oc.url}}" target="_blank" rel="noopener noreferrer" style="color: var(--fg); border: 0;">{{oc.name}}</a></h4>
             <div style="font-size:0.72rem; color:var(--fg-mute); margin-top:0.15rem;">{{oc.stage|default('')}} · 成立 {{oc.founded|default('—')}}</div>
           </div>
         </div>
@@ -2270,7 +2270,7 @@
         <div style="font-size:0.82rem; color:var(--fg-soft); margin-top:0.4rem;"><span style="color:var(--fg-mute);">🎯 </span>{{oc.key_strength|default('—')}}</div>
         <div style="font-size:0.72rem; color:var(--info); margin-top:0.5rem;">
           {% if oc._ref %}<a href="#src-{{oc._ref}}" class="ref">{{oc._ref}}</a>{% endif %}
-          <a href="{{oc.source|default(oc.url)}}" target="_blank">↗ 原始来源</a>
+          <a href="{{oc.source|default(oc.url)}}" target="_blank" rel="noopener noreferrer">↗ 原始来源</a>
         </div>
       </div>
       {% endfor %}

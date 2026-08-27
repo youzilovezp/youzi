@@ -21,22 +21,46 @@ def is_available() -> bool:
         return False
 
 
-def scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000) -> dict:
+def scrape(
+    url: str,
+    prompt: Optional[str] = None,
+    max_chars: int = 50000,
+    timeout: float = 30.0,
+) -> dict:
     """用 Newspaper3k 抓取 URL 的文章正文。
 
     Args:
         url: 目标 URL
         prompt: （newspaper3k 不支持 LLM 提取，保留参数兼容性）
         max_chars: 返回内容最大字符数
+        timeout: HTTP 下载超时(秒)。C4 修复:原 article.download() 内部
+                 requests 无超时,目标站慢连接时线程永久挂起,拖死
+                 scrape_smart 的并行组。改为显式 requests.get 带超时。
 
     Returns:
         {"success": bool, "markdown": str, "extracted": dict, "error": str|None, "url": str}
     """
     try:
+        import requests
         from newspaper import Article
 
+        resp = requests.get(
+            url,
+            timeout=timeout,
+            headers={
+                # 真实 Chrome UA:部分站点对默认 python-requests UA 返回
+                # 反爬页/空页
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/126.0 Safari/537.36"
+                )
+            },
+        )
+        resp.raise_for_status()
+
         article = Article(url)
-        article.download()
+        article.set_html(resp.content)  # set_html 支持 bytes,内部按编码解码
         article.parse()
         try:
             article.nlp()  # 提取关键词 + summary（需 NLTK punkt，无则降级）

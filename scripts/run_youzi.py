@@ -2,23 +2,23 @@
 """
 youzi · 一站式竞品分析 runner
 
-按 SKILL.md 的 6 步管线串起来:
-  Step 1 发现竞品     — （本 runner 跳过；分析 JSON 由用户/上游提供）
-  Step 2 深度爬取     — 调用 scrape_smart() 抓 competitor URL（13 爬虫并行）
-  Step 3 结构化分析   — 读取 03-analysis.json（已含 13 字段提取结果）
-  Step 4 渲染 HTML    — 调用 render.py 输出精美报告
-  Step 5 自检         — render.py 内置 7 项严格检查
+按 SKILL.md 的管线串起来(双门禁交付:render.py exit 0 且 verify.py exit 0 才算交付):
+  Step 1 发现竞品     — (本 runner 跳过;分析 JSON 由用户/上游提供)
+  Step 2 深度爬取     — 委托 scripts/fetch.py 的 fetch_competitor(预算/升级梯/充分性/台账)
+  Step 3 结构化分析   — 读取 03-analysis.json(已含 13 字段提取结果)
+  Step 4 渲染 HTML    — 调用 render.py 输出精美报告(内置自检)
+  Step 5 证据硬门禁   — 调用 verify.py 的 verify_analysis(G1-G7),不过 = 不交付
   Step 6 交付         — 打印报告路径 + 1 段 TL;DR
 
 用法：
     python3 scripts/run_youzi.py \
         --topic "基于 WhatsApp 的广告运营平台" \
-        --analysis examples/whatsapp-advertising-demo.json \
-        --output /tmp/youzi-out/whatsapp-final/report.html
+        --analysis OUT/03-analysis.json \
+        --output OUT/report.html
 
 也支持：只爬取 + 不渲染（用于 Step 2 缓存场景）：
-    python3 scripts/run_youzi.py --crawl-only \
-        --competitors "https://www.wati.io,https://respond.io,https://manychat.com" \
+    python3 scripts/run_youzi.py --topic "..." --crawl-only \
+        --competitors "wati,respond.io,manychat" \
         --raw-dir /tmp/youzi-out/whatsapp/02-raw
 """
 
@@ -32,124 +32,37 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 
-def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
-    """Step 2: 并行爬取 — 13 爬虫智能合并。
+def _out_dir_for(raw_dir: Path) -> Path:
+    """fetch.py 落盘布局是 OUT_DIR/02-raw + OUT_DIR/claims-manifest.json;
+    --raw-dir 语义是 02-raw 目录本身,据此推导 OUT_DIR。"""
+    return raw_dir.parent if raw_dir.name == "02-raw" else raw_dir
 
-    F6:失败不再静默 —— 返回 (results, failures) 并落盘部分
-    claims-manifest.json(fetched + failures)+ 各 URL 引擎原文
-    (<name>.engines.json),供 verify.py 与人工排查。
+
+def step2_fetch(competitors, out_dir, topic="", budget_s=None):
+    """Step 2: 取证爬取 — 唯一实现是 fetch.fetch_competitor(禁双轨)。
+
+    fetch 侧内建:URL 发现 + 引擎路由 + 定价交叉验证升级梯 + 预算控制 +
+    充分性判断 + claims-manifest.json 台账(fetched 带 kind)+ 引擎原文。
     """
-    from adapters import scrape_smart
+    from scripts import fetch
 
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    results, failures = {}, []
-    fetched = {}
-    print(f"\n📡 Step 2 · 并行爬取 {len(competitor_urls)} 个竞品\n")
-    for url in competitor_urls:
-        name = (
-            url.replace("https://", "")
-            .replace("http://", "")
-            .replace("www.", "")
-            .split("/")[0]
-            .replace(".", "_")
-        )
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results = []
+    print(f"\n📡 Step 2 · 取证爬取 {len(competitors)} 个竞品(fetch.py 统一入口)\n")
+    for comp in competitors:
         t0 = time.time()
-        try:
-            r = scrape_smart(url, max_chars=max_chars, timeout=timeout)
-        except Exception as e:
-            print(f"  [{name}] ❌ {type(e).__name__}: {e}")
-            failures.append(
-                {
-                    "competitor": name,
-                    "url": url,
-                    "kind": "home",
-                    "error": f"{type(e).__name__}: {e}",
-                }
-            )
-            fetched[url] = {
-                "status": "failed",
-                "engines": {},
-                "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
-            }
-            continue
+        r = fetch.fetch_competitor(comp, out_dir, budget_s=budget_s, topic=topic)
         dt = time.time() - t0
-        scrapers = r.get("scraper", "?").split("+") if r.get("scraper") else []
-        stats = r.get("stats") or {}
-        ok = stats.get("successful", 0)
-        total = stats.get("total_scrapers", 0)
-        md_len = len(r.get("markdown", ""))
-        flag = "✓" if r.get("success") else "✗"
+        insuff = [k for k, v in r["pages"].items() if not v["sufficient"]]
+        ok = bool(r["pages"])
         print(
-            f"  [{flag} {name}] {dt:5.1f}s | "
-            f"{ok}/{total} scrapers | {md_len:>6} chars | "
-            f"{','.join(scrapers[:4])}{'…' if len(scrapers) > 4 else ''}"
+            f"  [{'✓' if ok else '✗'} {r['name']}] {dt:5.1f}s | "
+            f"{len(r['pages'])} pages | 不充分: {','.join(insuff) or '无'} | "
+            f"failures: {len(r['failures'])}"
         )
-
-        # 落盘
-        out_file = raw_dir / f"{name}.md"
-        header = (
-            f"# Source: {url}\n"
-            f"# Scrapers: {','.join(scrapers)}\n"
-            f"# Time: {dt:.1f}s\n"
-            f"# Success: {r.get('success')}\n\n"
-        )
-        out_file.write_text(header + r.get("markdown", ""), encoding="utf-8")
-        results[name] = r
-
-        # F8 引擎原文 + fetched 记录(同 V1 _content_hash 算法)
-        import hashlib as _hl
-
-        engines_md, engines_meta = {}, {}
-        for x in r.get("all_results") or []:
-            if x.get("scraper") and x.get("success") and x.get("markdown"):
-                engines_md[x["scraper"]] = x["markdown"][:50000]
-                engines_meta[x["scraper"]] = {
-                    "ok": True,
-                    "chars": len(x["markdown"]),
-                    "content_hash": _hl.sha256(
-                        " ".join(x["markdown"].split()).encode("utf-8")
-                    ).hexdigest()[:16],
-                }
-        (raw_dir / f"{name}.engines.json").write_text(
-            json.dumps({url: engines_md}, ensure_ascii=False, indent=1),
-            encoding="utf-8",
-        )
-        fetched[url] = {
-            "status": "ok" if r.get("success") and r.get("markdown") else "failed",
-            "engines": engines_meta,
-            "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
-        }
-        if fetched[url]["status"] == "failed":
-            failures.append(
-                {
-                    "competitor": name,
-                    "url": url,
-                    "kind": "home",
-                    "error": "all engines empty/failed",
-                }
-            )
-
-    manifest = {
-        "run": {
-            "topic": "",
-            "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
-            "pipeline_version": "2.0",
-        },
-        "fetched": fetched,
-        "claims": [],
-        "failures": failures,
-    }
-    (raw_dir.parent / "claims-manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8"
-    )
-    if failures:
-        print(
-            f"\n  ⚠ {len(failures)} 个 URL 爬取失败(已记录到 "
-            f"{raw_dir.parent / 'claims-manifest.json'}):"
-        )
-        for f in failures:
-            print(f"    - [{f['competitor']}] {f['url']}: {f['error']}")
-    return results, failures
+        results.append(r)
+    return results
 
 
 def step4_render(analysis_path, output_path, template_path=None):
@@ -182,11 +95,48 @@ def step4_render(analysis_path, output_path, template_path=None):
         raise RuntimeError("render.py failed")
 
 
+def step5_verify(analysis_path, manifest_path, raw_dir, report_path=None):
+    """Step 5: 证据硬门禁 — verify.py 的 G1-G7(直接 import,非 subprocess)。
+
+    返回 verify_analysis 的结果 dict;输入缺失/损坏(verify exit 1 语义)
+    归一化为 passed=False,由调用方决定不交付。
+    """
+    from verify import verify_analysis
+
+    print("\n🛡  Step 5 · 证据硬门禁(verify.py G1-G7)\n")
+    try:
+        result = verify_analysis(
+            analysis_path, manifest_path, raw_dir, report_path=report_path
+        )
+    except SystemExit as e:  # verify exit 1:manifest/analysis 缺失或损坏
+        print(f"  ✗ verify 输入缺失/损坏(exit {e.code})", file=sys.stderr)
+        return {
+            "passed": False,
+            "exit_code": int(e.code or 1),
+            "summary": {},
+            "violations": [],
+            "warnings": [],
+        }
+    for v in result["violations"]:
+        print(f"  ✗ [{v['gate']}] {v['field']}: {v['detail']}")
+        print(f"      → 修复: {v['hint']}")
+    for w in result["warnings"]:
+        print(f"  ⚠ [{w['gate']}] {w['field']}: {w['detail']}")
+    s = result["summary"]
+    verdict = "✓ 全部硬门禁通过" if result["passed"] else "✗ 硬门禁失败"
+    print(
+        f"\n  {verdict} — 硬失败 {s.get('hard_failed', 0)} · "
+        f"警告 {s.get('warnings', 0)} · "
+        f"claims {s.get('claims_checked', 0)} · urls {s.get('urls_checked', 0)}"
+    )
+    return result
+
+
 def step6_deliver(analysis, output_path):
     """Step 6: 打印交付摘要"""
     data = json.loads(Path(analysis).read_text(encoding="utf-8"))
     print("\n🚀 Step 6 · 交付\n")
-    print(f"  📊 主题: {data['topic']}")
+    print(f"  📊 主题: {data.get('topic', '(未提供主题)')}")
     print(
         f"  🏷  分析竞品数: {data.get('competitor_count', len(data.get('competitors', [])))}"
     )
@@ -194,8 +144,13 @@ def step6_deliver(analysis, output_path):
         f"  💡 颠覆性机会: {data.get('opportunity_count', len(data.get('opportunities', [])))}"
     )
     print(f"  📄 报告路径: {output_path}")
-    size_kb = Path(output_path).stat().st_size / 1024
-    print(f"  📦 文件大小: {size_kb:.1f} KB")
+    # render rc==2 时"HTML 已写出"是跨进程隐式契约,不能盲信 —— 先 exists 再 stat
+    op = Path(output_path)
+    if op.exists():
+        size_kb = op.stat().st_size / 1024
+        print(f"  📦 文件大小: {size_kb:.1f} KB")
+    else:
+        print("  ⚠ 报告文件不存在(render 未写出?)", file=sys.stderr)
 
     # 1 段 TL;DR
     es = data.get("executive_summary", "")
@@ -213,7 +168,8 @@ def step6_deliver(analysis, output_path):
             else 0,
         )
         print(
-            f"\n  🎯 最大机会: {top_opp['title']} (disrupt_score={top_opp.get('disrupt_score', '?')})"
+            f"\n  🎯 最大机会: {top_opp.get('title', '(无标题)')} "
+            f"(disrupt_score={top_opp.get('disrupt_score', '?')})"
         )
         print(f"     → {top_opp.get('inspiration', '')[:120]}")
 
@@ -227,8 +183,14 @@ def main():
     )
     ap.add_argument("--template", help="可选: 自定义模板路径")
     ap.add_argument("--crawl-only", action="store_true", help="只跑 Step 2 爬取")
-    ap.add_argument("--competitors", help="爬取的 URL 列表（逗号分隔）")
+    ap.add_argument("--competitors", help="爬取的竞品名/域名/URL 列表（逗号分隔）")
     ap.add_argument("--raw-dir", help="Step 2 原始数据落盘目录（默认: ./02-raw/）")
+    ap.add_argument(
+        "--budget",
+        type=float,
+        default=None,
+        help="每竞品墙钟预算秒数（默认 300,由 fetch.py 管理）",
+    )
     ap.add_argument("--max-chars", type=int, default=20000, help="单页最大字符数")
     ap.add_argument("--timeout", type=int, default=60, help="单爬虫超时秒")
     args = ap.parse_args()
@@ -240,22 +202,24 @@ def main():
     print(f"{'=' * 60}")
 
     # Step 2: 爬取（如指定）
+    manifest_path = raw_dir = None
     if args.competitors:
-        urls = [u.strip() for u in args.competitors.split(",") if u.strip()]
+        competitors = [u.strip() for u in args.competitors.split(",") if u.strip()]
         # 默认在当前目录下创建 02-raw
         raw_dir = Path(args.raw_dir) if args.raw_dir else Path.cwd() / "02-raw"
-        _results, _failures = step2_crawl(
-            urls, raw_dir, max_chars=args.max_chars, timeout=args.timeout
-        )
+        out_dir = _out_dir_for(raw_dir)
+        step2_fetch(competitors, out_dir, topic=args.topic, budget_s=args.budget)
         if args.crawl_only:
-            print(f"\n✅ Step 2 完成，原始数据落盘到: {raw_dir}")
-            return
+            print(f"\n✅ Step 2 完成，原始数据落盘到: {out_dir / '02-raw'}")
+            return 0
+        manifest_path = out_dir / "claims-manifest.json"
+        raw_dir = out_dir / "02-raw"
 
     # Step 4: 渲染（如指定 analysis）
     if not args.analysis:
         print("\n⚠️  需要 --analysis 才会渲染最终报告")
-        print("   示例: --analysis examples/whatsapp-advertising-demo.json")
-        return
+        print("   示例: --analysis OUT/03-analysis.json")
+        return 0
 
     analysis_path = Path(args.analysis).expanduser().resolve()
     # 默认输出到当前目录
@@ -266,14 +230,34 @@ def main():
         output_path = (Path.cwd() / f"{safe_topic}-report.html").resolve()
     if not analysis_path.exists():
         print(f"\n❌ 分析 JSON 不存在: {analysis_path}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     step4_render(analysis_path, output_path, args.template)
 
+    # Step 5: 证据硬门禁(render 之后、deliver 之前;不过 = 不交付)
+    if manifest_path is None:
+        # 未在本轮爬取:按 OUT_DIR 布局在 analysis 旁找证据包
+        manifest_path = analysis_path.parent / "claims-manifest.json"
+        raw_dir = analysis_path.parent / "02-raw"
+    verify_report = step5_verify(
+        analysis_path,
+        manifest_path,
+        raw_dir,
+        report_path=output_path.parent / "verify-report.json",
+    )
+    if not verify_report["passed"]:
+        print(
+            "\n❌ verify 硬门禁未通过 —— 按上方 {gate, field, hint} 修 "
+            "03-analysis.json 或重爬 Step 2 后重跑;本次不交付。",
+            file=sys.stderr,
+        )
+        return int(verify_report.get("exit_code") or 2)
+
     # Step 6: 交付
     step6_deliver(analysis_path, output_path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
