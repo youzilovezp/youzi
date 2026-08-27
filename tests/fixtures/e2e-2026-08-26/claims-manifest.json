@@ -557,26 +557,6 @@
    "scraped_at": ""
   },
   {
-   "field": "competitors[0].strengths[1]",
-   "value": "官网双轨获客(自助试用 + 预约演示)",
-   "source_url": "https://www.wati.io",
-   "quote": "Book a Demo Try for Free",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[0].strengths[2]",
-   "value": "官网展示合作伙伴/渠道体系",
-   "source_url": "https://www.wati.io",
-   "quote": "Partner with Us",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
    "field": "competitors[0].tagline",
    "value": "Wati | #1 AI-powered customer engagement platform",
    "source_url": "https://www.wati.io",
@@ -778,26 +758,6 @@
   },
   {
    "field": "competitors[1].moat_evidence[1]",
-   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-   "source_url": "https://respond.io",
-   "quote": "GDPR CompliantISO 27001",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[1].strengths[0]",
-   "value": "10k+ 客户/企业",
-   "source_url": "https://respond.io",
-   "quote": "10k+ brands trust respond.io",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[1].strengths[1]",
    "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
    "source_url": "https://respond.io",
    "quote": "GDPR CompliantISO 27001",
@@ -1067,26 +1027,6 @@
   },
   {
    "field": "competitors[2].moat_evidence[1]",
-   "value": "Meta 官方合作伙伴/BSP 身份",
-   "source_url": "https://www.ycloud.com",
-   "quote": "YCloud is a Meta Official BSP",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[2].strengths[0]",
-   "value": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-   "source_url": "https://www.ycloud.com",
-   "quote": "Enterprise-grade technology and security, ISO 27001 certified, with 99.99% uptime handling billions of messages monthly.",
-   "engine": "",
-   "verified_by": [],
-   "from_cache": false,
-   "scraped_at": ""
-  },
-  {
-   "field": "competitors[2].strengths[1]",
    "value": "Meta 官方合作伙伴/BSP 身份",
    "source_url": "https://www.ycloud.com",
    "quote": "YCloud is a Meta Official BSP",

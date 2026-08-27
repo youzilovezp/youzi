@@ -279,19 +279,19 @@ class TestG2QuoteGrep(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
-                _ok_manifest(urls_ok=["https://www.wati.io"]),
+                _ok_manifest(urls_ok=["https://www.wati.io/about-us"]),
                 _one_comp_analysis(
                     strengths=[
                         {
                             "point": "p",
                             "evidence": '官网原文: "Trusted by 8000+ teams"',
                             "score": 0,
-                            "source": "https://www.wati.io",
+                            "source": "https://www.wati.io/about-us",
                         }
                     ]
                 ),
                 engines={
-                    "https://www.wati.io": {
+                    "https://www.wati.io/about-us": {
                         "playwright": "Some nav\nTrusted by 8000+  teams\nfooter",
                     }
                 },
@@ -624,6 +624,61 @@ class TestG7SourceAuthority(unittest.TestCase):
         self.assertEqual(len(v), 1)
         self.assertIn("tech_signals[1]", v[0]["field"])
         self.assertIn("域名根", v[0]["detail"])
+
+    def test_strength_feature_semantic_pricing_anchor_fails(self):
+        # R2-C:strengths 功能语义(无价格语境词)锚 pricing → hard fail
+        rep = self._run(
+            _one_comp_analysis(
+                strengths=[
+                    {
+                        "point": "Webhook & API 与角色权限",
+                        "evidence": '官网原文: "Webhook & API calls"',
+                        "score": 3,
+                        "source": "https://www.wati.io/pricing",
+                    },
+                    {
+                        "point": "多坐席协同收件箱",
+                        "evidence": "—",
+                        "source": "https://www.wati.io",
+                    },
+                ]
+            )
+        )
+        v = _violations_by_gate(rep, "G7")
+        self.assertEqual(len(v), 2)
+        self.assertIn("strengths[0]", v[0]["field"])
+        self.assertIn("定价页路径", v[0]["detail"])
+        self.assertIn("strengths[1]", v[1]["field"])
+        self.assertIn("域名根", v[1]["detail"])
+
+    def test_strength_pricing_semantic_pricing_anchor_passes(self):
+        # R2-C:定价陈述(无免费档/货币数字/定价语境)锚 pricing = 合理保留
+        rep = self._run(
+            _one_comp_analysis(
+                strengths=[
+                    {
+                        "point": "定价全场最低($12/seat),只为分配 seat 者付费",
+                        "evidence": '官网原文: "$12/seat"',
+                        "score": 4,
+                        "source": "https://www.wati.io/pricing",
+                    },
+                    {
+                        "point": "无免费档,起步价贵",
+                        "evidence": '官网原文: "Pro plan costs $99/mo"',
+                        "score": 2,
+                        "source": "https://www.wati.io/pricing",
+                    },
+                ],
+                weaknesses=[
+                    {
+                        "point": "定价页默认年付视图,月付价需手动切换",
+                        "evidence": '官网原文: "Monthly Annual Save 20%"',
+                        "source": "https://www.wati.io/pricing",
+                    }
+                ],
+            )
+        )
+        self.assertEqual(_violations_by_gate(rep, "G7"), [])
 
 
 class TestNetworkGates(unittest.TestCase):

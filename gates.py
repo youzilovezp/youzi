@@ -41,10 +41,15 @@ def _evidence_fields(competitor: dict):
         u = (t.get("source_url") or "").strip()
         if u:
             yield f"competitors[{name}].pricing_tiers[{i}].source_url", u
-    for i, s in enumerate(competitor.get("strengths") or []):
-        u = ((s.get("source") or "") if isinstance(s, dict) else "").strip()
-        if u:
-            yield f"competitors[{name}].strengths[{i}].source", u
+    for key in ("strengths", "weaknesses"):
+        for i, s in enumerate(competitor.get(key) or []):
+            u = (
+                (s.get("source") or s.get("source_url") or "")
+                if isinstance(s, dict)
+                else ""
+            ).strip()
+            if u:
+                yield f"competitors[{name}].{key}[{i}].source", u
     for key in ("gtm_evidence", "moat_evidence"):
         for i, ev in enumerate(competitor.get(key) or []):
             u = (ev.get("source") or "").strip() if isinstance(ev, dict) else ""
@@ -437,8 +442,12 @@ def g6_url_hygiene(analysis, manifest, engine_index, rep: Report):
 
 # ── G7 溯源权威性 ──
 
-# 明显定价语义:货币符号 + 价格数字(如 $24 / ₹999 / US$12)
-_PRICING_SEMANTICS_RX = re.compile(r"(?:US\$|S\$|Rs\.?|[$€£₹¥])\s?\d[\d,\.]*")
+# 明显定价语义:货币符号 + 价格数字(如 $24 / ₹999 / US$12 / $.012),
+# 或中文价格语境词(免费/定价/价格/计费 —— R2-C 语义级弱锚判定)
+_PRICING_SEMANTICS_RX = re.compile(
+    r"(?:US\$|S\$|Rs\.?|[$€£₹¥])\s?(?:\d[\d,\.]*|\.\d+)"
+    r"|免费|定价|价格|计费"
+)
 
 
 def _is_pricing_semantic(text: str) -> bool:
@@ -470,7 +479,10 @@ def g7_source_authority(analysis, manifest, engine_index, rep: Report):
     规则(analysis-framework.md §溯源优先级):
       - tech_signals / differentiators / feature_catalog 的来源锚定在
         定价页路径或域名根 → hard fail;唯一豁免:quote 本身是定价陈述
-        (货币符号+价格数字)
+        (货币符号+价格数字 / 价格语境词)
+      - strengths / weaknesses(R2-C 扩展):条目文本(point+quote)无价格
+        语义却锚定定价页/域名根 → hard fail —— 定价陈述锚 pricing 合理
+        保留,功能/技术/口碑陈述锚 pricing/首页是语义错位
       - user_feedback 锚定定价页 → hard fail;域名根 → 仅警告
         (官网首页确实承载用户声音,但应优先 customers/testimonials 页)
       - differentiators 纯字符串形态不查(结构由 Step 3 框架强制 dict 化)
@@ -478,6 +490,23 @@ def g7_source_authority(analysis, manifest, engine_index, rep: Report):
     for competitor in analysis.get("competitors") or []:
         name = competitor.get("name", "?")
         checks = []  # (field, url, quote, hard)
+        for key in ("strengths", "weaknesses"):
+            for i, s in enumerate(competitor.get(key) or []):
+                if not isinstance(s, dict):
+                    continue
+                u = (s.get("source") or s.get("source_url") or "").strip()
+                if not u:
+                    continue  # 未断言来源的诚实留空,G1/G4 语义之外
+                text = " ".join(
+                    x
+                    for x in (
+                        s.get("point") or "",
+                        s.get("evidence") or "",
+                        s.get("quote") or "",
+                    )
+                    if x
+                )
+                checks.append((f"competitors[{name}].{key}[{i}]", u, text, True))
         for i, d in enumerate(competitor.get("differentiators") or []):
             if isinstance(d, dict):
                 u = (d.get("source_url") or d.get("source") or "").strip()
@@ -535,9 +564,9 @@ def g7_source_authority(analysis, manifest, engine_index, rep: Report):
                     "G7",
                     field,
                     url,
-                    f"功能/技术/差异化类证据锚定在{what} —— 该页面不承载论断原文",
+                    f"功能/技术/口碑类证据锚定在{what} —— 该页面不承载论断原文",
                     "改锚 docs/features 具体子页(quote 逐字取自该页),或删除该条;"
-                    "仅当 quote 本身为定价陈述(货币+数字)才允许 pricing 锚点",
+                    "仅当条目本身为定价陈述(货币+数字/免费/定价/价格/计费)才允许 pricing 锚点",
                 )
             else:
                 rep.warn(
