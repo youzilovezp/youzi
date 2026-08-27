@@ -4,11 +4,13 @@
 # 支持 4 个 AI 平台：Claude Code / opencode / Codex / EasyCode（自动探测）
 #
 # 用法：
-#   ./install.sh install                        # 安装到全部已装的 AI 工具
+#   ./install.sh install                        # 装 skill + 自动装引擎依赖（推荐）
 #   ./install.sh install --platform claude      # 只装 Claude Code
 #   ./install.sh install --platform opencode    # 只装 opencode
 #   ./install.sh install --platform codex       # 只装 Codex
 #   ./install.sh install --platform easycode    # 只装 EasyCode
+#   ./install.sh install --no-deps              # 只装 skill，跳过引擎依赖
+#   ./install.sh deps                           # 只装/补装引擎依赖（可重复跑）
 #   ./install.sh uninstall / update / status    # 同理，作用于全部已装平台
 #
 # 安装位置（AgentSkills 标准，4 平台同一套 SKILL.md）：
@@ -17,6 +19,10 @@
 #                + ~/.config/opencode/command/youzi.md（/ 补全入口）
 #   Codex:       ~/.codex/skills/youzi/
 #   EasyCode:    ~/.easycode/skills/youzi/
+#
+# 引擎依赖（install 默认自动装，缺哪个补哪个，已装的不动）：
+#   pip: jinja2 playwright trafilatura newspaper3k lxml_html_clean
+#   浏览器: playwright install chromium
 #
 # 兼容：macOS（BSD tools）+ Linux（GNU tools）
 # 输出：纯文本 + emoji，不使用 ANSI 转义
@@ -54,6 +60,23 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 SKILL_NAME="youzi"
 INSTALL_MODE="link"  # link | copy
 PLATFORM="all"       # all | claude | opencode | codex | easycode
+NO_DEPS=0            # 1 = install 时跳过引擎依赖
+
+# ---------- 引擎依赖 ----------
+# pip 包名列表；import 名与包名不一致的在 dep_import_name 里映射
+# （newspaper3k 装完的模块叫 newspaper）
+DEP_PKGS=(jinja2 playwright trafilatura newspaper3k lxml_html_clean)
+
+dep_import_name() {
+    case "$1" in
+        newspaper3k) echo "newspaper" ;;
+        *)           echo "$1" ;;
+    esac
+}
+
+py_has() {    # py_has <模块名> → 0=已安装
+    python3 -c "import $1" >/dev/null 2>&1
+}
 
 # skill 运行时需要的仓库内容（link 模式逐项软链；copy 模式逐项复制；
 # 开发产物 .git / tests / .idea / 各类 cache 一律不进安装目录）
@@ -120,10 +143,12 @@ youzi - 竞品颠覆性分析 skill · 一键安装 / 卸载 / 更新
 
 命令:
   install      安装 youzi skill 到全部已装的 AI 工具（4 平台自动探测）
+               + 自动安装引擎依赖（pip 包 + playwright chromium，缺哪个装哪个）
                ~/.claude/skills/youzi/
                ~/.config/opencode/skills/youzi/
                ~/.codex/skills/youzi/
                ~/.easycode/skills/youzi/
+  deps         只装/补装引擎依赖（可重复跑，已装的不动）
   uninstall    卸载已安装的 skill（全部平台）
   update       刷新安装（link 模式改源码即时生效，无需手动 update）
   status       查看安装状态 + 环境检查（全部平台）
@@ -135,12 +160,15 @@ youzi - 竞品颠覆性分析 skill · 一键安装 / 卸载 / 更新
   --mode <link|copy>  安装方式（默认: link）
                       link - 软链源仓库，改源码即时生效
                       copy - 完整复制运行时文件（不便软链时用）
+  --no-deps           install 时跳过引擎依赖（之后可 ./install.sh deps 补装）
 
 示例:
-  $(basename "$0") install                          # 全平台自动探测安装
+  $(basename "$0") install                          # 全平台自动探测 + 自动装引擎
+  $(basename "$0") install --no-deps                # 只装 skill，跳过引擎
   $(basename "$0") install --platform opencode      # 只装 opencode
   $(basename "$0") install --platform codex         # 只装 Codex
   $(basename "$0") install --mode copy              # 复制模式
+  $(basename "$0") deps                             # 单独装/补装引擎依赖
   $(basename "$0") status                           # 全平台状态 + 环境检查
 
 EOF
@@ -201,6 +229,10 @@ parse_args() {
                 fi
                 PLATFORM="$2"
                 shift 2
+                ;;
+            --no-deps)
+                NO_DEPS=1
+                shift
                 ;;
             -h|--help) print_help; exit 0 ;;
             *)
@@ -312,6 +344,63 @@ install_opencode_command() {
     ok "已生成 opencode 命令补全：$cmd_dir/$SKILL_NAME.md"
 }
 
+# ---------- 引擎依赖安装（install 默认自动跑；./install.sh deps 可单独跑）----------
+install_deps() {
+    title "安装引擎依赖（5 引擎白名单）"
+    info "Python: $(python3 --version 2>&1)"
+
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        warn "python3 -m pip 不可用，跳过自动安装。手动执行："
+        warn "  python3 -m pip install ${DEP_PKGS[*]}"
+        warn "  python3 -m playwright install chromium"
+        return 1
+    fi
+
+    # 只装缺的，已装的版本一律不动（避免升级用户自己管理的包）
+    local missing=()
+    local pkg
+    for pkg in "${DEP_PKGS[@]}"; do
+        if py_has "$(dep_import_name "$pkg")"; then
+            ok "$pkg: 已安装"
+        else
+            missing+=("$pkg")
+        fi
+    done
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        info "安装缺失依赖：${missing[*]}"
+        if ! python3 -m pip install "${missing[@]}"; then
+            warn "pip install 失败，尝试 --user 安装…"
+            if ! python3 -m pip install --user "${missing[@]}"; then
+                err "自动安装失败（常见原因：系统 Python 受 PEP 668 保护）。手动执行："
+                err "  python3 -m pip install ${missing[*]}"
+                err "  python3 -m playwright install chromium"
+                return 1
+            fi
+        fi
+    else
+        ok "Python 依赖全部就绪"
+    fi
+
+    # chromium 浏览器（playwright 抓 JS 页必需；已装会秒过，幂等）
+    if py_has playwright; then
+        info "安装 playwright chromium（已装自动跳过）…"
+        if python3 -m playwright install chromium; then
+            ok "chromium 就绪"
+        else
+            warn "chromium 安装失败。国内网络先设镜像再重试："
+            warn "  export PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright"
+            warn "  ./install.sh deps"
+            return 1
+        fi
+    else
+        warn "playwright 未装上，跳过 chromium；JS 重度页面抓取建议补装"
+    fi
+
+    ok "引擎依赖完成（firecrawl 为可选 API：export FIRECRAWL_API_KEY=fc-xxx 即自动启用）"
+    return 0
+}
+
 # ---------- install ----------
 do_install() {
     title "安装 $SKILL_NAME skill"
@@ -354,11 +443,6 @@ do_install() {
          /youzi 在线协作工具
 
   3. 等 5-15 分钟，报告自动生成并提示打开
-
-  4. （推荐）安装爬虫引擎提升抓取质量：
-
-         pip install jinja2 playwright trafilatura newspaper3k lxml_html_clean
-         playwright install chromium
 
 EOF
     hr
@@ -511,10 +595,10 @@ do_status() {
     else
         echo "    ⚠️  jinja2: 未安装（render.py 需要；pip install jinja2）"
     fi
-    # 爬虫引擎（可选，装得越多抓得越稳）
+    # 爬虫引擎（可选，装得越多抓得越稳；import 名经 dep_import_name 映射）
     local eng
     for eng in playwright trafilatura newspaper3k; do
-        if python3 -c "import $eng" 2>/dev/null; then
+        if py_has "$(dep_import_name "$eng")"; then
             echo "    ✅ $eng: 已安装"
         else
             echo "    ℹ️  $eng: 未安装（可选引擎，装了抓取更稳）"
@@ -547,6 +631,12 @@ main() {
         exit 0
     fi
 
+    # deps：只装引擎依赖，不动平台安装
+    if [[ "$COMMAND" == "deps" ]]; then
+        install_deps
+        exit $?
+    fi
+
     local failed=0
     local platforms
     platforms="$(active_platforms)"
@@ -576,6 +666,15 @@ main() {
         esac
         INSTALL_DIR=""  # 下一平台恢复默认目录
     done
+
+    # install：平台装完后自动装引擎依赖（只跑一次，不随平台重复；--no-deps 跳过）
+    if [[ "$COMMAND" == "install" ]]; then
+        if [[ "$NO_DEPS" == "1" ]]; then
+            info "已按 --no-deps 跳过引擎依赖；需要时运行 ./install.sh deps 补装"
+        else
+            install_deps || warn "引擎依赖未完全就绪（skill 已装好，基础功能可用；可运行 ./install.sh deps 重试）"
+        fi
+    fi
 
     exit $failed
 }

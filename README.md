@@ -22,7 +22,7 @@
 > 还没装？先看 [📦 安装说明](安装说明.md)（一条命令，约 3 分钟），装完再回来。
 
 ```bash
-# 1. 装 skill（自动探测已装的 AI 工具，四个平台一次装齐）
+# 1. 一条命令装齐：skill 自动探测四平台 + 自动装引擎依赖（pip 包 + chromium）
 ./install.sh install
 
 # 2. 打开你的 AI 工具（Claude Code / opencode / Codex / EasyCode），输入：
