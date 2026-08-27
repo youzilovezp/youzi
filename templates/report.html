@@ -22,13 +22,13 @@
     --fg-mute:   #8a8d96;
     --line:      #d8d2c2;
     --line-strong: #b6ad95;
-    --accent:        #c4314b;
-    --accent-deep:   #8c1f37;
-    --accent-soft:   #f5dee2;
+    --accent:        #4f6ef7;
+    --accent-deep:   #3b55c4;
+    --accent-soft:   rgba(79, 110, 247, 0.10);
     --accent-fg:     #ffffff;
     --data-1: #c4314b;  --data-2: #2b6cb0;  --data-3: #1f7a44;
     --data-4: #b7791f;  --data-5: #6b46a0;  --data-6: #1d6e7a;
-    --good: #1f7a44;  --good-soft: #d8efe1;
+    --good: #0e9f6e;  --good-soft: rgba(14, 159, 110, 0.12);
     --bad:  #b3261e;  --bad-soft:  #fadcd8;
     --warn: #b7791f;  --warn-soft: #fbeacd;
     --info: #2b6cb0;  --info-soft: #dde9f5;
@@ -36,19 +36,21 @@
     --shadow-sm: 0 2px 6px rgba(20,18,14,.06), 0 1px 2px rgba(20,18,14,.04);
     --shadow-md: 0 6px 18px rgba(20,18,14,.08), 0 2px 6px rgba(20,18,14,.05);
     --shadow-lg: 0 16px 40px rgba(20,18,14,.10), 0 4px 10px rgba(20,18,14,.05);
+    --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
+                   0 8px 24px -12px rgba(16, 24, 40, 0.16);
     --font-display: "Iowan Old Style", "Apple Garamond", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
     --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    --radius-xs: 4px;  --radius-sm: 8px;  --radius-md: 14px;  --radius-lg: 22px;
+    --radius-xs: 4px;  --radius-sm: 6px;  --radius-md: 12px;  --radius-lg: 18px;
     --w: 1240px;
   }
   :root[data-theme="dark"] {
     --bg: #0e1015;  --bg-elev: #161922;  --bg-soft: #1d2030;  --bg-deeper: #252839;
     --fg: #ece9e0;  --fg-soft: #b8b4a8;  --fg-mute: #74716a;
     --line: #2c3043;  --line-strong: #3d4159;
-    --accent: #ff5d75;  --accent-deep: #c4314b;  --accent-soft: #2a1820;  --accent-fg: #0e1015;
+    --accent: #7c8ffb;  --accent-deep: #4f6ef7;  --accent-soft: rgba(124, 143, 251, 0.14);  --accent-fg: #0e1015;
     --data-1: #ff5d75;  --data-2: #6aa3e0;  --data-3: #5fc78c;  --data-4: #e0b25c;  --data-5: #a684d4;  --data-6: #5fb4c4;
-    --good: #5fc78c;  --good-soft: #16331f;
+    --good: #2fd694;  --good-soft: rgba(47, 214, 148, 0.12);
     --bad:  #e87a73;  --bad-soft:  #2e1817;
     --warn: #e0b25c;  --warn-soft: #2e2618;
     --info: #6aa3e0;  --info-soft: #182838;
@@ -56,15 +58,16 @@
     --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
     --shadow-md: 0 6px 18px rgba(0,0,0,.6);
     --shadow-lg: 0 16px 40px rgba(0,0,0,.7);
+    --card-shadow: 0 1px 2px rgba(0,0,0,.40), 0 8px 24px -12px rgba(0,0,0,.55);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0e1015;  --bg-elev: #161922;  --bg-soft: #1d2030;  --bg-deeper: #252839;
       --fg: #ece9e0;  --fg-soft: #b8b4a8;  --fg-mute: #74716a;
       --line: #2c3043;  --line-strong: #3d4159;
-      --accent: #ff5d75;  --accent-deep: #c4314b;  --accent-soft: #2a1820;  --accent-fg: #0e1015;
+      --accent: #7c8ffb;  --accent-deep: #4f6ef7;  --accent-soft: rgba(124, 143, 251, 0.14);  --accent-fg: #0e1015;
       --data-1: #ff5d75;  --data-2: #6aa3e0;  --data-3: #5fc78c;  --data-4: #e0b25c;  --data-5: #a684d4;  --data-6: #5fb4c4;
-      --good: #5fc78c;  --good-soft: #16331f;
+      --good: #2fd694;  --good-soft: rgba(47, 214, 148, 0.12);
       --bad:  #e87a73;  --bad-soft:  #2e1817;
       --warn: #e0b25c;  --warn-soft: #2e2618;
       --info: #6aa3e0;  --info-soft: #182838;
@@ -72,6 +75,7 @@
       --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
       --shadow-md: 0 6px 18px rgba(0,0,0,.6);
       --shadow-lg: 0 16px 40px rgba(0,0,0,.7);
+      --card-shadow: 0 1px 2px rgba(0,0,0,.40), 0 8px 24px -12px rgba(0,0,0,.55);
     }
   }
 
@@ -203,7 +207,7 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     padding: 1.25rem 1.25rem 1.25rem 1.5rem;
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--card-shadow);
     overflow: hidden;
     transition: transform .18s, box-shadow .18s, border-color .18s;
   }
@@ -1397,7 +1401,7 @@
     padding: 0.9rem 1rem 0.8rem;
     display: flex; flex-direction: column;
     gap: 0.55rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px -8px rgba(0,0,0,0.12);
+    box-shadow: var(--card-shadow);
     overflow: hidden;
   }
   .pricing-card::before {
@@ -1483,12 +1487,43 @@
     color: var(--fg-mute); font-weight: 400;
     font-family: var(--body-font, inherit);
   }
-  .pricing-card .pp-row.pp-span { grid-template-columns: 1fr; }
-  .pricing-card .pp-row.pp-span .pp-customline {
-    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
-  }
   .pricing-card .pp-dash { text-align: right; color: var(--fg-mute); }
   .pricing-card .pp-empty { text-align: right; color: var(--fg-mute); font-weight: 400; }
+  /* V2:月付-only 降级 —— 无年付数据时收缩为两列,绝不留半空列 */
+  .pricing-card.mo-only .pp-row {
+    grid-template-columns: minmax(4.5rem, 1fr) 1fr;
+  }
+  .pricing-card.mo-only .pp-row.pp-head span:nth-child(2) { text-align: right; }
+  /* 定制档独立语义块(不占月/年格子) */
+  .pricing-card .pc-custom {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.45rem 0.35rem;
+    border-top: 1px dashed var(--line);
+    background: var(--bg-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.8rem;
+  }
+  .pricing-card .pc-custom .pp-custom-note {
+    color: var(--fg-mute); font-size: 0.72rem; text-align: right;
+  }
+  /* 证据链折叠 */
+  .pricing-card .ev-chain summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center;
+    gap: 0.5rem; font-size: 0.72rem; color: var(--fg-mute);
+  }
+  .pricing-card .ev-chain summary::-webkit-details-marker { display: none; }
+  .pricing-card .ev-chain summary::after {
+    content: "▸"; font-size: 0.6rem; transition: transform 0.15s;
+  }
+  .pricing-card .ev-chain[open] summary::after { transform: rotate(90deg); }
+  .pricing-card .ev-detail {
+    margin: 0.4rem 0 0; padding: 0.5rem 0.6rem;
+    background: var(--bg-soft); border-radius: var(--radius-sm);
+    font-size: 0.7rem; display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.6rem;
+  }
+  .pricing-card .ev-detail dt { color: var(--fg-mute); font-weight: 600; }
+  .pricing-card .ev-detail dd { margin: 0; word-break: break-all; }
+  .pricing-card .ev-detail a { color: var(--accent); }
   /* 旧版 tier 表(数据缺 plans 时回退) */
   .pricing-card .pc-tiers {
     display: flex; flex-direction: column; gap: 0.5rem;
@@ -1931,31 +1966,27 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 0.9rem; margin-bottom: 1.5rem;">
       {% for c in competitors %}
       {% set pcs = commercial_strategies[c.name] %}
-      <div class="pricing-card">
+      {% set priced = pcs.plans|rejectattr('is_custom')|list if pcs.plans else [] %}
+      {% set show_annual = (priced|selectattr('annual')|list|length > 0) or (priced|selectattr('monthly_billed')|list|length > 0) %}
+      <div class="pricing-card{% if not show_annual %} mo-only{% endif %}">
         <div class="pc-head">
           <strong>{{c.name}}</strong>
           <span class="pc-model">{{pcs.model|default('—')}}</span>
-          <span class="pc-currency" title="币种以官网公示价为准;香港公司可能本地客户用 HKD 计费">{{c.pricing_currency|default('USD')}}{% if c.pricing_unit %} · {{c.pricing_unit}}{% endif %}</span>
+          <span class="pc-currency" title="币种以官网公示价为准">{{c.pricing_currency|default('USD')}}{% if c.pricing_unit %} · {{c.pricing_unit}}{% endif %}</span>
         </div>
         {% if pcs.plans %}
         <div class="pc-plans">
-          <div class="pp-row pp-head"><span>套餐</span><span>月付</span><span>年付</span></div>
+          <div class="pp-row pp-head"><span>套餐</span><span>月付</span>{% if show_annual %}<span>年付</span>{% endif %}</div>
           {% for p in pcs.plans %}
-          {% if p.is_custom %}
-          <div class="pp-row pp-span">
-            <div class="pp-customline">
-              <span class="pp-name">{{p.name}}<em class="pp-tag custom">定制</em></span>
-              <span class="pp-empty">{{p.custom_note or '联系销售报价'}}</span>
-            </div>
-          </div>
-          {% else %}
+          {% if not p.is_custom %}
           <div class="pp-row">
             <span class="pp-name">{{p.name}}{% if p.is_free %}<em class="pp-tag free">免费</em>{% endif %}</span>
             {% if p.is_free %}
             <span class="pp-mo">$0</span>
-            <span class="pp-dash">—</span>
+            {% if show_annual %}<span class="pp-yr"><span class="pp-empty">—</span></span>{% endif %}
             {% else %}
-            <span class="pp-mo">{% if p.monthly %}{{p.monthly}}{% else %}<span class="pp-empty">—</span>{% endif %}</span>
+            <span class="pp-mo">{% if p.monthly %}{{p.monthly}}{% elif p.monthly_billed and not show_annual %}{{p.monthly_billed}}<i class="pp-equiv">年付结算月价</i>{% else %}<span class="pp-empty">—</span>{% endif %}</span>
+            {% if show_annual %}
             <span class="pp-yr">
               {%- if p.annual %}{{p.annual}}{% if p.save_pct %}<em class="pp-save">省 {{p.save_pct}}%</em>{% endif %}{% if p.annual_monthly_equiv %}<i class="pp-equiv">≈ {{p.annual_monthly_equiv}}/月</i>{% endif %}
               {%- elif p.monthly_billed %}{{p.monthly_billed}}<i class="pp-equiv">年付结算月价</i>
@@ -1963,10 +1994,17 @@
               {%- else %}<span class="pp-empty">—</span>{% endif %}
             </span>
             {% endif %}
+            {% endif %}
           </div>
           {% endif %}
           {% endfor %}
         </div>
+        {% for p in pcs.plans if p.is_custom %}
+        <div class="pc-custom">
+          <span class="pp-name">{{p.name}}<em class="pp-tag custom">定制</em></span>
+          <span class="pp-custom-note">{{p.custom_note or '联系销售报价'}}</span>
+        </div>
+        {% endfor %}
         {% elif pcs.pricing_tiers %}
         <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
           <tbody>
@@ -1983,12 +2021,21 @@
         <div style="color:var(--fg-mute); font-size:0.78rem; padding:0.5rem 0;">— 公开材料未提供具体价格</div>
         {% endif %}
         <div class="pc-foot">
-          {% if c._refs.pricing %}<a href="#src-{{c._refs.pricing}}" class="ref">来源 [{{c._refs.pricing}}]</a>{% endif %}
-          {% if c.pricing_verified %}
-          <span class="pc-verified" title="{% if c.pricing_engines %}经 {{c.pricing_engines|join(' + ')}} 交叉验证一致{% endif %}{% if c.pricing_scraped_at %}；抓取于 {{c.pricing_scraped_at}}{% endif %}">✓ 已验证{% if c.pricing_engines %} ({{c.pricing_engines|length}} 引擎){% endif %}</span>
-          {% elif c.pricing and c.pricing != '—' %}
-          <span class="pc-unverified" title="仅单一引擎提取到该价格，未经交叉验证，请以官网为准">⚠ 未验证 · 单引擎</span>
-          {% endif %}
+          <details class="ev-chain">
+            <summary>
+              {% if c._refs.pricing %}<a href="#src-{{c._refs.pricing}}" class="ref" onclick="event.preventDefault()">来源 [{{c._refs.pricing}}]</a>{% else %}来源{% endif %}
+              {% if c.pricing_verified %}
+              <span class="pc-verified">✓ 已验证{% if c.pricing_engines %} ({{c.pricing_engines|length}} 引擎){% endif %}</span>
+              {% elif c.pricing and c.pricing != '—' %}
+              <span class="pc-unverified">⚠ 未验证 · 单引擎</span>
+              {% endif %}
+            </summary>
+            <dl class="ev-detail">
+              <dt>定价页</dt><dd>{% if pcs.pricing_source %}<a href="{{pcs.pricing_source}}" target="_blank" rel="noopener">{{pcs.pricing_source}}</a>{% elif c._pricing_url %}{{c._pricing_url}}{% else %}{{c.url}}/pricing{% endif %}</dd>
+              <dt>抓取时间</dt><dd>{{c.pricing_scraped_at|default('—')}}</dd>
+              <dt>交叉验证引擎</dt><dd>{{c.pricing_engines|join(' + ') if c.pricing_engines else '—'}}</dd>
+            </dl>
+          </details>
           {% if c.pricing_addon_note %}<div class="pc-note">ℹ {{c.pricing_addon_note}}</div>{% endif %}
           {% if c.pricing_crawl_note %}<div class="pc-note">⚠ {{c.pricing_crawl_note}}</div>{% endif %}
           {% if c.pricing_billing_note %}<div class="pc-note">ℹ {{c.pricing_billing_note}}</div>{% endif %}
