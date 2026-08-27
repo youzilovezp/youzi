@@ -1,7 +1,7 @@
 ---
 name: youzi
 description: 竞品深度分析与颠覆性产品灵感挖掘。当用户想要分析某个主题/赛道的竞品、对比差异、寻找超越竞品的颠覆性产品机会时触发。触发短语：「/youzi 主题」「竞品分析」「竞争格局」「做一下竞品调研」「我想做一个XX，先看看市面上有什么」。
-allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-reader__webReader, mcp__web-search-prime__web_search_prime, mcp__zai-mcp-server__analyze_image, mcp__zai-mcp-server__understand_technical_diagram, mcp__zai-mcp-server__ui_to_artifact, mcp__zai-mcp-server__extract_text_from_screenshot, mcp__zai-mcp-server__analyze_video, mcp__zai-mcp-server__ui_diff_check, mcp__zread__get_repo_structure, mcp__zread__search_doc, firecrawl, agent-reach, crawl4ai, playwright, mcp__playwright
+allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-reader__webReader, mcp__web-search-prime__web_search_prime, mcp__zai-mcp-server__analyze_image, mcp__zai-mcp-server__understand_technical_diagram, mcp__zai-mcp-server__ui_to_artifact, mcp__zai-mcp-server__extract_text_from_screenshot, mcp__zai-mcp-server__analyze_video, mcp__zai-mcp-server__ui_diff_check, mcp__zread__get_repo_structure, mcp__zread__search_doc, firecrawl, agent-reach, playwright, mcp__playwright
 ---
 
 # /youzi · 竞品颠覆性分析
@@ -15,38 +15,28 @@ allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-rea
 - `mcp__web-search-prime__web_search_prime`：**带 domain/recency 过滤**，适合精确定位（如 `search_domain_filter=site:g2.com`）
 - **Agent-Reach**（推荐安装）：内置 **Exa 语义搜索**（无 API key 免费）、GitHub search、V2EX、雪球 — 适合中文竞品调研
 
-**2️⃣ 网页爬取（智能路由 → 按模块自动选引擎组合，详见 `adapters/`）**
+**2️⃣ 网页爬取（V2 白名单 4+1 引擎，按信息类型自动路由）**
 
-`/youzi` 内置 13 个爬虫，**不是全开，而是按页面类型智能路由**（不装也能跑，降级到 WebSearch）：
+本地引擎仅保留实测能打的（engine-stats n=700+ 校准）：
 
-🔒 **商业 API（需 key）**
-- **firecrawl-mcp**（最推荐）：**96% 网页覆盖 + JS 重度 + 结构化 JSON 输出 + Batch** — 业界最强爬虫。安装：`npx -y firecrawl-cli@latest init` 或自托管 Docker
-- **Jina Reader**（轻量）：`pip install jina` · 单 URL→MD，零配置（免费 20 req/min）
+- **playwright** — JS 页王者（定价/首页/功能页主力；唯一能登录交互）
+- **trafilatura** — 静态正文王者（docs/about/changelog 主力）
+- **newspaper3k** — 文章型（blog/customer/testimonials 主力）
+- **jina** — 第三方渲染，交叉验证第二票（免 key）
+- **firecrawl** — 商业最强；检测到 `FIRECRAWL_API_KEY` 时自动插入优先位，无 key 不尝试
 
-🆓 **开源 Python 库（本地运行）**
-- **Crawl4AI**（开源免费）：LLM-ready markdown，处理 JS 重度。`pip install crawl4ai && crawl4ai-setup`
-- **Crawlee**（反爬）：Apify 出品，自带指纹/UA/代理管理。`pip install crawlee`
-- **Camoufox**（反 Cloudflare）：Firefox 隐身浏览器。`pip install camoufox && camoufox fetch`
-- **Trafilatura**（学术）：web 正文抽取标准。`pip install trafilatura`
-- **Newspaper3k**（文章）：`pip install newspaper3k lxml_html_clean`
-- **Readability-lxml**（Mozilla）：`pip install readability-lxml`
-- **Markdownify / html2text**（fallback）：HTML→MD/纯文本
-- **Playwright**（登录/交互）：唯一能填表单、点按钮。`pip install playwright && playwright install chromium`
-- **Scrapy**（整站）：Python 工业级框架
-- **requests-html**（轻量 JS）：`pip install requests-html`
+⭐ **统一入口**：`python3 scripts/fetch.py --competitors "wati,respond.io" --out-dir OUT`
+- 按 URL 类型自动路由引擎组合；定价页 JS 组 + 静态对照双通道
+- 定价 ≥2 独立引擎看到相同价格才 sufficient；不达标沿升级梯自动换引擎重爬
+- 全灭时搜索发现官方定价页兜底；预算(300s/竞品)耗尽诚实标「未验证」
+- 台账 `claims-manifest.json` + 每引擎原文 `02-raw/*.engines.json`（verify.py 消费）
+- **fetch.py 只取证不做语义提取** —— 套餐/功能/定位的提取全部是你的工作（Step 3）
 
 📍 **轻量 fallback**
 - `mcp__web-reader__webReader`：**URL → LLM-friendly markdown**，轻量替代
 - `WebFetch`（内置）：仅作最终 fallback
 
-⭐ **统一入口（推荐用这个）**：`from adapters import scrape_smart` — **默认 auto 智能路由**：
-- 任意域名竞品可直接爬：非内置表的竞品（如 `cursor.com`）会被 resolver 按域名直通（pricing/features/docs 先猜常规路径，404 由首页导航发现兜底），不再要求先补内置表
-- `classify_url()` 识别页面类型（pricing/docs/about/blog/feature…）
-- 按类型选引擎组合：**定价页 → JS 渲染组 + 静态对照引擎交叉验证**（价格必须 ≥2 独立引擎一致才算 verified）；文档/功能页 → firecrawl+crawl4ai；about/blog → 轻量正文抽取器
-- 引擎历史成功率/质量自动记录到 `storage/engine-stats.json`，路由越用越准
-- **全部证据页禁止跨引擎拼接正文**（各引擎原文独立保留在 `all_results`，供逐引擎取证）
-
-🔁 **充分性闭环（准 > 快，2026-08-27）**：爬取后立即按「充分性契约」评估（`scripts/sufficiency.py`）：
+🔁 **充分性闭环（准 > 快，fetch.py 内建，契约见 `scripts/sufficiency.py`）**：
 - 定价：≥2 独立引擎一致 + 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品）→ 仍不达标回退 ≤14 天已验证缓存 → 全灭时搜索发现官方定价页
 - tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `scripts/deep_link.py` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
 - user_feedback：官网 testimonials 没抓到 → 搜索 G2/Trustpilot 具体评论页（多数被封）→ Reddit JSON 兜底
@@ -128,31 +118,32 @@ OUT_DIR = ~/youzi-out/<topic>-<YYYY-MM-DD>/
 
 向用户**打印一行**：`Found 10 competitors: Notion, Lark, Coda, ...`
 
-### Step 2 · 深度爬取（智能路由 + 逐页取证）
+### Step 2 · 深度爬取（fetch.py 一次完成 · 只取证）
 
-对每个竞品，用 `scrape_smart(url)`（默认 auto 智能路由）抓以下 URL（按可用性 fallback）：
+对整批竞品**一次调用**统一取证入口（不要逐 URL 手动 scrape_smart）：
 
-| 优先级 | URL | 抓什么 | 引擎组合（auto 自动选） |
-|--------|-----|--------|------------------------|
-| P0 | `<url>` | 落地页：slogan、定位、目标用户、核心卖点 | firecrawl + crawl4ai + jina |
-| P0 | `<url>/pricing` 或 `/pricing.html` | 定价模式、套餐结构 | **firecrawl + playwright + crawl4ai + trafilatura**（JS 组 + 静态对照交叉验证） |
-| P1 | `<url>/features` 或 `/product` | 功能矩阵 | firecrawl + crawl4ai + trafilatura |
-| P1 | `<url>/customers` 或 `/case-studies` | 客户类型、典型场景 | trafilatura + newspaper3k |
-| P2 | `<url>/about` 或 `/company` | 公司背景、融资、规模 | trafilatura + readability |
-| P2 | `<url>/blog` 最新 1-2 篇 | 近况、技术方向 | trafilatura + newspaper3k |
-| P2 | `<url>/changelog` 或 `/release-notes` | 迭代速度信号 | markdownify + trafilatura |
-| P3 | `<url>/docs` 或 `/developers` | 技术栈线索、API 能力 | firecrawl + crawl4ai + trafilatura |
+```bash
+python3 <skill-root>/scripts/fetch.py \
+  --competitors "wati,respond.io,landbot" \
+  --out-dir "$OUT_DIR" \
+  --budget 300        # 可选：每竞品墙钟预算秒数（默认 300）
+```
 
-每个竞品**实际抓到的内容**写到 `OUT_DIR/02-raw/<name>.md`（已转 markdown）。
+fetch.py（V2 取证层，职责全部列完）：
+1. **URL 发现** — resolver 猜常规路径（pricing/features/docs/about/testimonials/blog）+ 首页导航链接发现兜底（404 语义）；任意域名直通，不要求先补内置表
+2. **爬取** — scrape_smart 智能路由（5 引擎白名单，按 URL 类型自动选组合；定价页 JS 组 + 静态对照双通道）
+3. **落盘** — `02-raw/<name>.md`（合并视图）+ `02-raw/<name>.engines.json`（每引擎原文独立，verify.py 消费）
+4. **台账** — `claims-manifest.json` 记录每条 URL × 引擎 × 内容哈希 × 时间
+
+**充分性内建**：定价 ≥2 独立引擎看到相同价格才 sufficient；不达标沿升级梯自动换引擎重爬；全灭时搜索发现官方定价页兜底；预算耗尽诚实标 insufficient。
 
 **取证规则（不可违反）：**
-- 每页落盘时记录 header：`# Source: <url>`、`# Scrapers: <用了哪些引擎>`、`# Time: <时间>`
-- 定价页**每个引擎的原文独立保留**（`all_results`），绝不跨引擎拼接后提取
-- 抓不到（404/反爬/JS-only）→ 用 WebSearch 找该竞品的 Wikipedia/Crunchbase/G2 评测页作为**替代证据源**，并如实标注来源切换
+- 定价页**每个引擎的原文独立保留**，绝不跨引擎拼接后提取
+- 某竞品全灭（0 页，exit code 1）→ 用 WebSearch 找该竞品的 Wikipedia/Crunchbase/G2 评测页作为**替代证据源**，并如实标注来源切换
 
 ### Step 3 · 结构化分析（LLM 基于证据提取 —— 每字段可追溯）
 
-**这一步是 LLM（你）的工作，不是脚本的**：脚本只做证据采集（`scripts/crawl_competitors.py` 的启发式结果只是候选），你必须**逐字段从 02-raw 证据中提取、并核对原文**。
+**这一步是 LLM（你）的工作，不是脚本的**：fetch.py 只取证（V2 已删除全部脚本侧语义提取），你必须**逐字段从 02-raw 证据中提取、并核对原文**。
 
 按 references/analysis-framework.md 提取 13 个字段。**铁律：**
 
@@ -257,7 +248,7 @@ python3 <skill-root>/verify.py \
 
 - **绝对不伪造（最高优先级）**：任何字段抓不到就标「未验证」，绝不用硬编码数据/模板话术/训练记忆冒充爬取结果。历史上因此删掉了：内置静态价格库、关键词模板 differentiators/tech_signals、伪造 G2 引文的 SWOT、硬编码 other_competitors 池 —— 这些都曾让报告"看起来完整"实际全是错误数据。
 - **每处内容可追溯**：值 + source_url + 原文 quote（+ 引擎 + 时间戳）。定价额外要求 ≥2 引擎一致才 verified。
-- **智能引擎路由**：`scrape_smart` 默认 auto —— 按页面类型选组合（定价页 = JS 组 + 静态对照），引擎历史表现自动学习（`storage/engine-stats.json`）。全开 13 引擎只在 auto 失败后兜底。
+- **智能引擎路由**：fetch.py → scrape_smart 按页面类型选组合（定价页 = JS 组 + 静态对照），5 引擎白名单（playwright/trafilatura/newspaper3k/jina/firecrawl），引擎历史表现自动学习（`storage/engine-stats.json`）。
 - **不重复造轮子**：模板/CSS/可视化都参考 graphify（知识图谱可视化）、ai-radar（仪表盘）、artifact-design（HTML 美学）、dataviz（图表配色）这些已有 skill 的成熟方案。
 - **诚实**：strengths / weaknesses / scores 必须基于实际抓到的证据（带 URL + 引文片段），不写"AMAZING" / "BEST" 这种空话。
 - **§5.2 功能矩阵**：默认 vendor 模式（行 = 本次实爬功能并集，每行必有 ✓，全部可溯源）；`_CANONICAL_FEATURES_WHATSAPP`（28 项 × 10 类）为人工参考清单，仅在 analysis.json 显式 `feature_canonical.enabled=true` 时启用（? 刻 = 实爬未命中，不代表厂商不支持）。可用 `feature_canonical.evidence_notes` 手动覆盖自动判定。
@@ -278,5 +269,6 @@ python3 <skill-root>/verify.py \
 - ❌ 把所有竞品塞成一张大表（信息密度太低）
 - ❌ opportunities 里全是"加强 AI 能力"这种正确的废话
 - ❌ strengths / weaknesses 不带证据来源（具体到 URL + 引文片段）
+- ❌ 绕过 fetch.py 逐 URL 手动爬（升级梯/台账/充分性闭环都在 fetch.py 里，手动跑会丢 verify.py 依赖的台账）
 - ❌ **任何形式的伪造**：硬编码价格兜底、关键词模板生成的"差异化/技术栈"、从未访问过的 URL 当 source、训练记忆里的"已知信息"冒充爬取结果
-- ❌ 全开 13 个引擎跑所有页面（慢 + 低质引擎补充段落污染定价证据；auto 路由已按页面类型选好组合）
+- ❌ 重新引入脚本侧语义提取（正则套餐/功能/翻译对齐）—— 165KB 单体的历史教训，提取是 LLM 的活

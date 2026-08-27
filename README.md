@@ -46,7 +46,7 @@ ln -s $(pwd) ~/.claude/skills/youzi
 └─────────────────────────────────────┘
 ```
 
-> 💡 默认装 13 个爬虫**并行工作**,覆盖率从 50% 提升到 99%。推荐至少装 firecrawl + crawl4ai,详细看 [📦 安装说明](安装说明.md)。
+> 💡 V2 为 **5 引擎白名单**(playwright / trafilatura / newspaper3k / jina / firecrawl),按页面类型智能路由,定价页双通道交叉验证。推荐至少装 playwright + trafilatura,详细看 [📦 安装说明](安装说明.md)。
 
 ---
 
@@ -73,7 +73,7 @@ ln -s $(pwd) ~/.claude/skills/youzi
 
 | | 能力 | 说明 |
 |---|---|---|
-| 🕷️ | **智能引擎路由** | 13 引擎按页面类型智能组合 · 定价交叉验证 · 引擎表现自学习 |
+| 🕷️ | **智能引擎路由** | 5 引擎白名单按页面类型智能组合 · 定价交叉验证 · 引擎表现自学习 |
 | 🧠 | **13 字段结构化** | strengths/weaknesses/tech_signals 等 |
 | 📑 | **9 章节完整** | 背景 / 结论 / 定位 / 商业 / 设计 / 数据 / 反馈 / §8 / Sources |
 | 🔗 | **全板块可追溯** | 177 个 `[N]` 引用角标 · 213 条带 URL 来源 |
@@ -102,7 +102,7 @@ ln -s $(pwd) ~/.claude/skills/youzi
 | | 技术 | 用途 |
 |---|---|---|
 | 🐍 | Python 3.8+ | 渲染器 + 爬虫框架 |
-| 🕷️ | 13 个爬虫 | firecrawl · crawl4ai · jina · crawlee · camoufox · ... |
+| 🕷️ | 5 引擎白名单 | playwright · trafilatura · newspaper3k · jina · firecrawl(需 key) |
 | 🧠 | Claude (Sonnet/Haiku) | 13 字段结构化分析 |
 | 🎨 | Jinja2 + 原生 CSS/JS | HTML 报告模板(单文件,可离线) |
 | 📦 | MIT License | 自由使用 |
