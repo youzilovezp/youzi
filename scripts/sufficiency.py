@@ -9,22 +9,19 @@
 import re
 from typing import Dict, Any, List, Optional
 
-# ── 引擎升级梯(依据 storage/engine-stats.json 2026-08-26, n=358) ──
-# 第二棒:按该 url_type 历史质量分排序的候选引擎池(排除第一棒已用的)
+# ── V2 引擎升级梯(白名单内,排除已用) ──
 _ENGINE_LADDER_EXTRA = {
-    # 第二棒增援(第一棒组合见 adapters._URL_TYPE_SCRAPERS,2026-08-27
-    # 第三轮重规划后 pricing 首棒 = playwright+trafilatura+jina)
-    "pricing": ["crawl4ai", "firecrawl", "readability"],
-    "docs": ["firecrawl", "crawl4ai", "jina", "readability"],
-    "homepage": ["crawl4ai", "firecrawl", "readability"],
-    "feature": ["crawl4ai", "firecrawl", "readability"],
-    "about": ["firecrawl", "readability", "trafilatura", "playwright"],
-    "blog": ["newspaper3k", "trafilatura", "firecrawl"],
-    "customer": ["newspaper3k", "trafilatura", "firecrawl"],
-    "testimonials": ["trafilatura", "newspaper3k", "firecrawl"],
-    "changelog": ["trafilatura", "readability", "firecrawl"],
-    "integration": ["trafilatura", "readability", "firecrawl"],
-    "dashboard": ["playwright", "camoufox"],
+    "pricing": ["trafilatura", "jina", "newspaper3k"],
+    "docs": ["jina", "playwright", "newspaper3k"],
+    "homepage": ["jina", "newspaper3k"],
+    "feature": ["jina", "newspaper3k"],
+    "about": ["playwright", "newspaper3k"],
+    "blog": ["jina", "playwright"],
+    "customer": ["jina", "playwright"],
+    "testimonials": ["jina", "playwright"],
+    "changelog": ["playwright", "newspaper3k"],
+    "integration": ["playwright", "newspaper3k"],
+    "dashboard": [],
 }
 
 # 每竞品墙钟预算(秒) —— 准 > 快,但不无限等
@@ -66,10 +63,24 @@ def is_no_period_tier(name: str, price: str = "") -> bool:
 
 
 def ladder_engines(url_type: str, already_used: List[str]) -> List[str]:
-    """返回升级梯下一棒引擎(未用过的,按历史质量排序)。"""
-    pool = _ENGINE_LADDER_EXTRA.get(url_type, [])
+    """返回升级梯下一棒引擎(白名单内、未用过的)。
+
+    firecrawl 有 key 时排最前(商业 API 是最强增援)。
+    注意:梯子含"首棒组合里的引擎"没关系 —— already_used 会把它们排除,
+    首棒失败/低质的引擎换不同引擎重试才是目的。
+    """
+    pool = list(_ENGINE_LADDER_EXTRA.get(url_type, []))
+    from adapters import firecrawl_scraper as _fc
+
+    if _fc.is_available():
+        pool = ["firecrawl"] + pool
     used = set(already_used or [])
-    return [e for e in pool if e not in used]
+    seen, out = set(), []
+    for e in pool:
+        if e not in used and e not in seen:
+            seen.add(e)
+            out.append(e)
+    return out
 
 
 _PRICE_RX = re.compile(r"[$€£¥]\s*\d[\d,\.]*|\d[\d,\.]*\s*(?:usd|eur|€|£|¥|元)", re.I)

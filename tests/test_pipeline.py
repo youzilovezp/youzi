@@ -675,24 +675,16 @@ class TestCrawlers(unittest.TestCase):
     """爬虫适配器注册测试。"""
 
     def test_all_crawlers_registered(self):
-        """13 个爬虫必须全部注册。"""
+        """V2 白名单:5 个存活引擎必须全部注册。"""
         from adapters import list_scrapers
 
         scrapers = list_scrapers()
         expected = {
             "firecrawl",
-            "crawl4ai",
             "trafilatura",
             "newspaper3k",
-            "readability",
-            "markdownify",
-            "playwright",
-            "scrapy",
             "jina",
-            "html2text",
-            "requests_html",
-            "camoufox",
-            "crawlee",
+            "playwright",
         }
         self.assertEqual(set(scrapers.keys()), expected)
 
@@ -1096,13 +1088,13 @@ class TestManifestEmission(unittest.TestCase):
                 "pricing_evidence": {
                     "pricing": "Growth · $59 (/mo)",
                     "verified": True,
-                    "engines": ["playwright", "crawl4ai"],
+                    "engines": ["playwright", "jina"],
                     "source_url": url + "/pricing",
                     "scraped_at": "2026-08-26 00:00 UTC",
                     "vote_detail": [
                         {
                             "line": "Growth $59/mo",
-                            "engines": ["playwright", "crawl4ai"],
+                            "engines": ["playwright", "jina"],
                             "independent_votes": 2,
                         }
                     ],
@@ -1138,7 +1130,7 @@ class TestManifestEmission(unittest.TestCase):
                                     "chars": 400,
                                     "content_hash": "h2",
                                 },
-                                "crawl4ai": {
+                                "jina": {
                                     "ok": True,
                                     "chars": 380,
                                     "content_hash": "h3",
@@ -1151,7 +1143,7 @@ class TestManifestEmission(unittest.TestCase):
                         url: {"playwright": "# WATI md"},
                         url + "/pricing": {
                             "playwright": "# Pricing\nGrowth $59/mo",
-                            "crawl4ai": "# Plans\nGrowth $59 /mo",
+                            "jina": "# Plans\nGrowth $59 /mo",
                         },
                     },
                     "failures": [],
@@ -1194,7 +1186,7 @@ class TestManifestEmission(unittest.TestCase):
             self.assertTrue(pricing_claims)
             self.assertEqual(pricing_claims[0]["quote"], "Growth $59/mo")
             self.assertEqual(
-                sorted(pricing_claims[0]["verified_by"]), ["crawl4ai", "playwright"]
+                sorted(pricing_claims[0]["verified_by"]), ["jina", "playwright"]
             )
 
             engines = json.loads(
@@ -1269,7 +1261,7 @@ class TestFeatureAttributionAllEngines(unittest.TestCase):
                 "vote_detail": [],
                 "tiers": [],
             },
-            # 副本(crawl4ai)里才有 "Single User Plan"(套餐卡功能清单)
+            # 副本(jina)里才有 "Single User Plan"(套餐卡功能清单)
             "pricing_all_markdowns": [
                 "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n"
             ],
@@ -1277,7 +1269,7 @@ class TestFeatureAttributionAllEngines(unittest.TestCase):
                 "fetched": {},
                 "engines_by_url": {
                     "https://x.com/pricing": {
-                        "crawl4ai": "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n",
+                        "jina": "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n",
                     },
                 },
                 "failures": [],
@@ -1374,7 +1366,7 @@ class TestEvidenceQuality(unittest.TestCase):
         r = {
             "all_results": [
                 {"scraper": e, "success": True, "markdown": md}
-                for e in ("crawl4ai", "playwright")
+                for e in ("jina", "playwright")
             ]
         }
         ev = _extract_pricing_evidence(r, "https://x.com/pricing")

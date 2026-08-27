@@ -440,7 +440,7 @@ class TestEngineIndependence(unittest.TestCase):
     def test_identical_content_not_verified(self):
         ev = _extract_pricing_evidence(
             _mk_result(
-                {"playwright": self.PRICING_MD_A, "crawl4ai": self.PRICING_MD_A}
+                {"playwright": self.PRICING_MD_A, "jina": self.PRICING_MD_A}
             ),  # 完全相同 = 变体互证
             "https://x.com/pricing",
         )
@@ -449,9 +449,7 @@ class TestEngineIndependence(unittest.TestCase):
 
     def test_different_content_verified(self):
         ev = _extract_pricing_evidence(
-            _mk_result(
-                {"playwright": self.PRICING_MD_A, "crawl4ai": self.PRICING_MD_B}
-            ),
+            _mk_result({"playwright": self.PRICING_MD_A, "jina": self.PRICING_MD_B}),
             "https://x.com/pricing",
         )
         self.assertTrue(ev["verified"])
@@ -460,7 +458,7 @@ class TestEngineIndependence(unittest.TestCase):
     def test_source_url_empty_when_no_evidence(self):
         """F2: 全引擎无价格行时 source_url 必须为空(不得让 404 URL 当来源)。"""
         ev = _extract_pricing_evidence(
-            _mk_result({"playwright": "nothing here", "crawl4ai": "no prices"}),
+            _mk_result({"playwright": "nothing here", "jina": "no prices"}),
             "https://x.com/pricing-404",
         )
         self.assertEqual(ev["source_url"], "")

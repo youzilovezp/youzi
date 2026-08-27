@@ -5,26 +5,18 @@
 设计理念：并行 + 智能合并
 
 每个 adapter 实现统一的 scrape(url, **kwargs) → dict 接口。
-统一入口 scrape_smart() 自动并行调用 13 个爬虫 + 合并去重结果。
+统一入口 scrape_smart() 自动并行调用爬虫 + 合并去重结果。
 
-支持的爬虫（按优先级）：
+V2 引擎白名单（2026-08-27 重构，13 → 5，依据 engine-stats n=700+）：
 
-  🔒 商业（需 API key）：
+  🔒 商业（需 FIRECRAWL_API_KEY，有 key 时插组合首位）：
     1. firecrawl         —— 96% 网页覆盖 + JS 重度 + 截图（业界最强）
-    2. jina              —— 轻量 URL→Markdown（无 key 20 req/min）
 
-  🆓 开源 Python 库（本地运行）：
-    3. crawl4ai          —— LLM-ready markdown，开源 firecrawl 替代
-    4. crawlee           —— Apify 出品，现代爬虫框架，自带反爬（指纹/UA/代理）
-    5. trafilatura       —— 学术界标准 web 正文抽取
-    6. newspaper3k       —— 老牌新闻/文章抽取（带 NLP）
-    7. readability-lxml  —— Mozilla Readability 算法移植
-    8. markdownify       —— 通用 HTML→MD fallback
-    9. html2text         —— HTML→纯文本 fallback
-    10. playwright       —— 浏览器自动化（登录/JS 重度）
-    11. camoufox         —— Firefox 隐身浏览器，反 Cloudflare/反指纹
-    12. scrapy           —— Python 工业级爬虫框架（整站爬取）
-    13. requests_html    —— requests + 轻量 JS 渲染
+  🆓 开源（本地运行）：
+    2. playwright        —— JS 页王者（pricing q=0.50 / homepage q=0.42）
+    3. trafilatura       —— 静态正文王者（docs q=0.57）
+    4. newspaper3k       —— 文章型（blog/customer q=0.67）
+    5. jina              —— 轻量 URL→Markdown，第三方渲染交叉验证票
 """
 
 import asyncio
@@ -45,7 +37,7 @@ import re as _re_route  # noqa: E402
 
 # URL 类型识别模式(按优先级匹配)
 _URL_TYPE_PATTERNS = [
-    # 文档站(技术文档,需要深读,firecrawl/crawl4ai 最强)
+    # 文档站(技术文档,需要深读,trafilatura 最强)
     ("docs", _re_route.compile(r"^https?://docs?\.", _re_route.I)),
     ("docs", _re_route.compile(r"/docs?/", _re_route.I)),
     ("docs", _re_route.compile(r"/reference/", _re_route.I)),
@@ -98,29 +90,26 @@ _URL_TYPE_PATTERNS = [
 # 设计原则:
 #   - pricing: JS 渲染组(价格几乎都是前端渲染) + 1 个静态引擎做交叉对照
 #     —— 双通道独立取证,是定价可信度判定的基础(≥2 独立引擎一致才 verified)
-#   - docs/feature: 内容型页面,firecrawl/crawl4ai 主力
+#   - docs/feature: 内容型页面,trafilatura 主力
 #   - about/blog/customer: 静态文章型,轻量正文抽取器就够(省资源、快)
 _URL_TYPE_SCRAPERS = {
-    # 组合按 storage/engine-stats.json 的真实历史质量校准(2026-08-27
-    # 第三轮重规划,n=700+ 次真实爬取):
-    #   - pricing: playwright 渲染等待后 q 最高(本轮 WATI 4 档全中),
-    #     trafilatura 静态对照(交叉验证第二票),jina 第三方渲染;
-    #     firecrawl 移出(402 欠费不可用),crawl4ai 移出(75k chars 里
-    #     全是 CSS 变量垃圾 q=0.27,价格行极少还拖慢合并)
-    #   - homepage/feature: playwright 主力 + trafilatura/jina 对照
-    #   - docs: trafilatura q=0.77 王者不动
-    #   - about/blog 轻量组维持
+    # V2 白名单(2026-08-27 重构,依据 engine-stats n=700+):
+    #   playwright = JS 页王者(pricing q=0.50 / homepage q=0.42)
+    #   trafilatura = 静态正文王者(docs q=0.57)
+    #   newspaper3k = 文章型(blog/customer q=0.67)
+    #   jina = 第三方渲染交叉验证票
+    #   firecrawl 由 recommend_scrapers 动态插首(需 FIRECRAWL_API_KEY)
     "pricing": ["playwright", "trafilatura", "jina"],
-    "docs": ["trafilatura", "firecrawl", "crawl4ai"],
-    "dashboard": ["playwright", "camoufox"],
-    "about": ["firecrawl", "trafilatura", "readability"],
-    "integration": ["firecrawl", "trafilatura", "readability"],
-    "customer": ["trafilatura", "firecrawl", "newspaper3k"],
-    "blog": ["trafilatura", "firecrawl", "newspaper3k"],
-    "feature": ["playwright", "jina", "trafilatura", "crawl4ai"],
-    "changelog": ["firecrawl", "trafilatura", "readability"],
-    "testimonials": ["trafilatura", "newspaper3k", "firecrawl"],
-    "homepage": ["playwright", "trafilatura", "jina", "crawl4ai"],
+    "docs": ["trafilatura", "jina"],
+    "dashboard": ["playwright"],
+    "about": ["trafilatura", "jina"],
+    "integration": ["trafilatura", "jina"],
+    "customer": ["newspaper3k", "trafilatura"],
+    "blog": ["newspaper3k", "trafilatura"],
+    "feature": ["playwright", "trafilatura", "jina"],
+    "changelog": ["trafilatura", "jina"],
+    "testimonials": ["trafilatura", "newspaper3k"],
+    "homepage": ["playwright", "trafilatura", "jina"],
 }
 
 # 证据敏感页面:跨引擎"补充段落"会把不同引擎的碎片拼在一起(张冠李戴
@@ -215,13 +204,13 @@ def recommend_scrapers(url: str, need_login: bool = False) -> List[str]:
 
     Args:
         url: 目标 URL
-        need_login: 是否需要登录(强制用 playwright/camoufox)
+        need_login: 是否需要登录(强制用 playwright)
 
     Returns:
         爬虫名称列表(有序,前几个 = 主力)
     """
     if need_login:
-        return ["playwright", "camoufox"]
+        return ["playwright"]
     url_type = classify_url(url)
     base = list(_URL_TYPE_SCRAPERS.get(url_type, _URL_TYPE_SCRAPERS["homepage"]))
     scored = []
@@ -232,7 +221,13 @@ def recommend_scrapers(url: str, need_login: bool = False) -> List[str]:
         static = 1.0 - i * 0.15
         scored.append((dynamic * 0.7 + static * 0.3, i, eng))
     scored.sort(reverse=True)
-    return [eng for _, _, eng in scored]
+    ordered = [eng for _, _, eng in scored]
+    # firecrawl 有 key 时插首位(商业 API 覆盖最强);无 key 不出现
+    from adapters import firecrawl_scraper as _fc
+
+    if _fc.is_available() and "firecrawl" not in ordered:
+        ordered.insert(0, "firecrawl")
+    return ordered
 
 
 # ============================================================
@@ -242,37 +237,18 @@ def _build_adapter_registry():
     """懒加载：每个 adapter 在第一次访问时才 import（避免硬依赖）"""
     from adapters import (
         firecrawl_scraper,
-        crawl4ai_scraper,
         trafilatura_scraper,
         newspaper3k_scraper,
-        readability_scraper,
-        markdownify_scraper,
-        playwright_scraper,
-        # 第二批（v1.1 新增 4 个主流爬虫）
-        scrapy_scraper,
         jina_scraper,
-        html2text_scraper,
-        requests_html_scraper,
-        # 第三批（v1.2 新增 2 个反爬爬虫）
-        crawlee_scraper,  # 现代爬虫框架 + 反爬（Apify 出品）
-        camoufox_scraper,  # Firefox 隐身浏览器 + 反 Cloudflare
+        playwright_scraper,
     )
 
     return {
-        # (scraper_id, module, supports_screenshot, supports_login, supports_prompt)
         "firecrawl": (firecrawl_scraper, True, False, False),
-        "crawl4ai": (crawl4ai_scraper, False, False, True),
         "trafilatura": (trafilatura_scraper, False, False, False),
         "newspaper3k": (newspaper3k_scraper, False, False, False),
-        "readability": (readability_scraper, False, False, False),
-        "markdownify": (markdownify_scraper, False, False, False),
-        "playwright": (playwright_scraper, True, True, True),
-        "scrapy": (scrapy_scraper, False, False, False),
         "jina": (jina_scraper, False, False, False),
-        "html2text": (html2text_scraper, False, False, False),
-        "requests_html": (requests_html_scraper, False, False, False),
-        "crawlee": (crawlee_scraper, False, False, False),
-        "camoufox": (camoufox_scraper, True, True, False),
+        "playwright": (playwright_scraper, True, True, True),
     }
 
 
@@ -326,7 +302,7 @@ async def _scrape_parallel(
         need_screenshot: 是否需要截图
         need_login: 是否需要登录（强制用 Playwright）
         timeout: 单个 scraper 超时（秒）
-        enabled_scrapers: 指定启用的 scraper（如 ['firecrawl', 'crawl4ai']）
+        enabled_scrapers: 指定启用的 scraper（如 ['firecrawl', 'trafilatura']）
                          None 表示全部（按注册表顺序）
     """
     registry = _build_adapter_registry()
@@ -348,15 +324,7 @@ async def _scrape_parallel(
         # max_chars / prompt —— 仅对接受的 scraper 传
         if name not in ("playwright",):
             kwargs["max_chars"] = max_chars
-        if (
-            supports_prompt
-            and prompt
-            and name
-            in (
-                "crawl4ai",
-                "playwright",
-            )
-        ):
+        if supports_prompt and prompt and name == "playwright":
             kwargs["prompt"] = prompt
         if supports_screenshot and need_screenshot:
             if name == "playwright":
@@ -410,18 +378,10 @@ async def _scrape_parallel(
 # primary 按此顺序选,长度只做 tie-break —— "最长"经常是 nav/JS 垃圾最多的那份
 _ENGINE_QUALITY = {
     "firecrawl": 0,
-    "crawl4ai": 1,
-    "jina": 2,
-    "trafilatura": 3,
-    "readability": 4,
-    "newspaper3k": 5,
-    "scrapy": 6,
-    "camoufox": 7,
-    "playwright": 8,
-    "crawlee": 9,
-    "markdownify": 10,
-    "html2text": 11,
-    "requests_html": 12,
+    "playwright": 1,
+    "trafilatura": 2,
+    "jina": 3,
+    "newspaper3k": 4,
 }
 
 _CODE_JUNK_RX = __import__("re").compile(
@@ -599,13 +559,12 @@ async def _scrape_smart_async(
     """智能爬取（异步主入口）。
 
     默认 auto 策略(智能路由): 根据 URL 类型(classify_url) + 引擎历史表现
-    自动选择最合适的爬虫组合 —— 不再全开 13 个引擎(慢,且低质引擎的
-    补充段落会污染证据)。
-    - pricing 页 → JS 渲染组 + 静态对照引擎,且禁止跨引擎合并正文
-    - docs 站 → firecrawl + crawl4ai + trafilatura
-    - dashboard → playwright + camoufox
-    - about/blog 页 → trafilatura + readability + newspaper3k
-    - feature/home 页 → firecrawl + crawl4ai + jina
+    自动选择最合适的爬虫组合(5 引擎白名单;有 FIRECRAWL_API_KEY 时
+    firecrawl 插组合首位)。
+    - pricing/feature/home 页 → JS 渲染组 + 静态对照引擎,且禁止跨引擎合并正文
+    - docs 站 → trafilatura + jina
+    - dashboard → playwright
+    - about/blog/customer 页 → newspaper3k + trafilatura
 
     其他策略:
     - "parallel": 全部可用引擎并行(覆盖最大,只用于 auto 失败后的兜底)
@@ -684,7 +643,7 @@ def scrape_smart(
         # 指定引擎
         result = scrape_smart(
             "https://example.com",
-            enabled_scrapers=["trafilatura", "markdownify"],
+            enabled_scrapers=["trafilatura", "jina"],
         )
 
         # 截图
@@ -729,7 +688,7 @@ def scrape_with_fallback(
     need_login: bool = False,
 ) -> Dict[str, Any]:
     """⚠️ 旧版串行 fallback（保留以兼容）。新版请用 scrape_smart()。"""
-    from adapters import firecrawl_scraper, crawl4ai_scraper, playwright_scraper
+    from adapters import firecrawl_scraper, playwright_scraper
 
     last_error = None
     if firecrawl_scraper.is_available():
@@ -740,18 +699,6 @@ def scrape_with_fallback(
             result["scraper"] = "firecrawl"
             return result
         last_error = result.get("error", "firecrawl failed")
-    if crawl4ai_scraper.is_available():
-        result = crawl4ai_scraper.scrape(url, prompt=prompt, max_chars=max_chars)
-        if result["success"]:
-            result["scraper"] = "crawl4ai"
-            if need_screenshot and playwright_scraper.is_available():
-                ss = playwright_scraper.scrape(
-                    url, screenshot_path=f"/tmp/youzi_{url_hash(url)}.png"
-                )
-                if ss["success"]:
-                    result["screenshot"] = ss["screenshot"]
-            return result
-        last_error = result.get("error", "crawl4ai failed")
     if need_login or playwright_scraper.is_available():
         screenshot_path = f"/tmp/youzi_{url_hash(url)}.png" if need_screenshot else None
         result = playwright_scraper.scrape(

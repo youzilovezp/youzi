@@ -13,18 +13,9 @@ import base64
 
 
 def is_available() -> bool:
-    """检查 firecrawl 是否可用（CLI 或 API key）。"""
-    api_key = os.environ.get("FIRECRAWL_API_KEY")
-    if api_key:
-        return True
-    # 检查 CLI
-    try:
-        result = subprocess.run(
-            ["which", "firecrawl"], capture_output=True, text=True, timeout=5
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
+    """V2:仅 FIRECRAWL_API_KEY 存在时启用(无 key 的 CLI 通道曾长期 402 欠费,
+    engine-stats ok=0.12,纯噪声)。"""
+    return bool(os.environ.get("FIRECRAWL_API_KEY"))
 
 
 def scrape(url: str, max_chars: int = 50000, screenshot: bool = False) -> dict:

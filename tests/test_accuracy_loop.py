@@ -4,9 +4,11 @@
 跑法: python3 -m pytest tests/test_accuracy_loop.py -q
 """
 
+import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -74,15 +76,18 @@ class TestAssessPricing(unittest.TestCase):
 
 class TestLadderEngines(unittest.TestCase):
     def test_excludes_used(self):
-        # 2026-08-27 重规划:pricing 首棒 = playwright+trafilatura+jina,
-        # 升级梯增援 = crawl4ai/firecrawl/readability
-        used = ["playwright", "trafilatura", "jina"]
-        ladder = ladder_engines("pricing", used)
-        self.assertEqual(set(ladder), {"crawl4ai", "firecrawl", "readability"})
+        # V2 白名单:pricing 首棒 = playwright+trafilatura+jina,
+        # 无 key 时升级梯增援只剩 newspaper3k
+        env = {k: v for k, v in os.environ.items() if k != "FIRECRAWL_API_KEY"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            used = ["playwright", "trafilatura", "jina"]
+            ladder = ladder_engines("pricing", used)
+            self.assertEqual(set(ladder), {"newspaper3k"})
 
     def test_docs_ladder(self):
-        ladder = ladder_engines("docs", ["trafilatura"])
-        self.assertEqual(ladder[:2], ["firecrawl", "crawl4ai"])
+        with mock.patch.dict(os.environ, {"FIRECRAWL_API_KEY": "k"}, clear=False):
+            ladder = ladder_engines("docs", ["trafilatura"])
+            self.assertEqual(ladder[0], "firecrawl")
 
 
 class TestAssessSignals(unittest.TestCase):

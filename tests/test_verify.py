@@ -179,7 +179,7 @@ def _violations_by_gate(rep: dict, gate: str):
 
 def _pricing_comp(
     verified=True,
-    engines=("playwright", "crawl4ai"),
+    engines=("playwright", "jina"),
     hashes=None,
     scraped_at="2026-08-26 00:00 UTC",
     source="https://www.wati.io/pricing",
@@ -377,10 +377,10 @@ class TestG3PricingIntegrity(unittest.TestCase):
 
     def test_independent_engines_pass(self):
         rep = self._run(
-            _pricing_comp(engines=("playwright", "crawl4ai")),
+            _pricing_comp(engines=("playwright", "jina")),
             _manifest_with_hashes(
                 "https://www.wati.io/pricing",
-                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+                {"playwright": "aaaa", "jina": "bbbb"},
             ),
         )
         self.assertTrue(rep["passed"])
@@ -388,10 +388,10 @@ class TestG3PricingIntegrity(unittest.TestCase):
     def test_same_hash_two_engines_fail(self):
         """两引擎拿到同一反爬变体(内容哈希相同)≠ 交叉验证。"""
         rep = self._run(
-            _pricing_comp(engines=("playwright", "crawl4ai")),
+            _pricing_comp(engines=("playwright", "jina")),
             _manifest_with_hashes(
                 "https://www.wati.io/pricing",
-                {"playwright": "same", "crawl4ai": "same"},
+                {"playwright": "same", "jina": "same"},
             ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
@@ -410,7 +410,7 @@ class TestG3PricingIntegrity(unittest.TestCase):
             _pricing_comp(scraped_at="2026-01-01 00:00 UTC"),
             _manifest_with_hashes(
                 "https://www.wati.io/pricing",
-                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+                {"playwright": "aaaa", "jina": "bbbb"},
             ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
@@ -420,7 +420,7 @@ class TestG3PricingIntegrity(unittest.TestCase):
             _pricing_comp(tiers=0),
             _manifest_with_hashes(
                 "https://www.wati.io/pricing",
-                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+                {"playwright": "aaaa", "jina": "bbbb"},
             ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
