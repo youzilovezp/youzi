@@ -7,6 +7,16 @@
 3. **证据里没有的写「未验证」**，绝不编造、绝不脑补、绝不用训练记忆填充
 4. **定价交叉验证**：≥2 独立引擎一致 → `pricing_verified: true`；单引擎 → `false`（报告显示 ⚠ 未验证徽章）；零证据 → 「未能获取，请核对官网」
 5. 脚本只取证不做语义提取（fetch.py；旧版脚本侧启发式提取已删）—— 所有字段由 LLM 回对 02-raw 原文提取并核对
+6. **溯源优先级（G7 门禁强制）**：功能/技术/差异化类字段（`core_features` / `differentiators` / `tech_signals` / `feature_catalog`）的 source 按下表优先级锚定：
+
+   | 优先级 | 页面类型 | 说明 |
+   |--------|---------|------|
+   | 1 | docs/features 具体子页 | `docs.xxx.com/<具体主题>`、`xxx.com/features/<子功能>`——论断原文就在那里 |
+   | 2 | about/customers | 公司/客户事实类论断 |
+   | 3 | 首页（域名根） | **默认禁止**——首页是营销聚合页，不承载具体论断 |
+   | 4 | pricing | **默认禁止**——仅当 quote 本身是定价陈述（货币符号+价格数字）时允许 |
+
+   域名根或 `/pricing` 路径锚点 → verify.py G7 hard fail。信息只出现在低优先级页面时，先去更高优先级页面找对应表述重新锚定；抓不到权威锚点的条目**宁可删除也不留低质锚点**。
 
 ## 单竞品 schema
 
@@ -19,7 +29,7 @@
   "founded": 2016,
   "stage": "成熟期",
   "target_users": ["知识工作者", "中小团队", "学生"],
-  "core_features": ["块编辑器", "数据库", "模板市场", "AI 写作", "跨平台同步", "API"],
+  "core_features": ["AI 逐行审查", "PR 摘要", "一键修复", "安全扫描", "PR 队列分级", "多平台集成", "CLI 审查", "冲突检测", "准入控制", "报告生成", "团队协作", "API 接入"],
   "pricing": "免费 + Plus $10/月 + Business $15/月",
   "pricing_verified": true,
   "pricing_engines": ["firecrawl", "playwright"],
@@ -42,7 +52,11 @@
     }
   ],
   "differentiators": [
-    "块编辑器 + 数据库二合一（vs. Confluence 只文档 / Airtable 只表格）"
+    {
+      "point": "块编辑器 + 数据库二合一（vs. Confluence 只文档 / Airtable 只表格）",
+      "quote": "Turn any thought into a beautiful page",
+      "source_url": "https://notion.so/help/what-is-a-block"
+    }
   ],
   "tech_signals": [
     {"name": "React 前端", "source": "https://notion.so/blog/..."},
@@ -61,6 +75,8 @@
 
 **注意 evidence 字段的写法**：引文必须是你**真的在 02-raw 里读到的句子**。
 写 "G2 评价：xxx" 之前，必须真的爬过那个 G2 页面 —— 否则整条删掉，写「未收集到」。
+
+**core_features 提取要求**：必须扫该竞品的 **docs 证据页**（claims-manifest 台账里 kind=docs 的 URL 对应 02-raw 段落），每家 ≥ 12 条、每条 ≤ 12 字 —— 不得只抄 pricing 页的套餐功能清单（那是商业包装，不是功能证据）。
 
 ## 评分维度（6 维 · 1-10 分）
 
@@ -148,6 +164,9 @@ JSON 数组，按「颠覆性指数」降序（颠覆性 = 用户痛点强度 ×
 - [ ] 每个竞品 13 个字段齐全
 - [ ] 每个非空字段的 quote 能在 02-raw 里 grep 到（逐字）
 - [ ] strengths / weaknesses 至少各有 1 条带 URL 证据（没有证据就明说，不硬凑）
+- [ ] core_features ≥ 12 条且来自 docs 证据页（非 pricing 套餐清单）
+- [ ] differentiators 为 dict 结构 `{point, quote, source_url}`，source_url 锚定 docs/features 具体子页
+- [ ] tech_signals / feature_catalog 的 source 无域名根、无 /pricing 锚点（G7）
 - [ ] 定价带 `pricing_verified` / `pricing_source` / `pricing_scraped_at`
 - [ ] 6 维评分每个竞品都有，且 1-10 范围内，且能说出打分依据（功能数/集成数/定价结构）
 - [ ] opportunities ≥ 5 条（由 LLM 基于证据生成，不是脚本模板）

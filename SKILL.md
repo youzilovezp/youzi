@@ -151,9 +151,10 @@ fetch.py（V2 取证层，职责全部列完）：
 2. **quote 必须能在该 source_url 的 02-raw markdown 里逐字找到**（写完后自查一遍 grep）
 3. **证据里没有的内容写「未验证」**，绝不编造、绝不脑补、绝不用训练记忆里的"常识"填充
 4. **定价必须交叉验证**：≥2 个独立引擎看到相同价格 → `pricing_verified: true`；只有 1 个引擎 → `pricing_verified: false`（报告自动显示 ⚠ 未验证徽章）；0 个 → 「未能获取，请核对官网」
-5. strengths / weaknesses / scores / differentiators / tech_signals / gaps / opportunities **全部由你基于证据生成**（脚本不再模板化伪造）—— 每条 strengths/weaknesses 附 `{point, evidence(quote), score, source_url}`
+5. strengths / weaknesses / scores / differentiators / tech_signals / gaps / opportunities **全部由你基于证据生成**（脚本不再模板化伪造）—— 每条 strengths/weaknesses 附 `{point, evidence(quote), score, source_url}`；每条 differentiators 附 `{point, quote, source_url}`（dict 结构，与 strengths 同构，G2/G7 会查）
 6. scores 基于证据打分并在报告中可辩护（功能数、集成数、定价结构都是证据）；证据不足的维度给低置信标注
 7. **写 claim**：你从 02-raw 提取/改写的每个字段，同步追加到 `OUT_DIR/claims-manifest.json` 的 `claims` 数组（schema 见 docs/superpowers/specs/2026-08-26-production-quality-loop-design.md §3.1）—— verify.py 会拒收任何没有抓取记录支撑的 source_url 和 grep 不到的 quote
+8. **溯源优先级（G7 强制）**：功能/技术/差异化类字段（core_features / differentiators / tech_signals / feature_catalog）的 source **必须优先锚定 docs/features 具体子页** > about/customers > 首页 > pricing。锚定域名根或 /pricing 路径 → verify 直接 hard fail（唯一豁免：quote 本身是定价陈述，含货币符号+价格数字）。信息只出现在低优先级页面时，优先找更高优先级页面上的对应表述重新锚定；实在抓不到权威锚点的条目**宁可删除也不留低质锚点**
 
 1. `name` — 产品名
 2. `url` — 官网
@@ -161,12 +162,12 @@ fetch.py（V2 取证层，职责全部列完）：
 4. `founded` — 成立年份（可空）
 5. `stage` — 阶段（早期 / 成长期 / 成熟期 / 巨头）
 6. `target_users` — 目标用户（数组）
-7. `core_features` — 核心功能（3-6 条，每条 ≤ 12 字）
+7. `core_features` — 核心功能（≥ 12 条，每条 ≤ 12 字；**必须扫该竞品的 docs 证据页**——台账 kind=docs 的 URL 对应段落——逐条提取，不得只抄 pricing 页套餐清单）
 8. `pricing` — 定价摘要（"免费 + 付费 $X/月起" + `pricing_verified` + `pricing_source` + `pricing_scraped_at`）
 9. `strengths` — 3 个最强项（各带 quote + URL）
 10. `weaknesses` — 3 个最弱项（各带 quote + URL）
-11. `differentiators` — 1-2 个差异化杀手锏（各带 quote + URL）
-12. `tech_signals` — 技术栈线索（来自 docs/blog/changelog，各带 URL）
+11. `differentiators` — 1-3 个差异化杀手锏，**dict 结构** `[{point, quote(≤100字逐字), source_url}]`（与 strengths 同构；source_url 必须锚定 docs/features 具体子页，quote 可在该页 grep 到）
+12. `tech_signals` — 技术栈线索（来自 docs/blog/changelog，各带 URL；source 必须是 docs 具体子页而非栏目首页/pricing，附 quote 逐字原文）
 13. `scores` — **6 个维度 1-10 分**（feature_richness / ux / pricing_value / integration / ai_capability / momentum）
 
 合并所有竞品后**额外产出**：

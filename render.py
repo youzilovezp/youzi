@@ -630,15 +630,18 @@ def _derive_commercial_strategies(c):
     优先使用结构化的 c['pricing_tiers'] (list[{name, price, billing_period, features, source_url}])
     fallback 到老的 c['pricing'] 字符串切分。
 
-    differentiators 可能是 list[str] (原始) 或 list[{name, source, _ref}] (Phase 1A 后),
-    这里统一取 .name 兼容两种格式。
+    differentiators 可能是 list[str] (原始) 或 list[{point, quote, source_url}]
+    (结构化,R2-A 后)/list[{name, source, _ref}] (Phase 1A 后),
+    这里统一取 .name/.point 兼容所有格式。
     """
     pricing_tiers_raw = c.get("pricing_tiers", [])
     pricing_str = c.get("pricing", "—")
     differentiators = c.get("differentiators", [])
 
     def _name(it):
-        return it["name"] if isinstance(it, dict) else it
+        if isinstance(it, dict):
+            return it.get("name") or it.get("point") or ""
+        return it
 
     diff_names = [_name(d) for d in differentiators]
 
@@ -3942,10 +3945,14 @@ def normalize(data: dict) -> dict:
                         }
                     )
                 elif isinstance(it, dict):
-                    src = it.get("source") or c.get(fld + "_source", "")
+                    src = (
+                        it.get("source")
+                        or it.get("source_url")
+                        or c.get(fld + "_source", "")
+                    )
                     # 保留深链取证字段(quote/engine)—— 重建 dict 时丢弃
                     # 会让 §5.5 的原文引文块整个消失
-                    e = {"name": it.get("name", ""), "source": src}
+                    e = {"name": it.get("name") or it.get("point") or "", "source": src}
                     for k in ("quote", "engine"):
                         if it.get(k):
                             e[k] = it[k]

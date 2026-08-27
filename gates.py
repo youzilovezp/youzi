@@ -52,13 +52,25 @@ def _evidence_fields(competitor: dict):
                 yield f"competitors[{name}].{key}[{i}].source", u
     for i, t in enumerate(competitor.get("tech_signals") or []):
         if isinstance(t, dict):
-            u = (t.get("source") or "").strip()
+            u = (t.get("source") or t.get("source_url") or "").strip()
         else:  # 兼容 "name|url" / 纯文本形态
             u = ""
             m = re.search(r"(https?://\S+)", str(t))
             u = m.group(1).rstrip(").,]") if m else ""
         if u:
             yield f"competitors[{name}].tech_signals[{i}].source", u
+    # differentiators:结构化(dict 带 source_url)才溯源;纯字符串形态
+    # 由分析框架 Step 3 约束(见 G7 docstring),门禁只查能查的
+    for i, d in enumerate(competitor.get("differentiators") or []):
+        if isinstance(d, dict):
+            u = (d.get("source_url") or d.get("source") or "").strip()
+            if u:
+                yield f"competitors[{name}].differentiators[{i}].source_url", u
+    for i, fb in enumerate(competitor.get("user_feedback") or []):
+        if isinstance(fb, dict):
+            u = (fb.get("source") or fb.get("source_url") or "").strip()
+            if u:
+                yield f"competitors[{name}].user_feedback[{i}].source", u
     # feature_catalog:仅检查非空 source(空 = 未定位出处,允许)
     fc = competitor.get("feature_catalog") or {}
     for cname, feats in fc.items():
@@ -164,6 +176,17 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                             ev["quote"],
                         )
                     )
+        # differentiators 结构化(dict {point, quote, source_url})后,
+        # 引文与 strengths 同等对待 —— 5.2.3 独家卖点不允许只挂 URL 不对原文
+        for i, d in enumerate(competitor.get("differentiators") or []):
+            if isinstance(d, dict) and d.get("quote"):
+                checks.append(
+                    (
+                        f"competitors[{name}].differentiators[{i}].quote",
+                        (d.get("source_url") or d.get("source") or "").strip(),
+                        d["quote"],
+                    )
+                )
         # 定价来自缓存回退(反爬 starved)时,vote 行是上一轮成功运行的证据,
         # 本轮引擎原文天然不包含 —— 无法也不应 grep(新鲜度由 G3 TTL 保证,
         # 报告端有 pricing_crawl_note 如实标注)
@@ -409,4 +432,116 @@ def g6_url_hygiene(analysis, manifest, engine_index, rep: Report):
                     field,
                     f"证据域名 {src} 与竞品主域 {own} 不同"
                     "(第三方来源需在 Step 3 确认已实际抓取)",
+                )
+
+
+# ── G7 溯源权威性 ──
+
+# 明显定价语义:货币符号 + 价格数字(如 $24 / ₹999 / US$12)
+_PRICING_SEMANTICS_RX = re.compile(r"(?:US\$|S\$|Rs\.?|[$€£₹¥])\s?\d[\d,\.]*")
+
+
+def _is_pricing_semantic(text: str) -> bool:
+    return bool(_PRICING_SEMANTICS_RX.search(text or ""))
+
+
+def _weak_anchor(url: str) -> str:
+    """锚点强度:'pricing' = 定价页路径;'root' = 域名根(无路径);'' = 具体子页。
+
+    ponytail: 只认末段 segment 精确等于 pricing —— /en/pricing、/pricing/
+    都命中;博客 slug 里含 pricing 的长段不误伤。
+    """
+    p = urlparse(url or "")
+    segs = [s for s in (p.path or "").split("/") if s]
+    if segs and segs[-1].lower() == "pricing":
+        return "pricing"
+    if p.netloc and not segs:
+        return "root"
+    return ""
+
+
+@register
+def g7_source_authority(analysis, manifest, engine_index, rep: Report):
+    """G7: 功能/技术/差异化类证据的溯源权威性。
+
+    历史缺陷:5.2.3 独家功能与 5.4 技术信号的「原文」链接几乎全是
+    /pricing 与官网首页 —— 读者点开找不到论断内容,溯源形同虚设。
+
+    规则(analysis-framework.md §溯源优先级):
+      - tech_signals / differentiators / feature_catalog 的来源锚定在
+        定价页路径或域名根 → hard fail;唯一豁免:quote 本身是定价陈述
+        (货币符号+价格数字)
+      - user_feedback 锚定定价页 → hard fail;域名根 → 仅警告
+        (官网首页确实承载用户声音,但应优先 customers/testimonials 页)
+      - differentiators 纯字符串形态不查(结构由 Step 3 框架强制 dict 化)
+    """
+    for competitor in analysis.get("competitors") or []:
+        name = competitor.get("name", "?")
+        checks = []  # (field, url, quote, hard)
+        for i, d in enumerate(competitor.get("differentiators") or []):
+            if isinstance(d, dict):
+                u = (d.get("source_url") or d.get("source") or "").strip()
+                if u:
+                    checks.append(
+                        (
+                            f"competitors[{name}].differentiators[{i}]",
+                            u,
+                            d.get("quote") or "",
+                            True,
+                        )
+                    )
+        for i, t in enumerate(competitor.get("tech_signals") or []):
+            if isinstance(t, dict):
+                u = (t.get("source") or t.get("source_url") or "").strip()
+                q = t.get("quote") or ""
+            else:
+                m = re.search(r"(https?://\S+)", str(t))
+                u, q = (m.group(1).rstrip(").,]") if m else ""), ""
+            if u:
+                checks.append((f"competitors[{name}].tech_signals[{i}]", u, q, True))
+        for i, fb in enumerate(competitor.get("user_feedback") or []):
+            if isinstance(fb, dict):
+                u = (fb.get("source") or fb.get("source_url") or "").strip()
+                if u:
+                    checks.append(
+                        (
+                            f"competitors[{name}].user_feedback[{i}]",
+                            u,
+                            fb.get("quote") or "",
+                            False,
+                        )
+                    )
+        fc = competitor.get("feature_catalog") or {}
+        for cname, feats in fc.items():
+            for i, f in enumerate(feats or []):
+                if isinstance(f, dict):
+                    u = (f.get("source") or f.get("source_url") or "").strip()
+                    if u:
+                        checks.append(
+                            (
+                                f"competitors[{name}].feature_catalog[{cname}][{i}]",
+                                u,
+                                f.get("quote") or f.get("text_orig") or "",
+                                True,
+                            )
+                        )
+        for field, url, quote, hard in checks:
+            weak = _weak_anchor(url)
+            if not weak or _is_pricing_semantic(quote):
+                continue
+            what = "定价页路径" if weak == "pricing" else "域名根(首页/栏目 landing)"
+            if hard:
+                rep.hard(
+                    "G7",
+                    field,
+                    url,
+                    f"功能/技术/差异化类证据锚定在{what} —— 该页面不承载论断原文",
+                    "改锚 docs/features 具体子页(quote 逐字取自该页),或删除该条;"
+                    "仅当 quote 本身为定价陈述(货币+数字)才允许 pricing 锚点",
+                )
+            else:
+                rep.warn(
+                    "G7",
+                    field,
+                    f"用户反馈锚定在域名根 —— 优先改锚 customers/testimonials 具体页: {url}",
                 )

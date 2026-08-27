@@ -574,6 +574,58 @@ class TestG6UrlHygiene(unittest.TestCase):
         self.assertEqual(len([x for x in rep["warnings"] if x["gate"] == "G6"]), 0)
 
 
+class TestG7SourceAuthority(unittest.TestCase):
+    """G7: 功能/技术/差异化类证据不得锚定定价页/域名根(溯源权威性)。"""
+
+    def _run(self, analysis, manifest=None):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            return _bundle(Path(d), manifest or _ok_manifest(), analysis)
+
+    def test_tech_signal_pricing_anchor_hard_fails(self):
+        # 锚 pricing → hard fail;但 quote 本身是定价陈述(货币+数字)时豁免
+        rep = self._run(
+            _one_comp_analysis(
+                tech_signals=[
+                    {
+                        "name": "API 用量分层",
+                        "source": "https://www.wati.io/pricing",
+                        "quote": "200k API calls",
+                    },
+                    {
+                        "name": "Pro 档价格",
+                        "source": "https://www.wati.io/pricing",
+                        "quote": "Pro plan costs $99/mo",
+                    },
+                ]
+            )
+        )
+        v = _violations_by_gate(rep, "G7")
+        self.assertEqual(len(v), 1)
+        self.assertIn("tech_signals[0]", v[0]["field"])
+        self.assertIn("pricing", v[0]["source_url"])
+
+    def test_tech_signal_docs_subpage_passes(self):
+        # 锚 docs 具体子页 + 域名根(homepage)对照:子页过,域名根挂
+        rep = self._run(
+            _one_comp_analysis(
+                tech_signals=[
+                    {
+                        "name": "REST API",
+                        "source": "https://docs.wati.io/reference/introduction",
+                        "quote": "OpenAPI",
+                    },
+                    {"name": "弱锚", "source": "https://docs.wati.io", "quote": ""},
+                ]
+            )
+        )
+        v = _violations_by_gate(rep, "G7")
+        self.assertEqual(len(v), 1)
+        self.assertIn("tech_signals[1]", v[0]["field"])
+        self.assertIn("域名根", v[0]["detail"])
+
+
 class TestNetworkGates(unittest.TestCase):
     """N1/N2: 全部 mock,不发真实网络请求。"""
 

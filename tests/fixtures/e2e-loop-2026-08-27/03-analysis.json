@@ -1,352 +1,256 @@
 {
-  "topic": "WhatsApp BSP(闭环验收)",
-  "subtitle": "WhatsApp BSP(闭环验收) — 基于 1 家竞品实时爬取的深度分析",
-  "date": "2026-08-27",
-  "competitors": [
+ "topic": "WhatsApp BSP(闭环验收)",
+ "subtitle": "WhatsApp BSP(闭环验收) — 基于 1 家竞品实时爬取的深度分析",
+ "date": "2026-08-27",
+ "competitors": [
+  {
+   "name": "WATI",
+   "url": "https://www.wati.io",
+   "tagline": "Wati | #1 AI-powered customer engagement platform",
+   "founded": "2020",
+   "founded_quote": "date: \"2023-05-30\"",
+   "stage": "—",
+   "headquarters": "on your interests",
+   "headquarters_quote": "",
+   "team_size": "—",
+   "team_size_quote": "",
+   "funding": "—",
+   "pricing": "Growth · $59 (/mo)",
+   "pricing_verified": true,
+   "pricing_from_cache": true,
+   "pricing_unit": "",
+   "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
+   "pricing_currency": "USD",
+   "pricing_tiers": [
     {
-      "name": "WATI",
-      "url": "https://www.wati.io",
-      "tagline": "Wati | #1 AI-powered customer engagement platform",
-      "founded": "2020",
-      "founded_quote": "date: \"2023-05-30\"",
-      "stage": "—",
-      "headquarters": "on your interests",
-      "headquarters_quote": "",
-      "team_size": "—",
-      "team_size_quote": "",
-      "funding": "—",
-      "pricing": "Growth · $59 (/mo)",
-      "pricing_verified": true,
-      "pricing_from_cache": true,
-      "pricing_unit": "",
-      "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
-      "pricing_currency": "USD",
-      "pricing_tiers": [
-        {
-          "name": "Growth",
-          "price": "$59",
-          "billing_period": "/mo",
-          "features": [],
-          "source_url": "https://www.wati.io/pricing"
-        }
-      ],
-      "pricing_engines": [
-        "playwright",
-        "crawl4ai"
-      ],
-      "pricing_plans": null,
-      "pricing_source": "https://www.wati.io/pricing",
-      "pricing_scraped_at": "2026-08-26 00:00 UTC",
-      "pricing_vote_detail": [
-        {
-          "line": "Growth $59/mo",
-          "engines": [
-            "playwright",
-            "crawl4ai"
-          ],
-          "independent_votes": 2
-        }
-      ],
-      "pricing_crawl_note": "本次爬取遇反爬/区域变体页,定价为上次成功抓取(2026-08-26 00:00 UTC)的已验证数据,请以官网为准",
-      "target_users": [
-        "客服中心",
-        "开发者"
-      ],
-      "core_features": [
-        "Contact Info",
-        "Wati for Support",
-        "No Code Chatbots",
-        "Single User Plan",
-        "Manajemen Kontak"
-      ],
-      "feature_catalog": {
-        "WATI": [
-          {
-            "category": "其他",
-            "name": "Wati for Support",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Tecnologia Inteligente para Maior Produtividade",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "消息渠道",
-            "name": "大规模地有效管理WhatsApp消息对话。",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Permita Maior Proximidade Entre Suas Equipes",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Pengalaman pelanggan yang lebih baik",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Caixa de Entrada Compartilhada",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "No Code Chatbots",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Native Integrations",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Acquire and engage leads, personalise",
-            "desc": "",
-            "source": "https://www.wati.io/product-overview/"
-          },
-          {
-            "category": "其他",
-            "name": "Contact Info",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Single User Plan",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Unlimited Broadcasts, Standard rates",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Blitz add-on: Send 12k messages/min",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Business-Initiated Conversation",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "收件箱",
-            "name": "Shared Team Inbox",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Kotak Masuk Tim Berbagi",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "开发者",
-            "name": "APIs & Webhooks",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Manajemen Kontak",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "开发者",
-            "name": "Gestión de contactos API",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "AI 客服",
-            "name": "AI Co-pilot Credits",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Grow faster with Wati experts",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Dedicated Onboarding",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "BSP Migration",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Technical Account Management",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          },
-          {
-            "category": "其他",
-            "name": "Proactive monitoring to address",
-            "desc": "",
-            "source": "https://www.wati.io/pricing/"
-          }
-        ]
-      },
-      "strengths": [
-        {
-          "point": "16,000 客户/企业",
-          "evidence": "官网原文: \"目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。\"",
-          "score": 0,
-          "source": "https://www.wati.io/about-us"
-        }
-      ],
-      "weaknesses": [],
-      "differentiators": [],
-      "gtm_evidence": [],
-      "moat_evidence": [
-        {
-          "name": "16,000 客户/企业",
-          "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
-          "source": "https://www.wati.io/about-us"
-        }
-      ],
-      "tech_signals": [
-        {
-          "name": "Webhooks(事件推送)",
-          "source": "https://docs.wati.io/reference/introduction-1",
-          "quote": "Wati supports webhooks that can alert you of the following via callback URLs.",
-          "engine": "trafilatura"
-        },
-        {
-          "name": "REST API",
-          "source": "https://docs.wati.io"
-        }
-      ],
-      "user_feedback": [],
-      "product_momentum": [],
-      "scores": {
-        "feature_richness": 5,
-        "ux": 5,
-        "pricing_value": 5,
-        "integration": 5,
-        "ai_capability": 5,
-        "momentum": 5
-      },
-      "score_basis": "insufficient_evidence",
-      "tagline_source": "https://www.wati.io",
-      "founded_source": "https://www.wati.io/about-us",
-      "headquarters_source": "https://www.wati.io/product-overview/",
-      "team_size_source": "",
-      "url_resolution": "builtin"
+     "name": "Growth",
+     "price": "$59",
+     "billing_period": "/mo",
+     "features": [],
+     "source_url": "https://www.wati.io/pricing"
     }
-  ],
-  "feature_aliases": {},
-  "market_segments": [
+   ],
+   "pricing_engines": [
+    "playwright",
+    "crawl4ai"
+   ],
+   "pricing_plans": null,
+   "pricing_source": "https://www.wati.io/pricing",
+   "pricing_scraped_at": "2026-08-26 00:00 UTC",
+   "pricing_vote_detail": [
     {
-      "label": "其他 / 待识别",
-      "desc": "暂未分类",
-      "players": [
-        "WATI"
-      ],
-      "source": ""
+     "line": "Growth $59/mo",
+     "engines": [
+      "playwright",
+      "crawl4ai"
+     ],
+     "independent_votes": 2
     }
-  ],
-  "gaps": [
+   ],
+   "pricing_crawl_note": "本次爬取遇反爬/区域变体页,定价为上次成功抓取(2026-08-26 00:00 UTC)的已验证数据,请以官网为准",
+   "target_users": [
+    "客服中心",
+    "开发者"
+   ],
+   "core_features": [
+    "Contact Info",
+    "Wati for Support",
+    "No Code Chatbots",
+    "Single User Plan",
+    "Manajemen Kontak"
+   ],
+   "feature_catalog": {
+    "WATI": [
+     {
+      "category": "其他",
+      "name": "Wati for Support",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Tecnologia Inteligente para Maior Produtividade",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "消息渠道",
+      "name": "大规模地有效管理WhatsApp消息对话。",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Permita Maior Proximidade Entre Suas Equipes",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Pengalaman pelanggan yang lebih baik",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Caixa de Entrada Compartilhada",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "No Code Chatbots",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Native Integrations",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     },
+     {
+      "category": "其他",
+      "name": "Acquire and engage leads, personalise",
+      "desc": "",
+      "source": "https://www.wati.io/product-overview/"
+     }
+    ]
+   },
+   "strengths": [
     {
-      "gap": "AI 转人工升级",
-      "rationale": "AI 自动升级到人工客服是基本能力",
-      "severity": "medium",
-      "candidates": true,
-      "checked_vendors": [
-        {
-          "name": "WATI",
-          "evidence_url": "https://www.wati.io"
-        }
-      ],
-      "source": ""
-    },
-    {
-      "gap": "多渠道接入 (Omnichannel Aggregation)",
-      "rationale": "多渠道整合是行业标配,缺失说明产品单一渠道",
-      "severity": "medium",
-      "candidates": true,
-      "checked_vendors": [
-        {
-          "name": "WATI",
-          "evidence_url": "https://www.wati.io"
-        }
-      ],
-      "source": ""
-    },
-    {
-      "gap": "数据导出 (Data Export)",
-      "rationale": "数据可移植性是合规基本要求",
-      "severity": "medium",
-      "candidates": true,
-      "checked_vendors": [
-        {
-          "name": "WATI",
-          "evidence_url": "https://www.wati.io"
-        }
-      ],
-      "source": ""
-    },
-    {
-      "gap": "权限与团队管理 (RBAC)",
-      "rationale": "RBAC 是企业级必备",
-      "severity": "medium",
-      "candidates": true,
-      "checked_vendors": [
-        {
-          "name": "WATI",
-          "evidence_url": "https://www.wati.io"
-        }
-      ],
-      "source": ""
-    },
-    {
-      "gap": "审计日志 (Audit Logs)",
-      "rationale": "审计日志是企业合规必备",
-      "severity": "medium",
-      "candidates": true,
-      "checked_vendors": [
-        {
-          "name": "WATI",
-          "evidence_url": "https://www.wati.io"
-        }
-      ],
-      "source": ""
+     "point": "16,000 客户/企业",
+     "evidence": "官网原文: \"目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。\"",
+     "score": 0,
+     "source": "https://www.wati.io/about-us"
     }
-  ],
-  "opportunities": [],
-  "other_competitors": [],
-  "executive_summary": "基于 1 家竞品实时爬取:5 条候选市场空白(待 Step 3 复核)。定价 1/1 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
-  "background": "WhatsApp BSP(闭环验收) 赛道扫描 — 基于 1 家竞品实时爬取。涵盖 25 项核心功能。每个功能条目带来源 URL。",
-  "goals": [
-    "看清各家功能差异化与共同能力",
-    "识别市场空白（所有竞品都没做好的痛点）",
-    "梳理定价模型与市场分层",
-    "挖掘颠覆性产品机会"
-  ]
+   ],
+   "weaknesses": [],
+   "differentiators": [],
+   "gtm_evidence": [],
+   "moat_evidence": [
+    {
+     "name": "16,000 客户/企业",
+     "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+     "source": "https://www.wati.io/about-us"
+    }
+   ],
+   "tech_signals": [
+    {
+     "name": "Webhooks(事件推送)",
+     "source": "https://docs.wati.io/reference/introduction-1",
+     "quote": "Wati supports webhooks that can alert you of the following via callback URLs.",
+     "engine": "trafilatura"
+    },
+    {
+     "name": "REST API",
+     "source": "https://docs.wati.io/reference/introduction-1"
+    }
+   ],
+   "user_feedback": [],
+   "product_momentum": [],
+   "scores": {
+    "feature_richness": 5,
+    "ux": 5,
+    "pricing_value": 5,
+    "integration": 5,
+    "ai_capability": 5,
+    "momentum": 5
+   },
+   "score_basis": "insufficient_evidence",
+   "tagline_source": "https://www.wati.io",
+   "founded_source": "https://www.wati.io/about-us",
+   "headquarters_source": "https://www.wati.io/product-overview/",
+   "team_size_source": "",
+   "url_resolution": "builtin"
+  }
+ ],
+ "feature_aliases": {},
+ "market_segments": [
+  {
+   "label": "其他 / 待识别",
+   "desc": "暂未分类",
+   "players": [
+    "WATI"
+   ],
+   "source": ""
+  }
+ ],
+ "gaps": [
+  {
+   "gap": "AI 转人工升级",
+   "rationale": "AI 自动升级到人工客服是基本能力",
+   "severity": "medium",
+   "candidates": true,
+   "checked_vendors": [
+    {
+     "name": "WATI",
+     "evidence_url": "https://www.wati.io"
+    }
+   ],
+   "source": ""
+  },
+  {
+   "gap": "多渠道接入 (Omnichannel Aggregation)",
+   "rationale": "多渠道整合是行业标配,缺失说明产品单一渠道",
+   "severity": "medium",
+   "candidates": true,
+   "checked_vendors": [
+    {
+     "name": "WATI",
+     "evidence_url": "https://www.wati.io"
+    }
+   ],
+   "source": ""
+  },
+  {
+   "gap": "数据导出 (Data Export)",
+   "rationale": "数据可移植性是合规基本要求",
+   "severity": "medium",
+   "candidates": true,
+   "checked_vendors": [
+    {
+     "name": "WATI",
+     "evidence_url": "https://www.wati.io"
+    }
+   ],
+   "source": ""
+  },
+  {
+   "gap": "权限与团队管理 (RBAC)",
+   "rationale": "RBAC 是企业级必备",
+   "severity": "medium",
+   "candidates": true,
+   "checked_vendors": [
+    {
+     "name": "WATI",
+     "evidence_url": "https://www.wati.io"
+    }
+   ],
+   "source": ""
+  },
+  {
+   "gap": "审计日志 (Audit Logs)",
+   "rationale": "审计日志是企业合规必备",
+   "severity": "medium",
+   "candidates": true,
+   "checked_vendors": [
+    {
+     "name": "WATI",
+     "evidence_url": "https://www.wati.io"
+    }
+   ],
+   "source": ""
+  }
+ ],
+ "opportunities": [],
+ "other_competitors": [],
+ "executive_summary": "基于 1 家竞品实时爬取:5 条候选市场空白(待 Step 3 复核)。定价 1/1 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
+ "background": "WhatsApp BSP(闭环验收) 赛道扫描 — 基于 1 家竞品实时爬取。涵盖 25 项核心功能。每个功能条目带来源 URL。",
+ "goals": [
+  "看清各家功能差异化与共同能力",
+  "识别市场空白（所有竞品都没做好的痛点）",
+  "梳理定价模型与市场分层",
+  "挖掘颠覆性产品机会"
+ ]
 }
