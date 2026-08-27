@@ -288,18 +288,38 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
                         }
                 except Exception:
                     pass
+            problems: List[str] = []
+            if not _merged_ok(result):
+                problems.append("页面壳获取失败(全部引擎无正文)")
+            else:
+                n_eng = max(
+                    (
+                        v["independent_votes"]
+                        for v in vote_price_lines(result.get("all_results") or [])
+                    ),
+                    default=0,
+                )
+                if n_eng < 2:
+                    problems.append(f"价格仅 {n_eng} 引擎见到(需 ≥2 交叉验证)")
             pages[kind] = {
                 "url": url,
                 "engines": [e for e in (used or []) if e],
-                "sufficient": _merged_ok(result)
-                and _price_cross_validated(result.get("all_results") or []),
+                "sufficient": not problems,
+                "problems": problems,
             }
         else:
+            problems = []
+            if not _merged_ok(result):
+                problems.append("页面壳获取失败(全部引擎无正文)")
+            elif not sufficiency.assess_page_content(
+                kind, result.get("markdown") or ""
+            ):
+                problems.append("页面内容不充分(过短或 JS 壳/404 语义)")
             pages[kind] = {
                 "url": url,
                 "engines": used,
-                "sufficient": _merged_ok(result)
-                and sufficiency.assess_page_content(kind, result.get("markdown") or ""),
+                "sufficient": not problems,
+                "problems": problems,
             }
         _record(url, result, kind)
 

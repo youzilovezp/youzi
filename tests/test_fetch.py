@@ -105,6 +105,10 @@ def test_fetch_competitor_writes_ledger_and_raw(tmp_path, monkeypatch):
     assert "# Kind: pricing" in raw_md and "# Source: https://wati.io/pricing" in raw_md
     # 定价页双引擎一致 → sufficient
     assert result["pages"]["pricing"]["sufficient"] is True
+    # 接口契约:每个 pages 条目含 problems 键(list)
+    for k, p in result["pages"].items():
+        assert "problems" in p, f"{k} 缺 problems 键"
+        assert isinstance(p["problems"], list)
 
 
 def test_fetch_pricing_insufficient_triggers_ladder(tmp_path, monkeypatch):
@@ -182,3 +186,5 @@ def test_fetch_budget_exhausted_honest(tmp_path, monkeypatch):
     # 预算设为 0:首棒爬完即超预算(真实 monotonic 已耗时 >0) → 不重爬
     result = fetch.fetch_competitor("wati.io", out_dir=tmp_path, budget_s=0)
     assert result["pages"]["pricing"]["sufficient"] is False
+    # insufficient 必须有 problems 说明原因(诚实)
+    assert result["pages"]["pricing"]["problems"]
