@@ -880,45 +880,6 @@ def _derive_product_overview(c):
     }
 
 
-def _derive_visual_signals(c):
-    """基于 tagline + 核心功能 + 技术栈 推断 UI/UX 风格。
-
-    返回结构化字段(visual_style / interaction_pattern / key_ui_element),
-    供 §5.3 视觉卡片直接渲染 —— 比旧版「拼接 tagline + tech 字符串」更可读。
-    """
-    fc = c.get("feature_catalog", {}).get(c["name"], [])
-    fc_names = {f.get("name", "") for f in fc}
-    tagline = c.get("tagline", "") or ""
-
-    # 视觉风格推断
-    if "AI" in tagline or any("AI" in n for n in fc_names):
-        style = "现代 AI 驱动界面,深色主调 + 强调色"
-    elif "WhatsApp" in tagline or "WhatsApp" in str(fc_names):
-        style = "WhatsApp Web 风格对话列表,左导航 + 中对话区"
-    else:
-        style = "经典 SaaS 控制台风格"
-
-    # 交互模式推断
-    interactions = []
-    if any("收件箱" in n or "Inbox" in n for n in fc_names):
-        interactions.append("多坐席协作收件箱")
-    if any("AI" in n for n in fc_names):
-        interactions.append("AI 自动回复")
-    if any("工作流" in n or "Workflow" in n for n in fc_names):
-        interactions.append("拖拽式工作流")
-    if any("模板" in n for n in fc_names):
-        interactions.append("模板市场")
-
-    return {
-        "visual_style": style,
-        "interaction_pattern": " + ".join(interactions)
-        if interactions
-        else "标准表单式",
-        "feature_count": len(fc),
-        "tagline": tagline,
-    }
-
-
 def _infer_strengths_weaknesses(c):
     """证据不足时的 SWOT 占位 —— 绝不伪造。
 
@@ -3420,16 +3381,21 @@ def _render_section5_2_html(matrix, unique_features):
     out.append("</tr>")
     out.append("</tbody></table></div>")
 
-    # 类别汇总 — chips 网格版(旧版逐行 feat-row 信息密度低且视觉杂乱)
+    # 类别汇总 — 功能行 + 厂商徽章(独家 = 「仅 X」高亮徽章,谁有独家一眼可辨)
     out.append(
         '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📂 5.2.2 按功能类别分组(谁有独家?)</h4>'
     )
     out.append(
-        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 1rem;">每个类别一张卡,功能以 <strong>中英对照</strong> chip 呈现;'
-        '<span style="background:var(--accent-soft); padding:0.1rem 0.4rem; border-radius:3px; color:var(--accent); font-weight:600;">彩色描边</span> = 独家(只此一家),'
-        "灰底 = 多家共有;悬停查看各家原始叫法与描述。</p>"
+        '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 1rem;">每个功能一行:'
+        "<strong>功能名(中英对照) — 支持厂商徽章</strong>(徽章描边色 = 竞品数据色);"
+        '<span class="vbadge only" style="--vb:var(--accent);">仅 X</span> = 独家(只有这一家有);'
+        "悬停查看各家原始叫法与描述。</p>"
     )
 
+    def _vshort(name: str) -> str:
+        return name.replace(".io", "").replace(".com", "").replace(".ai", "")
+
+    vendor_color = {cn: (i % 6 + 1) for i, cn in enumerate(comp_names)}
     cats_sorted = sorted(cats, key=lambda c: -c["total_features"])
     for cat in cats_sorted:
         out.append('<div class="feat-category-card">')
@@ -3445,22 +3411,41 @@ def _render_section5_2_html(matrix, unique_features):
         out.append(
             f'<div class="cat-count">{cat["total_features"]} 项 · 独家 {n_unique}</div></div>'
         )
-        out.append('<div class="fchip-grid">')
+        out.append('<div class="frow-list">')
         for f in cat["features"]:
             comps_list = f.get("_comps", [])
             is_unique = len(comps_list) == 1
             zh = _feature_zh(f["name"])
-            star = "⭐ " if is_unique else ""
-            refs = f.get("_vendor_refs") or {}
-            n_refs = sum(1 for v in refs.values() if v)
-            uniq_cls = " unique" if is_unique else ""
-            zh_html = f'<span class="fchip-zh">{html.escape(zh)}</span>' if zh else ""
-            ref_cnt = f'<span class="fchip-ref">{n_refs}</span>' if n_refs else ""
-            owners = "、".join(comps_list[:4]) + ("…" if len(comps_list) > 4 else "")
-            _tip = (f.get("desc") or f["name"]) + f" · 支持方: {owners}"
+            zh_html = f'<span class="frow-zh">{html.escape(zh)}</span>' if zh else ""
+            display_names = f.get("_display_names") or {}
+            vendor_descs = f.get("_vendor_descs") or {}
+            tip_parts = []
+            for cn in comps_list:
+                seg = cn
+                if display_names.get(cn):
+                    seg += f"「{display_names[cn]}」"
+                if vendor_descs.get(cn):
+                    seg += f": {vendor_descs[cn]}"
+                tip_parts.append(seg)
+            tip = " · ".join([(f.get("desc") or ""), " | ".join(tip_parts)]).strip(" ·")
+            badges = []
+            if is_unique:
+                cn = comps_list[0]
+                badges.append(
+                    f'<span class="vbadge only" style="--vb:var(--data-{vendor_color.get(cn, 1)});"'
+                    f' title="独家:仅 {html.escape(cn)} 的功能清单/文档中出现">仅 {html.escape(_vshort(cn))}</span>'
+                )
+            else:
+                for cn in comps_list:
+                    badges.append(
+                        f'<span class="vbadge" style="--vb:var(--data-{vendor_color.get(cn, 1)});"'
+                        f' title="{html.escape(cn)} 支持">{html.escape(_vshort(cn))}</span>'
+                    )
             out.append(
-                f'<span class="fchip{uniq_cls}" title="{html.escape(_tip)}">'
-                f"{star}{html.escape(f['name'])}{zh_html}{ref_cnt}</span>"
+                f'<div class="frow" title="{html.escape(tip)}">'
+                f'<span class="frow-name">{html.escape(f["name"])}</span>{zh_html}'
+                f'<span class="frow-badges">{"".join(badges)}</span>'
+                f"</div>"
             )
         out.append("</div>")
         out.append("</div>")
@@ -3761,7 +3746,7 @@ def normalize(data: dict) -> dict:
     派生字段 (templates/report.html 实际渲染需要):
         background, goals, inspiration_points, opportunity_points,
         product_slogans, user_positioning, commercial_strategies,
-        product_overview, visual_signals, user_feedback, data_growth,
+        product_overview, user_feedback, data_growth,
         avg_maturity, top_competitor, bottom_competitor,
         top_gap, top_opportunity, toc_items
     """
@@ -4090,9 +4075,6 @@ def normalize(data: dict) -> dict:
     data["product_overview"] = {
         c["name"]: _derive_product_overview(c) for c in data["competitors"]
     }
-    data["visual_signals"] = {
-        c["name"]: _derive_visual_signals(c) for c in data["competitors"]
-    }
     data["user_feedback"] = {
         c["name"]: _derive_user_feedback(c) for c in data["competitors"]
     }
@@ -4407,25 +4389,7 @@ def normalize(data: dict) -> dict:
         f"{timeline[0]['year']}–{timeline[-1]['year']}" if timeline else "—"
     )
 
-    # 4. 阶段分布统计
-    stage_dist: dict = {}
-    for c in data["competitors"]:
-        s = c.get("stage", "未知")
-        stage_dist[s] = stage_dist.get(s, 0) + 1
-    data["stage_distribution"] = sorted(
-        [
-            {
-                "stage": k,
-                "count": v,
-                "pct": round(v / max(len(data["competitors"]), 1) * 100, 1),
-            }
-            for k, v in stage_dist.items()
-        ],
-        key=lambda x: x["count"],
-        reverse=True,
-    )
-
-    # 5. 目标用户重叠矩阵 —— 谁抢同一批用户
+    # 4. 目标用户重叠矩阵 —— 谁抢同一批用户
     user_overlap = []
     user_to_comps: dict = {}
     for c in data["competitors"]:

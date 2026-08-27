@@ -885,24 +885,6 @@
   .tier-跟随 { background: var(--bg-soft); color: var(--fg-mute); }
   .tier-未知 { background: var(--bg-soft); color: var(--fg-mute); }
 
-  /* § 5.3 交互视觉 */
-  .visual-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-  }
-  .visual-card {
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    padding: 1.25rem;
-    box-shadow: var(--card-shadow);
-    transition: box-shadow .18s, border-color .18s;
-  }
-  .visual-card:hover { box-shadow: var(--shadow-md); border-color: var(--line-strong); }
-  .visual-card h4 { color: var(--accent); font-size: 0.95rem; margin: 0 0 0.5rem; font-family: var(--font-display); font-weight: 700; text-transform: none; letter-spacing: 0; }
-  .visual-card p { font-size: 0.9rem; line-height: 1.6; color: var(--fg-soft); margin: 0; }
-
   /* § 6 数据增长 */
   .growth-hero {
     background: var(--accent-soft);
@@ -1121,25 +1103,6 @@
   }
   .timeline-event .name { font-size: 0.82rem; font-weight: 700; color: var(--fg); margin-top: 0.2rem; }
   .timeline-event .stage { font-size: 0.7rem; color: var(--fg-mute); margin-top: 0.15rem; }
-
-  /* Stage distribution */
-  .stage-bars { margin-top: 1rem; }
-  .stage-bar-row {
-    display: grid; grid-template-columns: 100px 1fr 80px;
-    gap: 0.75rem; align-items: center; padding: 0.4rem 0;
-    border-bottom: 1px dashed var(--line);
-  }
-  .stage-bar-label { font-weight: 600; color: var(--fg-soft); font-size: 0.88rem; }
-  .stage-bar-track {
-    height: 14px; background: var(--bg-soft);
-    border-radius: 999px; overflow: hidden; position: relative;
-  }
-  .stage-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; }
-  .stage-bar-pct {
-    font-family: var(--font-mono); font-weight: 700;
-    color: var(--fg); text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
 
   /* Tech signal clusters */
   .tech-grid {
@@ -1561,35 +1524,32 @@
     border-radius: var(--radius-xs); cursor: help;
   }
 
-  /* §5.2.2 功能 chip 网格 */
-  .fchip-grid { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0.15rem 0; }
-  .fchip {
-    display: inline-flex; align-items: baseline; gap: 0.3rem;
+  /* §5.2.2 功能行 + 厂商徽章 */
+  .frow-list { display: flex; flex-direction: column; gap: 0.3rem; }
+  .frow {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.55rem;
+    padding: 0.32rem 0.6rem;
     background: var(--bg-soft);
     border: 1px solid var(--line);
+    border-left: 3px solid var(--line-strong);
     border-radius: var(--radius-sm);
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem; color: var(--fg);
-    line-height: 1.35;
+    font-size: 0.82rem;
     cursor: default;
     transition: border-color 0.15s, background 0.15s;
   }
-  .fchip:hover { border-color: var(--accent); background: var(--bg-elev); }
-  .fchip.unique {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    font-weight: 600;
+  .frow:hover { border-left-color: var(--accent); background: var(--bg-elev); }
+  .frow-name { font-weight: 600; color: var(--fg); }
+  .frow-zh { font-size: 0.72rem; color: var(--fg-mute); font-weight: 400; }
+  .frow-badges { display: inline-flex; flex-wrap: wrap; gap: 0.28rem; margin-left: auto; }
+  .vbadge {
+    font-size: 0.68rem; font-weight: 600;
+    color: var(--vb); border: 1px solid var(--vb);
+    background: transparent;
+    border-radius: 999px; padding: 0.05rem 0.45rem;
+    line-height: 1.45;
+    white-space: nowrap;
   }
-  .fchip-zh { font-size: 0.72rem; color: var(--fg-mute); }
-  .fchip.unique .fchip-zh { color: var(--accent); opacity: 0.85; }
-  .fchip-ref {
-    font-size: 0.62rem; color: var(--accent);
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 0 0.32rem;
-    align-self: center;
-  }
+  .vbadge.only { background: var(--vb); color: #fff; }
   /* §5.2.1 矩阵行名中文对照 */
   .feat-zh { font-size: 0.72rem; color: var(--fg-mute); margin-left: 0.35rem; font-weight: 400; }
 
@@ -2047,47 +2007,6 @@
       </div>
       {% endfor %}
     </div>
-    <h3 class="sub-head">4.2 阶段分布 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每个阶段的业务含义 + 策略启示 + 数据来源</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
-      阶段决定竞品的资源/迭代速度/客户类型,直接影响我们的市场切入策略。
-      <strong style="color:var(--fg);">数据来源：</strong>每家公司的 <code>stage_source</code> (crunchbase / 官方投资者关系 / linkedin),可在文末 <a href="#sources">§ 来源</a> 核对。
-    </p>
-    {% set known_stages = stage_distribution|rejectattr('stage', 'equalto', '—')|list %}
-    {% if known_stages %}
-    <div class="stage-bars">
-      {% for sd in stage_distribution %}
-      {% if sd.stage != '—' %}
-      <div class="stage-bar-row">
-        <div class="stage-bar-label">
-          {{sd.stage}}
-          {% if sd.stage == '巨头' %}<span style="font-size:0.7rem; color:var(--fg-mute); margin-left:0.3rem;">(营收稳定/品牌强/迭代慢)</span>
-          {% elif sd.stage == '成长期' %}<span style="font-size:0.7rem; color:var(--good); margin-left:0.3rem;">(增长快/愿意尝试新功能)</span>
-          {% elif sd.stage == '早期' %}<span style="font-size:0.7rem; color:var(--warn); margin-left:0.3rem;">(灵活/客户少/易拉拢)</span>
-          {% endif %}
-        </div>
-        <div class="stage-bar-track">
-          <div class="stage-bar-fill" style="width: {{sd.pct}}%;"></div>
-        </div>
-        <div class="stage-bar-pct">
-          <strong>{{sd.count}} 家</strong> · {{sd.pct}}%
-          {% if sd.stage == '巨头' %}<span style="font-size:0.72rem; color:var(--fg-mute); margin-left:0.3rem;">→ 正面刚难,挖其忽略的长尾</span>
-          {% elif sd.stage == '成长期' %}<span style="font-size:0.72rem; color:var(--good); margin-left:0.3rem;">→ 同速跑或差异化侧翼</span>
-          {% elif sd.stage == '早期' %}<span style="font-size:0.72rem; color:var(--warn); margin-left:0.3rem;">→ 合作/收购/观察</span>
-          {% endif %}
-        </div>
-      </div>
-      {% endif %}
-      {% endfor %}
-    </div>
-    <p style="margin-top:0.8rem; font-size:0.82rem; color:var(--fg-mute);">
-      <strong style="color:var(--fg);">各家阶段来源：</strong>
-      {% for c in competitors %}
-        {% if c._refs.stage %}<a href="#src-{{c._refs.stage}}" class="ref">{{c._refs.stage}}</a>{% endif %}
-      {% endfor %}
-    </p>
-    {% else %}
-    <p style="color:var(--fg-mute); font-style:italic; font-size:0.85rem;">未获取到可靠的阶段信息（需要 Crunchbase/融资数据判断，Step 3 补全；不凭感觉归类）。</p>
-    {% endif %}
 
   </section>
 
@@ -2131,39 +2050,7 @@
     {% endif %}
  {{section5_2_html|safe}}
 
-    <h3 class="sub-head">5.3 交互 &amp; 视觉 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">基于 tagline + 核心功能 + 技术栈 推断的 UI/UX 特征</span></h3>
-    <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
-      因为无法直接抓截图(各站 JS 重度 + 反爬),这里用「定位语 + 核心功能 + 技术栈」反推 UI 风格 ↓ 仅供参考。
-    </p>
-    <div class="visual-grid">
-      {% for c in competitors %}
-      {% set vs = visual_signals[c.name] %}
-      <div class="visual-card">
-        <h4>{{(c.icon or c.name)[:2]}} · {{c.name}}{% if c._refs.tagline %}<a href="#src-{{c._refs.tagline}}" class="ref">{{c._refs.tagline}}</a>{% endif %}</h4>
-        <div style="font-size:0.85rem; color:var(--fg-soft); margin-bottom:0.5rem; line-height:1.55;">
-          <strong>定位：</strong>{{c.tagline|default('—')}}
-        </div>
-        <div style="font-size:0.82rem; color:var(--fg-soft); margin-bottom:0.5rem; line-height:1.6;">
-          <strong>目标用户：</strong>
-          {% for u in c.target_users %}
-          <span style="background:var(--bg-soft); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.75rem; margin-right:0.2rem; display:inline-block; margin-top:0.15rem;">{{u}}</span>
-          {% endfor %}
-        </div>
-        <div style="font-size:0.82rem; color:var(--fg-soft); margin-bottom:0.5rem; line-height:1.6;">
-          <strong>视觉风格：</strong>{{vs.visual_style|default('—')}}
-        </div>
-        <div style="font-size:0.82rem; color:var(--fg-soft); margin-bottom:0.5rem; line-height:1.6;">
-          <strong>交互模式：</strong>{{vs.interaction_pattern|default('—')}}
-        </div>
-        <div style="font-size:0.78rem; color:var(--fg-mute); border-top:1px dashed var(--line); padding-top:0.5rem;">
-          基于 {{vs.feature_count|default(0)}} 项功能 + tagline 推断 ·
-          {% if c.url %}<a href="{{c.url}}" target="_blank" rel="noopener" style="color:var(--info);">↗ 官网</a>{% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <h3 class="sub-head">5.4 技术栈信号对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按全行业聚类频次 + 各家归属（top 15）</span></h3>
+    <h3 class="sub-head">5.3 技术栈信号对比 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">按全行业聚类频次 + 各家归属（top 15）</span></h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       全行业的技术栈信号归一统计 —— 出现频次越高 = 行业共识。下方每张卡列出使用方,方便看谁做了什么。
     </p>
@@ -2186,7 +2073,7 @@
     <p style="color: var(--fg-mute); font-style: italic; padding: 1rem;">暂无技术信号数据。</p>
     {% endif %}
 
-    <h3 class="sub-head">5.5 各家核心技术栈明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每条信号带 [N] 证据 + ↗ 原始来源</span></h3>
+    <h3 class="sub-head">5.4 各家核心技术栈明细 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">每条信号带 [N] 证据 + ↗ 原始来源</span></h3>
     <p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0.3rem 0 0.8rem;">
       <strong style="color:var(--fg);">双层验证机制：</strong>
       每条技术信号都有 (1) <span class="ref">N</span> 内部证据编号 —— 来自 Phase 1A 收集的 source 池;
