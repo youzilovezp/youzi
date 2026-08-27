@@ -158,6 +158,58 @@ def test_fetch_pricing_insufficient_triggers_ladder(tmp_path, monkeypatch):
     assert result["pages"]["pricing"]["sufficient"] is True
 
 
+def test_fetch_pricing_404_homepage_price_fallback(tmp_path, monkeypatch):
+    """定价页全灭 + 首页含价(≥2 引擎交叉验证) → 首页作为 pricing 替代证据。"""
+    from scripts import deep_link
+
+    monkeypatch.setattr(
+        deep_link, "locate_pricing_page", lambda domain, timeout=30: None
+    )
+
+    def fake_scrape_smart(url, enabled_scrapers=None, **kw):
+        if url == "https://wati.io":
+            return {
+                "success": True,
+                "scraper": "playwright+trafilatura",
+                "markdown": "FAQ\nPro $30/mo\nTeam $60/mo\n",
+                "all_results": [
+                    _eng("playwright", "FAQ\nPro $30/mo\nTeam $60/mo\n"),
+                    _eng("trafilatura", "FAQ: Pro $30/mo; Team $60/mo"),
+                ],
+                "stats": {"successful": 2},
+            }
+        if url.endswith("/pricing"):
+            return {  # 定价页 404/JS 壳:全部引擎无正文
+                "success": False,
+                "scraper": "playwright",
+                "markdown": "",
+                "all_results": [_eng("playwright", "", ok=False)],
+                "stats": {"successful": 0},
+            }
+        return {
+            "success": True,
+            "scraper": "playwright",
+            "markdown": "features content " * 50,
+            "all_results": [_eng("playwright", "features content " * 50)],
+            "stats": {"successful": 1},
+        }
+
+    monkeypatch.setattr(fetch, "scrape_smart", fake_scrape_smart)
+    monkeypatch.setattr(fetch, "resolve_competitor", _fake_resolve)
+
+    result = fetch.fetch_competitor("wati.io", out_dir=tmp_path)
+    p = result["pages"]["pricing"]
+    assert p["url"] == "https://wati.io", "定价证据应指向首页"
+    assert p["sufficient"] is True
+    assert p["note"] == "定价来自首页非独立定价页"
+    # 原 /pricing 失败留痕在台账 failures 里
+    manifest = json.loads((tmp_path / "claims-manifest.json").read_text())
+    assert any(
+        f.get("kind") == "pricing" and f.get("url", "").endswith("/pricing")
+        for f in manifest["failures"]
+    )
+
+
 def test_fetch_budget_exhausted_honest(tmp_path, monkeypatch):
     """预算耗尽 → 不再重爬,标 insufficient(诚实)。"""
 

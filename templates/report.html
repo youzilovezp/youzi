@@ -1494,6 +1494,16 @@
     grid-template-columns: minmax(4.5rem, 1fr) 1fr;
   }
   .pricing-card.mo-only .pp-row.pp-head span:nth-child(2) { text-align: right; }
+  /* V2:年付-only 反向降级 —— 无月付数据时收缩为 套餐|年付 两列 */
+  .pricing-card.annual-only .pp-row {
+    grid-template-columns: minmax(4.5rem, 1fr) 1.3fr;
+  }
+  /* V2:无任何数字价格 —— 提示行替代空「—」表格 */
+  .pricing-card .pc-noprice {
+    color: var(--fg-mute); font-size: 0.78rem;
+    padding: 0.55rem 0.35rem;
+    border-bottom: 1px solid var(--line);
+  }
   /* 定制档独立语义块(不占月/年格子) */
   .pricing-card .pc-custom {
     display: flex; align-items: center; justify-content: space-between;
@@ -1967,25 +1977,33 @@
       {% for c in competitors %}
       {% set pcs = commercial_strategies[c.name] %}
       {% set priced = pcs.plans|rejectattr('is_custom')|list if pcs.plans else [] %}
-      {% set show_annual = (priced|selectattr('annual')|list|length > 0) or (priced|selectattr('monthly_billed')|list|length > 0) %}
-      <div class="pricing-card{% if not show_annual %} mo-only{% endif %}">
+      {% set paid = priced|rejectattr('is_free')|list %}
+      {% set show_annual = (paid|selectattr('annual')|list|length > 0) or (paid|selectattr('monthly_billed')|list|length > 0) %}
+      {% set show_monthly = (not show_annual and not paid) or (paid|selectattr('monthly')|list|length > 0) or (paid and paid|rejectattr('annual')|rejectattr('monthly_billed')|list|length > 0) %}
+      {% set no_price = paid and not ((paid|selectattr('monthly')|list|length > 0) or (paid|selectattr('monthly_billed')|list|length > 0) or (paid|selectattr('annual')|list|length > 0)) %}
+      <div class="pricing-card{% if show_annual and not show_monthly %} annual-only{% elif not show_annual %} mo-only{% endif %}">
         <div class="pc-head">
           <strong>{{c.name}}</strong>
           <span class="pc-model">{{pcs.model|default('—')}}</span>
           <span class="pc-currency" title="币种以官网公示价为准">{{c.pricing_currency|default('USD')}}{% if c.pricing_unit %} · {{c.pricing_unit}}{% endif %}</span>
         </div>
         {% if pcs.plans %}
+        {% if no_price %}
+        <div class="pc-noprice">未获取到公开价格 — 见证据链/官网</div>
+        {% else %}
         <div class="pc-plans">
-          <div class="pp-row pp-head"><span>套餐</span><span>月付</span>{% if show_annual %}<span>年付</span>{% endif %}</div>
+          <div class="pp-row pp-head"><span>套餐</span>{% if show_monthly %}<span>月付</span>{% endif %}{% if show_annual %}<span>年付</span>{% endif %}</div>
           {% for p in pcs.plans %}
           {% if not p.is_custom %}
           <div class="pp-row">
             <span class="pp-name">{{p.name}}{% if p.is_free %}<em class="pp-tag free">免费</em>{% endif %}</span>
             {% if p.is_free %}
-            <span class="pp-mo">$0</span>
-            {% if show_annual %}<span class="pp-yr"><span class="pp-empty">—</span></span>{% endif %}
+            {% if show_monthly %}<span class="pp-mo">$0</span>{% endif %}
+            {% if show_annual %}<span class="pp-yr">{% if show_monthly %}<span class="pp-empty">—</span>{% else %}$0{% endif %}</span>{% endif %}
             {% else %}
+            {% if show_monthly %}
             <span class="pp-mo">{% if p.monthly %}{{p.monthly}}{% elif p.monthly_billed and not show_annual %}{{p.monthly_billed}}<i class="pp-equiv">年付结算月价</i>{% else %}<span class="pp-empty">—</span>{% endif %}</span>
+            {% endif %}
             {% if show_annual %}
             <span class="pp-yr">
               {%- if p.annual %}{{p.annual}}{% if p.save_pct %}<em class="pp-save">省 {{p.save_pct}}%</em>{% endif %}{% if p.annual_monthly_equiv %}<i class="pp-equiv">≈ {{p.annual_monthly_equiv}}/月</i>{% endif %}
@@ -1999,6 +2017,7 @@
           {% endif %}
           {% endfor %}
         </div>
+        {% endif %}
         {% for p in pcs.plans if p.is_custom %}
         <div class="pc-custom">
           <span class="pp-name">{{p.name}}<em class="pp-tag custom">定制</em></span>

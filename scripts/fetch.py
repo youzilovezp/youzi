@@ -288,6 +288,24 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
                         }
                 except Exception:
                     pass
+            # 定价页仍全灭 → 首页含价回退(定价藏首页 FAQ/表格的站,如 greptile):
+            # 首页有 ≥2 个价格 token 且 ≥2 独立引擎看到相同价格 → 首页作为
+            # pricing 替代证据(台账照记原 404 留痕,note 标注非独立定价页)
+            home_as_pricing = False
+            if not _merged_ok(result) and home_md:
+                voted = vote_price_lines(home.get("all_results") or [])
+                if len(_PRICE_TOKEN_RX.findall(home_md)) >= 2 and any(
+                    v["independent_votes"] >= 2 for v in voted
+                ):
+                    _record(url, result, kind)  # 原失败留痕
+                    url = base
+                    result = home
+                    used = [
+                        r.get("scraper")
+                        for r in (home.get("all_results") or [])
+                        if r.get("success")
+                    ]
+                    home_as_pricing = True
             problems: List[str] = []
             if not _merged_ok(result):
                 problems.append("页面壳获取失败(全部引擎无正文)")
@@ -307,6 +325,8 @@ def fetch_competitor(name: str, out_dir: Path, budget_s: float = None) -> Dict:
                 "sufficient": not problems,
                 "problems": problems,
             }
+            if home_as_pricing:
+                pages[kind]["note"] = "定价来自首页非独立定价页"
         else:
             problems = []
             if not _merged_ok(result):

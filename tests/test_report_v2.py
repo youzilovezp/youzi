@@ -181,6 +181,55 @@ def test_monthly_annual_shows_both_and_save():
     assert "年付" in html and "省 1" in html  # (1-390/468)*100 ≈ 17%
 
 
+def test_annual_only_no_monthly_column():
+    """反向降级:只有年付结算价(billed annually)→ 套餐|年付 两列,无月付空列。"""
+    import re
+
+    tiers = [
+        {
+            "name": "Pro",
+            "price": "$24",
+            "billing_period": "billed annually",
+            "source_url": "https://x.io/pricing",
+        },
+        {
+            "name": "Pro Plus",
+            "price": "$48",
+            "billing_period": "billed annually",
+            "source_url": "https://x.io/pricing",
+        },
+    ]
+    html = _render(_analysis([_minimal_comp("CodeRabbit", tiers)]))
+    head = re.search(r'class="pp-row pp-head[^"]*">(.*?)</div>', html, re.S)
+    assert head, "pp-head 必须存在"
+    assert "月付" not in head.group(1), "无月付数据时不得渲染月付列"
+    assert "年付" in head.group(1)
+    assert "annual-only" in html
+    assert "年付结算月价" in html
+
+
+def test_no_price_card_shows_notice_not_empty_table():
+    """mo-only 卡所有付费计划无任何价格 → 整卡「未获取到公开价格」提示行。"""
+    comp = _minimal_comp("CodeGeeX", [])
+    comp["pricing"] = "未能获取,请核对官网"
+    comp["pricing_plans"] = [
+        {
+            "name": "个人版",
+            "monthly": "",
+            "annual": "",
+            "other_note": "",
+            "is_free": False,
+            "is_custom": False,
+            "custom_note": "",
+        }
+    ]
+    html = _render(_analysis([comp]))
+    seg = html.split("<strong>CodeGeeX</strong>", 1)[1].split("pc-foot", 1)[0]
+    assert "未获取到公开价格" in seg
+    assert "pp-head" not in seg, "无价格时不得渲染空「—」表格"
+    assert "pp-empty" not in seg
+
+
 def test_custom_tier_semantic_block():
     tiers = [
         {
