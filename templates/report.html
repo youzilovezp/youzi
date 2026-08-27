@@ -1713,16 +1713,16 @@
       <h3 style="margin:1.5rem 0 0.6rem; font-family:var(--font-display); font-size:1rem; color:var(--accent);">📐 分析方法与数据流</h3>
       <ol style="color: var(--fg-soft); line-height: 1.85; padding-left: 1.4rem; font-size:0.92rem;">
         <li><strong>发现竞品：</strong>WebSearch 6+ 角度 + G2/Crunchbase/Reddit 评分 + 主流媒体编辑视角</li>
-        <li><strong>深度爬取：</strong>11 个爬虫 (firecrawl/crawl4ai/trafilatura/newspaper3k/readability/markdownify/playwright/scrapy/jina/html2text/requests-html) <strong>并行</strong>抓取官网 + pricing + features + reviews + docs + G2 评测,智能合并去重</li>
+        <li><strong>深度爬取：</strong>fetch.py 统一取证 — 5 引擎白名单 (playwright/trafilatura/newspaper3k/jina/firecrawl) 按页面类型智能路由,抓取官网 + pricing + features + docs + 关于/客户页;定价页 JS 组 + 静态对照双通道,每引擎原文独立留存供交叉验证</li>
         <li><strong>结构化抽取：</strong>对每家竞品抽取 13 字段 (tagline/founded/stage/scores/strengths/weaknesses/differentiators/tech_signals/pricing/features...)</li>
         <li><strong>同义合并：</strong>通过 <code>feature_aliases</code> 配置将同义功能 (如「团队收件箱」/「团队共享收件箱」) 合并到 canonical,保留各厂商实际叫法</li>
-        <li><strong>6 维评分 + 4 类 SWOT + 颠覆机会推导 + 来源追溯</strong></li>
+        <li><strong>证据三元组提取 + 6 维评分 + 市场空白/颠覆机会推导 + 来源追溯</strong></li>
         <li><strong>输出 HTML 报告：</strong>每个结论带 <span class="ref">N</span> 出处,可点击跳转文末原始来源</li>
       </ol>
       <h3 style="margin:1.5rem 0 0.6rem; font-family:var(--font-display); font-size:1rem; color:var(--accent);">📖 阅读建议</h3>
       <div style="background:var(--bg-soft); padding:0.85rem 1rem; border-radius:8px; font-size:0.85rem; color:var(--fg-soft); line-height:1.7;">
-        <strong style="color:var(--fg);">结论先行：</strong>先看 §2 结论与建议 → §3 定位差异 → §5.2 厂商对比矩阵<br>
-        <strong style="color:var(--fg);">深挖需求：</strong>§5.5 技术栈(找差异化机会)→ §6 数据增长(找赛道趋势)→ §7 用户反馈(找口碑)<br>
+        <strong style="color:var(--fg);">结论先行：</strong>先看 §2 结论与建议 → §3 产品定位 → §5.2 功能对比矩阵<br>
+        <strong style="color:var(--fg);">深挖需求：</strong>§5.3/5.4 技术栈(找差异化机会)→ §6 产品数据(找赛道趋势)→ §7 用户反馈(找口碑)<br>
         <strong style="color:var(--fg);">可追溯：</strong>所有结论都带 <span class="ref">N</span> 角标,鼠标悬停或点击跳转到文末 <a href="#sources">§ 来源</a> 区块
       </div>
     </div>
