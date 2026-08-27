@@ -232,4 +232,5 @@ __marimo__/
 # crawlee / scrapy 运行时产物
 /storage/
 /.cache/
-
+docs/superpowers
+.superpowers

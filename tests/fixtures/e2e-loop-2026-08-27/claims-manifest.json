@@ -1,0 +1,285 @@
+{
+ "run": {
+  "topic": "WhatsApp BSP(闭环验收)",
+  "started_at": "2026-08-26 17:22 UTC",
+  "finished_at": "2026-08-26 17:24 UTC",
+  "pipeline_version": "2.0"
+ },
+ "fetched": {
+  "https://www.wati.io": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 151792,
+     "content_hash": "93fbe58a30a632e0"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "d59aa044e572d3b7"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 2577,
+     "content_hash": "2d313e1785c23332"
+    }
+   },
+   "fetched_at": "2026-08-26 17:22 UTC",
+   "final_url": "https://www.wati.io/"
+  },
+  "https://www.wati.io/pricing": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 75000,
+     "content_hash": "8cfcf2d9c7edfb28"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 75017,
+     "content_hash": "d6cdf0a36019ba7c"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 19756,
+     "content_hash": "72c2567b2db9d376"
+    },
+    "jina": {
+     "ok": true,
+     "chars": 75017,
+     "content_hash": "eb33c64b6c013a29"
+    }
+   },
+   "fetched_at": "2026-08-26 17:22 UTC",
+   "final_url": "https://www.wati.io/pricing/"
+  },
+  "https://www.wati.io/product": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 155978,
+     "content_hash": "5838caacc8a39446"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "5d0b89a1fe0be33c"
+    }
+   },
+   "fetched_at": "2026-08-26 17:23 UTC",
+   "final_url": "https://www.wati.io/product-overview/"
+  },
+  "https://www.wati.io/about": {
+   "status": "failed",
+   "engines": {},
+   "fetched_at": "2026-08-26 17:23 UTC"
+  },
+  "https://www.wati.io/about-us": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 9207,
+     "content_hash": "f6925f854d25d185"
+    },
+    "readability": {
+     "ok": true,
+     "chars": 6594,
+     "content_hash": "933a4470fec5bdc9"
+    }
+   },
+   "fetched_at": "2026-08-26 17:23 UTC"
+  },
+  "https://www.wati.io/company": {
+   "status": "failed",
+   "engines": {},
+   "fetched_at": "2026-08-26 17:23 UTC"
+  },
+  "https://docs.wati.io": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 2090,
+     "content_hash": "3ca531ee9cb22092"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 25017,
+     "content_hash": "df95dee85d8974c2"
+    }
+   },
+   "fetched_at": "2026-08-26 17:23 UTC"
+  },
+  "https://www.wati.io/": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 151792,
+     "content_hash": "93fbe58a30a632e0"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "d59aa044e572d3b7"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 2577,
+     "content_hash": "2d313e1785c23332"
+    }
+   },
+   "fetched_at": "2026-08-26 17:22 UTC"
+  },
+  "https://www.wati.io/pricing/": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 75000,
+     "content_hash": "8cfcf2d9c7edfb28"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 75017,
+     "content_hash": "d6cdf0a36019ba7c"
+    },
+    "trafilatura": {
+     "ok": true,
+     "chars": 19756,
+     "content_hash": "72c2567b2db9d376"
+    },
+    "jina": {
+     "ok": true,
+     "chars": 75017,
+     "content_hash": "eb33c64b6c013a29"
+    }
+   },
+   "fetched_at": "2026-08-26 17:22 UTC"
+  },
+  "https://www.wati.io/product-overview/": {
+   "status": "ok",
+   "engines": {
+    "playwright": {
+     "ok": true,
+     "chars": 155978,
+     "content_hash": "5838caacc8a39446"
+    },
+    "crawl4ai": {
+     "ok": true,
+     "chars": 50017,
+     "content_hash": "5d0b89a1fe0be33c"
+    }
+   },
+   "fetched_at": "2026-08-26 17:23 UTC"
+  },
+  "https://docs.wati.io/reference/introduction-1": {
+   "status": "ok",
+   "engines": {
+    "trafilatura": {
+     "ok": true,
+     "chars": 3179,
+     "content_hash": "8e4bb2984dbd720f"
+    }
+   },
+   "fetched_at": "2026-08-26 17:23 UTC",
+   "discovered_by": "search"
+  }
+ },
+ "claims": [
+  {
+   "field": "competitors[0].pricing_tiers[0].price",
+   "value": "$59",
+   "source_url": "https://www.wati.io/pricing",
+   "quote": "",
+   "engine": "",
+   "verified_by": [
+    "playwright",
+    "crawl4ai"
+   ],
+   "from_cache": true,
+   "scraped_at": "2026-08-26 00:00 UTC"
+  },
+  {
+   "field": "competitors[0].pricing_vote_detail[0].line",
+   "value": "Growth $59/mo",
+   "source_url": "https://www.wati.io/pricing",
+   "quote": "Growth $59/mo",
+   "engine": "",
+   "verified_by": [
+    "playwright",
+    "crawl4ai"
+   ],
+   "from_cache": true,
+   "scraped_at": "2026-08-26 00:00 UTC"
+  },
+  {
+   "field": "competitors[0].moat_evidence[0]",
+   "value": "16,000 客户/企业",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].strengths[0]",
+   "value": "16,000 客户/企业",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].tagline",
+   "value": "Wati | #1 AI-powered customer engagement platform",
+   "source_url": "https://www.wati.io",
+   "quote": "Wati | #1 AI-powered customer engagement platform",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].founded",
+   "value": "2020",
+   "source_url": "https://www.wati.io/about-us",
+   "quote": "date: \"2023-05-30\"",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  },
+  {
+   "field": "competitors[0].headquarters",
+   "value": "on your interests",
+   "source_url": "https://www.wati.io/product-overview/",
+   "quote": "",
+   "engine": "",
+   "verified_by": [],
+   "from_cache": false,
+   "scraped_at": ""
+  }
+ ],
+ "failures": [
+  {
+   "competitor": "WATI",
+   "url": "https://www.wati.io/about",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  },
+  {
+   "competitor": "WATI",
+   "url": "https://www.wati.io/company",
+   "kind": "about",
+   "error": "all engines failed/empty"
+  }
+ ]
+}

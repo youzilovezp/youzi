@@ -10,7 +10,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from verify import (  # noqa: E402
-    Report, build_engine_index, load_analysis, load_manifest, norm_ws,
+    Report,
+    build_engine_index,
+    load_manifest,
+    norm_ws,
     verify_analysis,
 )
 
@@ -44,12 +47,14 @@ class TestSkeleton(unittest.TestCase):
 
     def test_load_manifest_ok(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             p = _write(Path(d) / "m.json", MINI_MANIFEST)
             self.assertEqual(load_manifest(p)["run"]["topic"], "t")
 
     def test_load_manifest_corrupt_exit1(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "m.json"
             p.write_text("{broken", encoding="utf-8")
@@ -59,16 +64,20 @@ class TestSkeleton(unittest.TestCase):
 
     def test_missing_input_exit1(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(SystemExit) as cm:
                 verify_analysis(
-                    Path(d) / "nope.json", Path(d) / "m.json", Path(d), 
+                    Path(d) / "nope.json",
+                    Path(d) / "m.json",
+                    Path(d),
                 )
             self.assertEqual(cm.exception.code, 1)
 
     def test_empty_bundle_passes(self):
         """空证据包 + 空分析 = 三无报告,零 violation 通过。"""
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             m = _write(Path(d) / "m.json", MINI_MANIFEST)
             a = _write(Path(d) / "a.json", MINI_ANALYSIS)
@@ -89,15 +98,27 @@ class TestSkeleton(unittest.TestCase):
 
     def test_engine_index_merges_files(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             raw = Path(d) / "02-raw"
-            _write(raw / "wati.engines.json", {
-                "https://wati.io/pricing": {"playwright": "pw md", "trafilatura": "tr md"},
-            })
-            _write(raw / "respond.engines.json", {
-                "https://respond.io/pricing": {"firecrawl": "fc md"},
-                "https://wati.io/pricing": {"firecrawl": "fc2 md"},  # 跨文件同 URL 合并
-            })
+            _write(
+                raw / "wati.engines.json",
+                {
+                    "https://wati.io/pricing": {
+                        "playwright": "pw md",
+                        "trafilatura": "tr md",
+                    },
+                },
+            )
+            _write(
+                raw / "respond.engines.json",
+                {
+                    "https://respond.io/pricing": {"firecrawl": "fc md"},
+                    "https://wati.io/pricing": {
+                        "firecrawl": "fc2 md"
+                    },  # 跨文件同 URL 合并
+                },
+            )
             idx = build_engine_index(raw)
             self.assertEqual(idx["https://wati.io/pricing"]["playwright"], "pw md")
             self.assertEqual(idx["https://wati.io/pricing"]["firecrawl"], "fc2 md")
@@ -128,14 +149,25 @@ def _ok_manifest(urls_ok=(), urls_failed=()):
 
 def _one_comp_analysis(**fields):
     comp = {
-        "name": "WATI", "url": "https://www.wati.io",
-        "tagline": "x", "tagline_source": "",
-        "founded": "—", "founded_source": "",
-        "headquarters": "—", "headquarters_source": "",
-        "team_size": "—", "team_size_source": "",
-        "pricing": "—", "pricing_source": "", "pricing_verified": False,
-        "pricing_tiers": [], "strengths": [], "weaknesses": [],
-        "gtm_evidence": [], "moat_evidence": [], "tech_signals": [],
+        "name": "WATI",
+        "url": "https://www.wati.io",
+        "tagline": "x",
+        "tagline_source": "",
+        "founded": "—",
+        "founded_source": "",
+        "headquarters": "—",
+        "headquarters_source": "",
+        "team_size": "—",
+        "team_size_source": "",
+        "pricing": "—",
+        "pricing_source": "",
+        "pricing_verified": False,
+        "pricing_tiers": [],
+        "strengths": [],
+        "weaknesses": [],
+        "gtm_evidence": [],
+        "moat_evidence": [],
+        "tech_signals": [],
     }
     comp.update(fields)
     return {"topic": "t", "executive_summary": "x", "competitors": [comp]}
@@ -145,30 +177,47 @@ def _violations_by_gate(rep: dict, gate: str):
     return [v for v in rep["violations"] if v["gate"] == gate]
 
 
-def _pricing_comp(verified=True, engines=("playwright", "crawl4ai"),
-                  hashes=None, scraped_at="2026-08-26 00:00 UTC",
-                  source="https://www.wati.io/pricing", tiers=1):
+def _pricing_comp(
+    verified=True,
+    engines=("playwright", "crawl4ai"),
+    hashes=None,
+    scraped_at="2026-08-26 00:00 UTC",
+    source="https://www.wati.io/pricing",
+    tiers=1,
+):
     return _one_comp_analysis(
-        pricing="Growth · $59 (/mo)", pricing_verified=verified,
-        pricing_source=source, pricing_scraped_at=scraped_at,
+        pricing="Growth · $59 (/mo)",
+        pricing_verified=verified,
+        pricing_source=source,
+        pricing_scraped_at=scraped_at,
         pricing_engines=list(engines),
-        pricing_tiers=[{
-            "name": "Growth", "price": "$59", "billing_period": "/mo",
-            "features": [], "source_url": source,
-        }] * tiers,
+        pricing_tiers=[
+            {
+                "name": "Growth",
+                "price": "$59",
+                "billing_period": "/mo",
+                "features": [],
+                "source_url": source,
+            }
+        ]
+        * tiers,
     )
 
 
 def _manifest_with_hashes(url, engine_hashes: dict, status="ok"):
     return {
-        "run": {}, "claims": [], "failures": [],
-        "fetched": {url: {
-            "status": status,
-            "engines": {
-                e: {"ok": True, "chars": 100, "content_hash": h}
-                for e, h in engine_hashes.items()
-            },
-        }},
+        "run": {},
+        "claims": [],
+        "failures": [],
+        "fetched": {
+            url: {
+                "status": status,
+                "engines": {
+                    e: {"ok": True, "chars": 100, "content_hash": h}
+                    for e, h in engine_hashes.items()
+                },
+            }
+        },
     }
 
 
@@ -177,6 +226,7 @@ class TestG1SourceTraceability(unittest.TestCase):
 
     def test_url_not_fetched_is_hard_fail(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
@@ -189,22 +239,28 @@ class TestG1SourceTraceability(unittest.TestCase):
 
     def test_url_fetch_failed_is_hard_fail(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
                 _ok_manifest(urls_failed=["https://www.wati.io/pricing"]),
                 _one_comp_analysis(
-                    pricing_tiers=[{
-                        "name": "Growth", "price": "$59",
-                        "billing_period": "/mo", "features": [],
-                        "source_url": "https://www.wati.io/pricing",
-                    }]
+                    pricing_tiers=[
+                        {
+                            "name": "Growth",
+                            "price": "$59",
+                            "billing_period": "/mo",
+                            "features": [],
+                            "source_url": "https://www.wati.io/pricing",
+                        }
+                    ]
                 ),
             )
             self.assertEqual(len(_violations_by_gate(rep, "G1")), 1)
 
     def test_fetched_ok_passes(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
@@ -219,29 +275,45 @@ class TestG2QuoteGrep(unittest.TestCase):
 
     def test_quote_hit_passes(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
                 _ok_manifest(urls_ok=["https://www.wati.io"]),
-                _one_comp_analysis(strengths=[{
-                    "point": "p", "evidence": '官网原文: "Trusted by 8000+ teams"',
-                    "score": 0, "source": "https://www.wati.io",
-                }]),
-                engines={"https://www.wati.io": {
-                    "playwright": "Some nav\nTrusted by 8000+  teams\nfooter",
-                }},
+                _one_comp_analysis(
+                    strengths=[
+                        {
+                            "point": "p",
+                            "evidence": '官网原文: "Trusted by 8000+ teams"',
+                            "score": 0,
+                            "source": "https://www.wati.io",
+                        }
+                    ]
+                ),
+                engines={
+                    "https://www.wati.io": {
+                        "playwright": "Some nav\nTrusted by 8000+  teams\nfooter",
+                    }
+                },
             )
             self.assertTrue(rep["passed"])
 
     def test_quote_miss_is_hard_fail(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
                 _ok_manifest(urls_ok=["https://www.wati.io"]),
-                _one_comp_analysis(gtm_evidence=[{
-                    "name": "n", "quote": "not in page at all", "source": "https://www.wati.io",
-                }]),
+                _one_comp_analysis(
+                    gtm_evidence=[
+                        {
+                            "name": "n",
+                            "quote": "not in page at all",
+                            "source": "https://www.wati.io",
+                        }
+                    ]
+                ),
                 engines={"https://www.wati.io": {"playwright": "completely different"}},
             )
             v = _violations_by_gate(rep, "G2")
@@ -250,13 +322,20 @@ class TestG2QuoteGrep(unittest.TestCase):
 
     def test_no_engines_recorded_is_fail_not_crash(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
                 _ok_manifest(urls_ok=["https://www.wati.io"]),
-                _one_comp_analysis(moat_evidence=[{
-                    "name": "n", "quote": "q", "source": "https://www.wati.io",
-                }]),
+                _one_comp_analysis(
+                    moat_evidence=[
+                        {
+                            "name": "n",
+                            "quote": "q",
+                            "source": "https://www.wati.io",
+                        }
+                    ]
+                ),
                 engines={},
             )
             self.assertEqual(len(_violations_by_gate(rep, "G2")), 1)
@@ -268,6 +347,7 @@ class TestG2QuoteGrep(unittest.TestCase):
         grep 本轮引擎原文必失败 —— 时移证据的新鲜度由 G3 TTL 保证。
         """
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             rep = _bundle(
                 Path(d),
@@ -275,11 +355,13 @@ class TestG2QuoteGrep(unittest.TestCase):
                 _one_comp_analysis(
                     pricing_source="https://www.wati.io/pricing",
                     pricing_from_cache=True,
-                    pricing_vote_detail=[{"line": "Growth $59/mo",
-                                          "engines": ["playwright"]}],
+                    pricing_vote_detail=[
+                        {"line": "Growth $59/mo", "engines": ["playwright"]}
+                    ],
                 ),
-                engines={"https://www.wati.io/pricing": {
-                    "playwright": "no such line here"}},
+                engines={
+                    "https://www.wati.io/pricing": {"playwright": "no such line here"}
+                },
             )
             self.assertEqual(len(_violations_by_gate(rep, "G2")), 0)
 
@@ -289,14 +371,17 @@ class TestG3PricingIntegrity(unittest.TestCase):
 
     def _run(self, analysis, manifest, engines=None):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             return _bundle(Path(d), manifest, analysis, engines or {})
 
     def test_independent_engines_pass(self):
         rep = self._run(
             _pricing_comp(engines=("playwright", "crawl4ai")),
-            _manifest_with_hashes("https://www.wati.io/pricing", {
-                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+            _manifest_with_hashes(
+                "https://www.wati.io/pricing",
+                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+            ),
         )
         self.assertTrue(rep["passed"])
 
@@ -304,32 +389,39 @@ class TestG3PricingIntegrity(unittest.TestCase):
         """两引擎拿到同一反爬变体(内容哈希相同)≠ 交叉验证。"""
         rep = self._run(
             _pricing_comp(engines=("playwright", "crawl4ai")),
-            _manifest_with_hashes("https://www.wati.io/pricing", {
-                "playwright": "same", "crawl4ai": "same"}),
+            _manifest_with_hashes(
+                "https://www.wati.io/pricing",
+                {"playwright": "same", "crawl4ai": "same"},
+            ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
 
     def test_single_engine_fail(self):
         rep = self._run(
             _pricing_comp(engines=("playwright",)),
-            _manifest_with_hashes("https://www.wati.io/pricing", {
-                "playwright": "aaaa"}),
+            _manifest_with_hashes(
+                "https://www.wati.io/pricing", {"playwright": "aaaa"}
+            ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
 
     def test_stale_timestamp_fail(self):
         rep = self._run(
             _pricing_comp(scraped_at="2026-01-01 00:00 UTC"),
-            _manifest_with_hashes("https://www.wati.io/pricing", {
-                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+            _manifest_with_hashes(
+                "https://www.wati.io/pricing",
+                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+            ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
 
     def test_verified_with_empty_tiers_fail(self):
         rep = self._run(
             _pricing_comp(tiers=0),
-            _manifest_with_hashes("https://www.wati.io/pricing", {
-                "playwright": "aaaa", "crawl4ai": "bbbb"}),
+            _manifest_with_hashes(
+                "https://www.wati.io/pricing",
+                {"playwright": "aaaa", "crawl4ai": "bbbb"},
+            ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G3")), 1)
 
@@ -337,8 +429,9 @@ class TestG3PricingIntegrity(unittest.TestCase):
         """未验证定价(⚠ 徽章)不受 G3 约束 —— 诚实降级可交付。"""
         rep = self._run(
             # source="": 未验证定价不断言来源,否则会先触发 G1
-            _pricing_comp(verified=False, engines=(), scraped_at="",
-                          tiers=0, source=""),
+            _pricing_comp(
+                verified=False, engines=(), scraped_at="", tiers=0, source=""
+            ),
             _ok_manifest(),
         )
         self.assertTrue(rep["passed"])
@@ -349,6 +442,7 @@ class TestG4MissingHonesty(unittest.TestCase):
 
     def _run(self, manifest, analysis, engines=None):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             return _bundle(Path(d), manifest, analysis, engines or {})
 
@@ -359,10 +453,14 @@ class TestG4MissingHonesty(unittest.TestCase):
 
     def test_failed_fetch_with_failure_record_passes(self):
         m = _ok_manifest(urls_failed=["https://www.wati.io/pricing"])
-        m["failures"] = [{
-            "competitor": "WATI", "url": "https://www.wati.io/pricing",
-            "kind": "pricing", "error": "404",
-        }]
+        m["failures"] = [
+            {
+                "competitor": "WATI",
+                "url": "https://www.wati.io/pricing",
+                "kind": "pricing",
+                "error": "404",
+            }
+        ]
         rep = self._run(m, _one_comp_analysis())
         self.assertEqual(len(_violations_by_gate(rep, "G4")), 0)
 
@@ -371,9 +469,12 @@ class TestG4MissingHonesty(unittest.TestCase):
         rep = self._run(
             _ok_manifest(urls_ok=["https://www.wati.io/about"]),
             _one_comp_analysis(
-                founded="—", founded_source="https://www.wati.io/about",
-                headquarters="—", headquarters_source="",
-                team_size="—", team_size_source="",
+                founded="—",
+                founded_source="https://www.wati.io/about",
+                headquarters="—",
+                headquarters_source="",
+                team_size="—",
+                team_size_source="",
             ),
         )
         v = _violations_by_gate(rep, "G4")
@@ -384,7 +485,8 @@ class TestG4MissingHonesty(unittest.TestCase):
         rep = self._run(
             _ok_manifest(urls_ok=["https://www.wati.io/about"]),
             _one_comp_analysis(
-                founded="2019", founded_source="https://www.wati.io/about",
+                founded="2019",
+                founded_source="https://www.wati.io/about",
             ),
         )
         self.assertEqual(len(_violations_by_gate(rep, "G4")), 0)
@@ -395,15 +497,23 @@ class TestG5Antifabrication(unittest.TestCase):
 
     def _run(self, analysis):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             return _bundle(Path(d), _ok_manifest(), analysis)
 
     def test_blacklisted_strength_quote(self):
-        rep = self._run(_one_comp_analysis(strengths=[{
-            "point": "p",
-            "evidence": '官网原文: "Pricing gets expensive at scale"',
-            "score": 0, "source": "",
-        }]))
+        rep = self._run(
+            _one_comp_analysis(
+                strengths=[
+                    {
+                        "point": "p",
+                        "evidence": '官网原文: "Pricing gets expensive at scale"',
+                        "score": 0,
+                        "source": "",
+                    }
+                ]
+            )
+        )
         self.assertEqual(len(_violations_by_gate(rep, "G5")), 1)
 
     def test_repr_leak_in_field(self):
@@ -426,31 +536,42 @@ class TestG6UrlHygiene(unittest.TestCase):
 
     def _run(self, analysis, manifest=None, engines=None):
         import tempfile
+
         with tempfile.TemporaryDirectory() as d:
             return _bundle(Path(d), manifest or _ok_manifest(), analysis, engines)
 
     def test_malformed_url_hard_fail(self):
-        rep = self._run(_one_comp_analysis(
-            pricing_source="notaurl", pricing="x",
-        ))
+        rep = self._run(
+            _one_comp_analysis(
+                pricing_source="notaurl",
+                pricing="x",
+            )
+        )
         self.assertEqual(len(_violations_by_gate(rep, "G6")), 1)
 
     def test_cross_competitor_domain_warning_only(self):
-        rep = self._run(_one_comp_analysis(
-            founded="2019",
-            founded_source="https://competitor-x.com/about",
-        ), manifest=_ok_manifest(urls_ok=["https://competitor-x.com/about"]))
+        rep = self._run(
+            _one_comp_analysis(
+                founded="2019",
+                founded_source="https://competitor-x.com/about",
+            ),
+            manifest=_ok_manifest(urls_ok=["https://competitor-x.com/about"]),
+        )
         self.assertEqual(len(_violations_by_gate(rep, "G6")), 0)  # 仅警告
         w = [x for x in rep["warnings"] if x["gate"] == "G6"]
         self.assertEqual(len(w), 1)
 
     def test_subdomain_of_own_site_no_warning(self):
         m = _ok_manifest(urls_ok=["https://docs.wati.io/api"])
-        rep = self._run(_one_comp_analysis(
-            tech_signals=[{"name": "REST API", "source": "https://docs.wati.io/api"}],
-        ), manifest=m)
-        self.assertEqual(
-            len([x for x in rep["warnings"] if x["gate"] == "G6"]), 0)
+        rep = self._run(
+            _one_comp_analysis(
+                tech_signals=[
+                    {"name": "REST API", "source": "https://docs.wati.io/api"}
+                ],
+            ),
+            manifest=m,
+        )
+        self.assertEqual(len([x for x in rep["warnings"] if x["gate"] == "G6"]), 0)
 
 
 class TestNetworkGates(unittest.TestCase):
@@ -462,33 +583,43 @@ class TestNetworkGates(unittest.TestCase):
         import tempfile
         from unittest import mock
         import network_gates
+
         with tempfile.TemporaryDirectory() as d:
             m = _ok_manifest(urls_ok=["https://www.wati.io", self._P])
-            a = _write(Path(d) / "a.json", _one_comp_analysis(
-                pricing_source=self._P, pricing="x",
-            ))
+            a = _write(
+                Path(d) / "a.json",
+                _one_comp_analysis(
+                    pricing_source=self._P,
+                    pricing="x",
+                ),
+            )
             mm = _write(Path(d) / "m.json", m)
-            with mock.patch.object(network_gates, "fetch_url",
-                                   return_value=fetch_ret):
+            with mock.patch.object(network_gates, "fetch_url", return_value=fetch_ret):
                 return verify_analysis(a, mm, Path(d), network=True)
 
     def test_n1_dead_url_hard_fail(self):
-        rep = self._run_network({"ok": False, "http_status": 404,
-                                 "final_url": "", "error": "HTTP 404"})
+        rep = self._run_network(
+            {"ok": False, "http_status": 404, "final_url": "", "error": "HTTP 404"}
+        )
         v = [x for x in rep["violations"] if x["gate"] == "N1"]
         self.assertEqual(len(v), 1)
 
     def test_n1_live_url_passes(self):
-        rep = self._run_network({"ok": True, "http_status": 200,
-                                 "final_url": self._P, "error": ""})
+        rep = self._run_network(
+            {"ok": True, "http_status": 200, "final_url": self._P, "error": ""}
+        )
         self.assertTrue(rep["passed"])
 
     def test_n1_cross_domain_redirect_warning(self):
-        rep = self._run_network({"ok": True, "http_status": 200,
-                                 "final_url": "https://other-cdn.net/pricing",
-                                 "error": ""})
-        self.assertEqual(
-            len([w for w in rep["warnings"] if w["gate"] == "N1"]), 1)
+        rep = self._run_network(
+            {
+                "ok": True,
+                "http_status": 200,
+                "final_url": "https://other-cdn.net/pricing",
+                "error": "",
+            }
+        )
+        self.assertEqual(len([w for w in rep["warnings"] if w["gate"] == "N1"]), 1)
 
     def test_sample_limits_urls(self):
         """--sample 只抽查前 N 个 URL(mock 计数)。"""
@@ -499,15 +630,12 @@ class TestNetworkGates(unittest.TestCase):
 
         def counting(url, **kw):
             calls.append(url)
-            return {"ok": True, "http_status": 200, "final_url": url,
-                    "error": ""}
+            return {"ok": True, "http_status": 200, "final_url": url, "error": ""}
 
         comp = _one_comp_analysis(pricing_source="https://a.com/p")["competitors"][0]
-        with mock.patch.object(network_gates, "fetch_url",
-                               side_effect=counting):
+        with mock.patch.object(network_gates, "fetch_url", side_effect=counting):
             r = network_gates.Report()
-            network_gates.run_all(
-                {"competitors": [comp]}, {"fetched": {}}, r, sample=1)
+            network_gates.run_all({"competitors": [comp]}, {"fetched": {}}, r, sample=1)
         self.assertEqual(len(calls), 1)
 
 

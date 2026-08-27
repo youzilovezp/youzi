@@ -44,7 +44,13 @@ allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-rea
 - `classify_url()` 识别页面类型（pricing/docs/about/blog/feature…）
 - 按类型选引擎组合：**定价页 → JS 渲染组 + 静态对照引擎交叉验证**（价格必须 ≥2 独立引擎一致才算 verified）；文档/功能页 → firecrawl+crawl4ai；about/blog → 轻量正文抽取器
 - 引擎历史成功率/质量自动记录到 `storage/engine-stats.json`，路由越用越准
-- 定价页**禁止跨引擎拼接正文**（各引擎原文独立保留在 `all_results`，供逐引擎取证）
+- **全部证据页禁止跨引擎拼接正文**（各引擎原文独立保留在 `all_results`，供逐引擎取证）
+
+🔁 **充分性闭环（准 > 快，2026-08-27）**：爬取后立即按「充分性契约」评估（`scripts/sufficiency.py`）：
+- 定价：≥2 独立引擎一致 + 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品）→ 仍不达标回退 ≤14 天已验证缓存 → 全灭时搜索发现官方定价页
+- tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `scripts/deep_link.py` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
+- user_feedback：官网 testimonials 没抓到 → 搜索 G2/Trustpilot 具体评论页（多数被封）→ Reddit JSON 兜底
+- 预算耗尽/通道全封 → 诚实标「未验证」，绝不伪造
 
 **3️⃣ 视觉理解（zai MCP 套件）**
 - `mcp__zai-mcp-server__analyze_image`：竞品 logo / UI 截图 / Hero image 视觉分析
@@ -185,11 +191,11 @@ OUT_DIR = ~/youzi-out/<topic>-<YYYY-MM-DD>/
 
 ### Step 4 · 渲染精美 HTML（render.py · Jinja2）
 
-直接执行：
+直接执行（`<skill-root>` = skill 根目录：Claude Code `~/.claude/skills/youzi` · opencode `~/.config/opencode/skills/youzi`）：
 
 ```bash
 mkdir -p "$OUT_DIR"
-python3 ~/.claude/skills/youzi/render.py \
+python3 <skill-root>/render.py \
   --input "$OUT_DIR/03-analysis.json" \
   --output "$OUT_DIR/report.html"
 ```
@@ -199,7 +205,7 @@ python3 ~/.claude/skills/youzi/render.py \
 - **单文件**，无任何外部依赖（CSS/JS/SVG 全部 inline）
 - **响应式**（桌面 / 平板 / 手机）
 - **主题感知**（跟随系统的浅色 / 深色，可手动切换并记住）
-- **可视化**：竞品卡片网格、6 维雷达图、定价对比柱图、功能重叠热力图、机会象限气泡图
+- **可视化**：竞品卡片网格、6 维雷达图、定价卡片（月付/年付分栏 + 年付省%徽章 + 折算月价 + Free/Custom 语义档）、功能重叠热力图、机会象限气泡图
 - **可读性**：CJK 友好字体栈、合理的字号 / 行距 / 间距、章节锚点、返回顶部
 
 输出路径向用户回显：`✓ Report: ~/youzi-out/<topic>-.../report.html`
@@ -226,7 +232,7 @@ python3 ~/.claude/skills/youzi/render.py \
 **证据硬门禁（verify.py，与渲染自检同级 —— 不过 = 不交付）：**
 
 ```bash
-python3 ~/.claude/skills/youzi/verify.py \
+python3 <skill-root>/verify.py \
   --analysis "$OUT_DIR/03-analysis.json" \
   --manifest "$OUT_DIR/claims-manifest.json" \
   --raw-dir "$OUT_DIR/02-raw" \
@@ -254,7 +260,7 @@ python3 ~/.claude/skills/youzi/verify.py \
 - **智能引擎路由**：`scrape_smart` 默认 auto —— 按页面类型选组合（定价页 = JS 组 + 静态对照），引擎历史表现自动学习（`storage/engine-stats.json`）。全开 13 引擎只在 auto 失败后兜底。
 - **不重复造轮子**：模板/CSS/可视化都参考 graphify（知识图谱可视化）、ai-radar（仪表盘）、artifact-design（HTML 美学）、dataviz（图表配色）这些已有 skill 的成熟方案。
 - **诚实**：strengths / weaknesses / scores 必须基于实际抓到的证据（带 URL + 引文片段），不写"AMAZING" / "BEST" 这种空话。
-- **§5.2 行业标准矩阵**：render.py 内置 `_CANONICAL_FEATURES_WHATSAPP`（28 项 × 10 类），作为权威能力清单；每行附"中文释义+行业意义"，每格 ✓/? 都有 tooltip 证据。可在 analysis.json 用 `feature_canonical.evidence_notes` 手动覆盖自动判定。
+- **§5.2 功能矩阵**：默认 vendor 模式（行 = 本次实爬功能并集，每行必有 ✓，全部可溯源）；`_CANONICAL_FEATURES_WHATSAPP`（28 项 × 10 类）为人工参考清单，仅在 analysis.json 显式 `feature_canonical.enabled=true` 时启用（? 刻 = 实爬未命中，不代表厂商不支持）。可用 `feature_canonical.evidence_notes` 手动覆盖自动判定。
 - **可重入**：`OUT_DIR/02-raw/` 是 cache，重跑时 Step 2 跳过已抓的；`OUT_DIR/03-analysis.json` 存在时 `render.py` 直接渲染。
 - **不强制联网**：用户给了本地 JSON 时跳过 Step 1-3。
 - **双门禁交付**：render.py exit 0 且 verify.py exit 0 才算交付；verify-report.json 是修复回路的输入，不是可选日志。

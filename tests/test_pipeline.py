@@ -34,7 +34,11 @@ class TestPipeline(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """所有测试共享一份准备好的 report(避免重复渲染)。"""
-        cls.json_path = ROOT / "examples" / "whatsapp-advertising-demo.json"
+        # examples/*.json 已随反伪造清理删除(内含模板假数据);
+        # 用冻结的真实 e2e fixture(2026-08-26 WATI/respond.io/YCloud 实爬)
+        cls.json_path = (
+            ROOT / "tests" / "fixtures" / "e2e-2026-08-26" / "03-analysis.json"
+        )
         cls.template_path = ROOT / "templates" / "report.html"
 
         if not cls.json_path.exists():
@@ -85,10 +89,14 @@ class TestPipeline(unittest.TestCase):
             self.assertIn(c["name"], self.html, f"{c['name']} 未在 HTML 中")
 
     def test_sources_present(self):
-        """§ Sources 必须有 N 个 source-item。"""
+        """§ Sources 必须有 N 个 source-item。
+
+        vendor 模式(2026-08-27 默认)行=实爬并集,sources 全部来自真实
+        抓取记录;旧阈值 50 是 canonical 模式(人工基准注册大量证据)的形状。
+        """
         # 通过 source_item class 计数
         source_items = self.html.count('class="source-item"')
-        self.assertGreater(source_items, 50, f"Source items 太少 ({source_items})")
+        self.assertGreater(source_items, 30, f"Source items 太少 ({source_items})")
 
     def test_n_references(self):
         """必须有 [N] 引用角标(每个 strengths/weaknesses 都应有)。"""
@@ -138,7 +146,9 @@ class TestNormalize(unittest.TestCase):
     def setUpClass(cls):
         cls.data = normalize(
             json.loads(
-                (ROOT / "examples" / "whatsapp-advertising-demo.json").read_text()
+                (
+                    ROOT / "tests" / "fixtures" / "e2e-2026-08-26" / "03-analysis.json"
+                ).read_text()
             )
         )
 
@@ -177,28 +187,29 @@ class TestNormalize(unittest.TestCase):
             self.assertIn(f, self.data, f"normalize() 缺少字段: {f}")
 
     def test_feature_matrix_correctness(self):
-        """§ 5.2 矩阵:每家至少 18 项功能,合并后类别 ≥ 15。"""
+        """§ 5.2 矩阵:真实 fixture(WATI/Respond.io/YCloud)每家有功能行,
+        合并后类别 ≥ 10。"""
         m = self.data["feature_comparison_matrix"]
-        # 每家至少 18 项核心功能
-        for comp in ["Twilio", "WATI", "Respond.io", "Infobip", "ManyChat", "Tidio"]:
+        for comp in m["competitor_names"]:
             n = m["totals_per_competitor"].get(comp, 0)
-            self.assertGreaterEqual(
-                n, 18, f"{comp} 功能数 {n} < 18 (基础核心功能必须具备)"
+            self.assertGreater(
+                n, 0, f"{comp} 功能数 0(矩阵全空 = feature_catalog 丢失)"
             )
-        self.assertEqual(len(m["competitor_names"]), 6)
-        # 类别数应 >= 15(允许有同类别)
-        self.assertGreater(len(m["categories"]), 15)
+        self.assertGreaterEqual(len(m["competitor_names"]), 3)
+        # 类别数应 >= 5(允许有同类别)
+        self.assertGreaterEqual(len(m["categories"]), 5)
 
     def test_segment_grouping(self):
-        """§ 2 同类厂商聚类:同类(同 BSP 组、SaaS 组、广告组)必须在同一 cluster。"""
+        """§ 2 厂商聚类:normalize 输出的每个 cluster 必须非空且名字
+        来自竞品列表(不要求特定 BSP 组 —— 那是旧 demo 数据的形状)。"""
         clusters = self.data["competitors_by_segment"]
-        # BSP 组应包含 Twilio + Infobip
-        bsp_cluster = next((c for c in clusters if "BSP" in c["segment"]), None)
-        self.assertIsNotNone(bsp_cluster)
-        assert bsp_cluster is not None  # type narrowing for Pyright
-        names = [c["name"] for c in bsp_cluster["competitors"]]
-        self.assertIn("Twilio", names)
-        self.assertIn("Infobip", names)
+        names_in_data = {c["name"] for c in self.data["competitors"]}
+        seen = set()
+        for cl in clusters:
+            self.assertTrue(cl["competitors"], f"空 cluster: {cl.get('segment')}")
+            for c in cl["competitors"]:
+                self.assertIn(c["name"], names_in_data)
+                seen.add(c["name"])
 
     def test_sources_have_unique_urls(self):
         """Sources 条目按 (url, claim) 去重 —— 同 URL 不同论断各成条目
@@ -210,7 +221,8 @@ class TestNormalize(unittest.TestCase):
             for s2 in normalized["sources"]
         ]
         self.assertEqual(
-            len(keys), len(set(keys)),
+            len(keys),
+            len(set(keys)),
             "同一 (url, claim, competitor) 出现多次 —— 去重失效",
         )
 
@@ -254,10 +266,17 @@ class TestNormalize(unittest.TestCase):
                     },
                     "strengths": [],
                     "weaknesses": [],
-                    "scores": {k: 5 for k in (
-                        "feature_richness", "ux", "pricing_value",
-                        "integration", "ai_capability", "momentum",
-                    )},
+                    "scores": {
+                        k: 5
+                        for k in (
+                            "feature_richness",
+                            "ux",
+                            "pricing_value",
+                            "integration",
+                            "ai_capability",
+                            "momentum",
+                        )
+                    },
                 },
                 {
                     "name": "B",
@@ -295,19 +314,32 @@ class TestScrapeMerge(unittest.TestCase):
     def _results(self):
         return [
             {
-                "success": True, "scraper": "playwright",
-                "markdown": "jQuery(window).bind('load', function(){}\n\n" * 5 + "\n\nGrowth plan",
-                "html": "", "text": "", "screenshot": None, "extracted": None,
+                "success": True,
+                "scraper": "playwright",
+                "markdown": "jQuery(window).bind('load', function(){}\n\n" * 5
+                + "\n\nGrowth plan",
+                "html": "",
+                "text": "",
+                "screenshot": None,
+                "extracted": None,
             },
             {
-                "success": True, "scraper": "trafilatura",
+                "success": True,
+                "scraper": "trafilatura",
                 "markdown": "# Pricing\n\nGrowth plan  $39/mo\n\nTeam plan $79/mo, includes 5 agent seats and shared team inbox",
-                "html": "", "text": "", "screenshot": None, "extracted": None,
+                "html": "",
+                "text": "",
+                "screenshot": None,
+                "extracted": None,
             },
             {
-                "success": True, "scraper": "firecrawl",
+                "success": True,
+                "scraper": "firecrawl",
                 "markdown": "# Pricing\n\nGrowth plan  $39/mo\n\nStart free trial",
-                "html": "", "text": "", "screenshot": None, "extracted": None,
+                "html": "",
+                "text": "",
+                "screenshot": None,
+                "extracted": None,
             },
         ]
 
@@ -329,8 +361,13 @@ class TestScrapeMerge(unittest.TestCase):
         merged = _merge_results(self._results())
         # "Growth plan $39/mo" 两引擎各一份(空格不同) → 只留一份
         self.assertEqual(merged["markdown"].count("$39/mo"), 1)
-        # 独有段落作为补充保留
-        self.assertIn("Team plan $79/mo", merged["markdown"])
+        # §1 证据页禁拼接:其他引擎的独有段落不再作为补充混入主体
+        # (拼接段落无法归属引擎 = 张冠李戴温床;各引擎原文在 all_results)
+        self.assertNotIn("Team plan $79/mo", merged["markdown"])
+        self.assertIn(
+            "Team plan $79/mo",
+            "".join((r.get("markdown") or "") for r in merged["all_results"]),
+        )
 
 
 class TestPricingEvidence(unittest.TestCase):
@@ -362,12 +399,21 @@ class TestPricingEvidence(unittest.TestCase):
 
         r = {
             "all_results": [
-                {"success": True, "scraper": "firecrawl",
-                 "markdown": "Growth plan $39/mo\nTeam $79/mo"},
-                {"success": True, "scraper": "trafilatura",
-                 "markdown": "Growth plan $39 / mo"},
-                {"success": True, "scraper": "playwright",
-                 "markdown": "jQuery junk no price"},
+                {
+                    "success": True,
+                    "scraper": "firecrawl",
+                    "markdown": "Growth plan $39/mo\nTeam $79/mo",
+                },
+                {
+                    "success": True,
+                    "scraper": "trafilatura",
+                    "markdown": "Growth plan $39 / mo",
+                },
+                {
+                    "success": True,
+                    "scraper": "playwright",
+                    "markdown": "jQuery junk no price",
+                },
             ]
         }
         ev = _extract_pricing_evidence(r)
@@ -380,8 +426,11 @@ class TestPricingEvidence(unittest.TestCase):
 
         r = {
             "all_results": [
-                {"success": True, "scraper": "firecrawl",
-                 "markdown": "Growth plan $39/mo"},
+                {
+                    "success": True,
+                    "scraper": "firecrawl",
+                    "markdown": "Growth plan $39/mo",
+                },
             ]
         }
         ev = _extract_pricing_evidence(r)
@@ -678,12 +727,16 @@ class TestIntelligentRouting(unittest.TestCase):
         self.assertEqual(classify_url("https://x.com/"), "homepage")
 
     def test_pricing_gets_cross_validation_group(self):
-        """定价页组合必须含 JS 引擎 + 静态对照引擎(交叉验证的基础)。"""
+        """定价页组合必须含 JS 渲染引擎 + 静态对照引擎(交叉验证的基础)。
+
+        2026-08-27 第三轮重规划:playwright(渲染等待)主力 + trafilatura
+        静态对照 + jina 第三方渲染;firecrawl 移出首棒(402 欠费)。"""
         from adapters import _URL_TYPE_SCRAPERS
 
         group = _URL_TYPE_SCRAPERS["pricing"]
+        self.assertIn("playwright", group)  # JS 渲染(含价格等待)
         self.assertIn("trafilatura", group)  # 静态对照
-        self.assertIn("firecrawl", group)  # JS 渲染
+        self.assertEqual(group[0], "playwright")
 
     def test_pricing_merge_isolated(self):
         """定价页禁止跨引擎拼接补充段落(历史价格污染根因)。"""
@@ -695,11 +748,25 @@ class TestIntelligentRouting(unittest.TestCase):
             "Pro $99/mo\n\nAll plans include unlimited contacts and\n"
             "a shared team inbox with routing rules."
         )
-        r1 = {"success": True, "scraper": "firecrawl", "markdown": primary_md,
-              "html": "", "text": "", "screenshot": None, "extracted": None}
-        r2 = {"success": True, "scraper": "trafilatura",
-              "markdown": primary_md + "\n\nAdditional users $999 per month enterprise add-on pricing from comparison table.",
-              "html": "", "text": "", "screenshot": None, "extracted": None}
+        r1 = {
+            "success": True,
+            "scraper": "firecrawl",
+            "markdown": primary_md,
+            "html": "",
+            "text": "",
+            "screenshot": None,
+            "extracted": None,
+        }
+        r2 = {
+            "success": True,
+            "scraper": "trafilatura",
+            "markdown": primary_md
+            + "\n\nAdditional users $999 per month enterprise add-on pricing from comparison table.",
+            "html": "",
+            "text": "",
+            "screenshot": None,
+            "extracted": None,
+        }
         merged = _merge_results([r1, r2], allow_supplements=False)
         self.assertNotIn("$999", merged["markdown"])
         self.assertNotIn("其他引擎补充段落", merged["markdown"])
@@ -722,15 +789,20 @@ class TestIntelligentRouting(unittest.TestCase):
             orig = A._ENGINE_STATS_PATH
             A._ENGINE_STATS_PATH = Path(td) / "engine-stats.json"
             try:
-                record_engine_outcome("pricing", {
-                    "firecrawl": {"success": False, "quality": 0.0},
-                    "playwright": {"success": False, "quality": 0.0},
-                    "crawl4ai": {"success": True, "quality": 0.9},
-                    "trafilatura": {"success": True, "quality": 0.8},
-                })
+                record_engine_outcome(
+                    "pricing",
+                    {
+                        "playwright": {"success": False, "quality": 0.0},
+                        "trafilatura": {"success": True, "quality": 0.9},
+                        "jina": {"success": True, "quality": 0.8},
+                    },
+                )
                 recs = recommend_scrapers("https://example.com/pricing")
-                # crawl4ai 历史全优,应排在 firecrawl(历史全败)前面
-                self.assertLess(recs.index("crawl4ai"), recs.index("firecrawl"))
+                # 首棒组合 = playwright+trafilatura+jina(重规划后),组内
+                # 按历史表现重排:playwright 历史全败 → 排到最后
+                self.assertEqual(set(recs), {"playwright", "trafilatura", "jina"})
+                self.assertLess(recs.index("jina"), recs.index("playwright"))
+                self.assertLess(recs.index("trafilatura"), recs.index("playwright"))
             finally:
                 A._ENGINE_STATS_PATH = orig
 
@@ -755,15 +827,27 @@ class TestNoFabrication(unittest.TestCase):
         """脚本不得再输出模板化 opportunities(LLM Step 3 的工作)。"""
         from scripts.crawl_competitors import _derive_opportunities
 
-        gaps = [{"gap": "Webhook 事件推送", "rationale": "x", "severity": "high", "source": ""}]
+        gaps = [
+            {
+                "gap": "Webhook 事件推送",
+                "rationale": "x",
+                "severity": "high",
+                "source": "",
+            }
+        ]
         self.assertEqual(_derive_opportunities([], gaps, "t"), [])
 
     def test_render_no_fabricated_g2_quotes(self):
         """渲染端 SWOT 补全不得再输出伪造 G2 引文。"""
         from render import _infer_strengths_weaknesses
 
-        c = {"name": "X", "url": "https://x.com", "pricing": "$79/mo",
-             "feature_catalog": {"X": [{"name": "AI 客服"}]}, "stage": "成长期"}
+        c = {
+            "name": "X",
+            "url": "https://x.com",
+            "pricing": "$79/mo",
+            "feature_catalog": {"X": [{"name": "AI 客服"}]},
+            "stage": "成长期",
+        }
         pos, neg = _infer_strengths_weaknesses(c)
         for item in pos + neg:
             self.assertNotIn("G2:", item.get("evidence", ""))
@@ -774,12 +858,20 @@ class TestNoFabrication(unittest.TestCase):
         """定价证据必须带 source_url + scraped_at(可追溯)。"""
         from scripts.crawl_competitors import _extract_pricing_evidence
 
-        scrape = {"all_results": [
-            {"success": True, "scraper": "firecrawl",
-             "markdown": "Growth Plan $39 per user/month\n\nPro Plan $99 per user/month"},
-            {"success": True, "scraper": "trafilatura",
-             "markdown": "Growth Plan $39 per user/month"},
-        ]}
+        scrape = {
+            "all_results": [
+                {
+                    "success": True,
+                    "scraper": "firecrawl",
+                    "markdown": "Growth Plan $39 per user/month\n\nPro Plan $99 per user/month",
+                },
+                {
+                    "success": True,
+                    "scraper": "trafilatura",
+                    "markdown": "Growth Plan $39 per user/month",
+                },
+            ]
+        }
         ev = _extract_pricing_evidence(scrape, "https://x.com/pricing")
         self.assertEqual(ev["source_url"], "https://x.com/pricing")
         self.assertTrue(ev["scraped_at"])
@@ -790,9 +882,11 @@ class TestNoFabrication(unittest.TestCase):
         """verified=True 时 engines 必须非空(历史 bug: verified=True 但 engines=[])。"""
         from scripts.crawl_competitors import _extract_pricing_evidence
 
-        scrape = {"all_results": [
-            {"success": True, "scraper": "jina", "markdown": "Pro $49/mo"},
-        ]}
+        scrape = {
+            "all_results": [
+                {"success": True, "scraper": "jina", "markdown": "Pro $49/mo"},
+            ]
+        }
         ev = _extract_pricing_evidence(scrape, "https://x.com/pricing")
         if ev["verified"]:
             self.assertTrue(ev["engines"], "verified=True 但 engines 为空")
@@ -803,16 +897,31 @@ class TestNoFabrication(unittest.TestCase):
         """self_check 的防伪造检查必须能拦住历史伪造引文。"""
         from render import self_check, normalize
 
-        data = normalize({
-            "topic": "t", "competitors": [
-                {"name": "A", "url": "https://a.com", "scores": {},
-                 "feature_catalog": {"A": []}},
-                {"name": "B", "url": "https://b.com", "scores": {},
-                 "feature_catalog": {"B": []}},
-                {"name": "C", "url": "https://c.com", "scores": {},
-                 "feature_catalog": {"C": []}},
-            ],
-        })
+        data = normalize(
+            {
+                "topic": "t",
+                "competitors": [
+                    {
+                        "name": "A",
+                        "url": "https://a.com",
+                        "scores": {},
+                        "feature_catalog": {"A": []},
+                    },
+                    {
+                        "name": "B",
+                        "url": "https://b.com",
+                        "scores": {},
+                        "feature_catalog": {"B": []},
+                    },
+                    {
+                        "name": "C",
+                        "url": "https://c.com",
+                        "scores": {},
+                        "feature_catalog": {"C": []},
+                    },
+                ],
+            }
+        )
         html_with_fabrication = "<html>Pricing gets expensive at scale</html>"
         import contextlib
         import io
@@ -828,21 +937,29 @@ class TestHonestPricingSource(unittest.TestCase):
 
     def test_no_evidence_no_source(self):
         from scripts.crawl_competitors import _build_competitor_entry
+
         scraped = {
-            "name": "X", "url": "https://x.com",
+            "name": "X",
+            "url": "https://x.com",
             "pricing_source": "",  # _scrape_one 修复后失败时保持 ""
             "tagline_source": "https://x.com",
-            "founded_source": "", "team_size_source": "",
+            "founded_source": "",
+            "team_size_source": "",
             "headquarters_source": "",
             "raw_markdown": {
                 "home": "# X\nTool for teams",
                 "pricing": "",  # 定价页全失败
             },
             "page_urls": {"home": "https://x.com"},
-            "pricing_evidence": {"pricing": "—", "verified": False,
-                                 "engines": [], "source_url": "",
-                                 "scraped_at": "", "vote_detail": [],
-                                 "tiers": []},
+            "pricing_evidence": {
+                "pricing": "—",
+                "verified": False,
+                "engines": [],
+                "source_url": "",
+                "scraped_at": "",
+                "vote_detail": [],
+                "tiers": [],
+            },
             "site_title": "X — tool",
         }
         entry, warnings, _claims = _build_competitor_entry(scraped)
@@ -855,28 +972,41 @@ class TestCompanyFieldAttribution(unittest.TestCase):
 
     def _scrape(self, pages):
         return {
-            "name": "X", "url": "https://x.com",
-            "pricing_source": "", "tagline_source": "https://x.com",
-            "founded_source": "", "team_size_source": "",
+            "name": "X",
+            "url": "https://x.com",
+            "pricing_source": "",
+            "tagline_source": "https://x.com",
+            "founded_source": "",
+            "team_size_source": "",
             "headquarters_source": "",
             "raw_markdown": {k: md for k, (md, _) in pages.items()},
             "page_urls": {k: u for k, (_, u) in pages.items()},
-            "pricing_evidence": {"pricing": "—", "verified": False,
-                                 "engines": [], "source_url": "",
-                                 "scraped_at": "", "vote_detail": [],
-                                 "tiers": []},
+            "pricing_evidence": {
+                "pricing": "—",
+                "verified": False,
+                "engines": [],
+                "source_url": "",
+                "scraped_at": "",
+                "vote_detail": [],
+                "tiers": [],
+            },
             "site_title": "X — tool",
         }
 
     def test_year_on_pricing_page_attributed_there(self):
         """年份在 pricing 页命中 → founded_source 指向 pricing 页而非官网。"""
         from scripts.crawl_competitors import _build_competitor_entry
-        scraped = self._scrape({
-            "home": ("# X\nTool for teams", "https://x.com"),
-            "about": ("", ""),
-            "pricing": ("# Pricing\nFounded in 2019 by ex-Googlers\n$59/mo",
-                        "https://x.com/pricing"),
-        })
+
+        scraped = self._scrape(
+            {
+                "home": ("# X\nTool for teams", "https://x.com"),
+                "about": ("", ""),
+                "pricing": (
+                    "# Pricing\nFounded in 2019 by ex-Googlers\n$59/mo",
+                    "https://x.com/pricing",
+                ),
+            }
+        )
         entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "2019")
         self.assertEqual(entry["founded_source"], "https://x.com/pricing")
@@ -884,11 +1014,16 @@ class TestCompanyFieldAttribution(unittest.TestCase):
 
     def test_about_page_priority(self):
         from scripts.crawl_competitors import _build_competitor_entry
-        scraped = self._scrape({
-            "home": ("# X\nFounded in 2020", "https://x.com"),
-            "about": ("# About\nFounded in 2015, headquartered in Kuala Lumpur",
-                      "https://x.com/about"),
-        })
+
+        scraped = self._scrape(
+            {
+                "home": ("# X\nFounded in 2020", "https://x.com"),
+                "about": (
+                    "# About\nFounded in 2015, headquartered in Kuala Lumpur",
+                    "https://x.com/about",
+                ),
+            }
+        )
         entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "2015")  # about 优先
         self.assertEqual(entry["founded_source"], "https://x.com/about")
@@ -897,9 +1032,12 @@ class TestCompanyFieldAttribution(unittest.TestCase):
 
     def test_not_found_keeps_empty_source(self):
         from scripts.crawl_competitors import _build_competitor_entry
-        scraped = self._scrape({
-            "home": ("# X\nnothing useful", "https://x.com"),
-        })
+
+        scraped = self._scrape(
+            {
+                "home": ("# X\nnothing useful", "https://x.com"),
+            }
+        )
         entry, _, _ = _build_competitor_entry(scraped)
         self.assertEqual(entry["founded"], "—")
         self.assertEqual(entry["founded_source"], "")
@@ -908,17 +1046,20 @@ class TestCompanyFieldAttribution(unittest.TestCase):
     def test_feature_without_evidence_has_empty_source(self):
         """F4: 定位不到出处的功能,source 留空而不是挂 default 页。"""
         from scripts.crawl_competitors import _build_competitor_entry
+
         md_home = (
             "# X\n\n## Features\n\n"
             "- Team Inbox for shared conversations\n"
             "- Broadcasts to send updates at scale\n\n"
             "## Why teams pick X\n\nManage every customer chat in one place.\n"
         )
-        scraped = self._scrape({
-            "home": (md_home, "https://x.com"),
-            # features 页返回了一个无法归因的候选功能(slug 派生形态)
-            "features": ("- Slug Derived Feature Nine\n", ""),
-        })
+        scraped = self._scrape(
+            {
+                "home": (md_home, "https://x.com"),
+                # features 页返回了一个无法归因的候选功能(slug 派生形态)
+                "features": ("- Slug Derived Feature Nine\n", ""),
+            }
+        )
         entry, _, _ = _build_competitor_entry(scraped)
         names = {f["name"] for f in entry["feature_catalog"]["X"]}
         self.assertTrue(names)  # 有功能被提取
@@ -940,63 +1081,102 @@ class TestManifestEmission(unittest.TestCase):
         def fake_scrape_one(resolved, timeout=30, max_chars=25000):
             url = resolved["url"]
             return {
-                "name": resolved["canonical_name"], "url": url,
-                "pricing_source": "", "tagline_source": url,
-                "founded_source": "", "team_size_source": "",
+                "name": resolved["canonical_name"],
+                "url": url,
+                "pricing_source": "",
+                "tagline_source": url,
+                "founded_source": "",
+                "team_size_source": "",
                 "headquarters_source": "",
                 "raw_markdown": {
                     "home": "# WATI\nWhatsApp API platform for teams",
                     "pricing": "# Pricing\nGrowth $59/mo",
                 },
-                "page_urls": {"home": url,
-                              "pricing": url + "/pricing"},
+                "page_urls": {"home": url, "pricing": url + "/pricing"},
                 "pricing_evidence": {
-                    "pricing": "Growth · $59 (/mo)", "verified": True,
+                    "pricing": "Growth · $59 (/mo)",
+                    "verified": True,
                     "engines": ["playwright", "crawl4ai"],
                     "source_url": url + "/pricing",
                     "scraped_at": "2026-08-26 00:00 UTC",
-                    "vote_detail": [{"line": "Growth $59/mo",
-                                     "engines": ["playwright", "crawl4ai"],
-                                     "independent_votes": 2}],
-                    "tiers": [{"name": "Growth", "price": "$59",
-                               "billing_period": "/mo", "features": [],
-                               "source_url": url + "/pricing"}],
+                    "vote_detail": [
+                        {
+                            "line": "Growth $59/mo",
+                            "engines": ["playwright", "crawl4ai"],
+                            "independent_votes": 2,
+                        }
+                    ],
+                    "tiers": [
+                        {
+                            "name": "Growth",
+                            "price": "$59",
+                            "billing_period": "/mo",
+                            "features": [],
+                            "source_url": url + "/pricing",
+                        }
+                    ],
                 },
                 "site_title": "WATI — WhatsApp API",
                 "_manifest": {
                     "fetched": {
-                        url: {"status": "ok", "engines": {
-                            "playwright": {"ok": True, "chars": 500,
-                                           "content_hash": "h1"},
-                        }, "fetched_at": "2026-08-26 00:00 UTC"},
-                        url + "/pricing": {"status": "ok", "engines": {
-                            "playwright": {"ok": True, "chars": 400,
-                                           "content_hash": "h2"},
-                            "crawl4ai": {"ok": True, "chars": 380,
-                                         "content_hash": "h3"},
-                        }, "fetched_at": "2026-08-26 00:00 UTC"},
+                        url: {
+                            "status": "ok",
+                            "engines": {
+                                "playwright": {
+                                    "ok": True,
+                                    "chars": 500,
+                                    "content_hash": "h1",
+                                },
+                            },
+                            "fetched_at": "2026-08-26 00:00 UTC",
+                        },
+                        url + "/pricing": {
+                            "status": "ok",
+                            "engines": {
+                                "playwright": {
+                                    "ok": True,
+                                    "chars": 400,
+                                    "content_hash": "h2",
+                                },
+                                "crawl4ai": {
+                                    "ok": True,
+                                    "chars": 380,
+                                    "content_hash": "h3",
+                                },
+                            },
+                            "fetched_at": "2026-08-26 00:00 UTC",
+                        },
                     },
                     "engines_by_url": {
                         url: {"playwright": "# WATI md"},
                         url + "/pricing": {
                             "playwright": "# Pricing\nGrowth $59/mo",
-                            "crawl4ai": "# Plans\nGrowth $59 /mo"},
+                            "crawl4ai": "# Plans\nGrowth $59 /mo",
+                        },
                     },
                     "failures": [],
                 },
             }
 
         with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "03-analysis.json"
-            with mock.patch.object(cc, "_scrape_one", fake_scrape_one), \
-                 mock.patch.object(cc, "resolve_competitors",
-                                   return_value={"wati": {
-                                       "canonical_name": "WATI",
-                                       "url": "https://www.wati.io",
-                                       "confidence": 0.95,
-                                       "source": "builtin"}}):
-                analysis = cc.crawl_and_build(
-                    ["wati"], "WhatsApp 赛道",
+            with (
+                mock.patch.object(cc, "_scrape_one", fake_scrape_one),
+                mock.patch.object(
+                    cc,
+                    "resolve_competitors",
+                    return_value={
+                        "wati": {
+                            "canonical_name": "WATI",
+                            "url": "https://www.wati.io",
+                            "confidence": 0.95,
+                            "source": "builtin",
+                        }
+                    },
+                ),
+            ):
+                cc.crawl_and_build(
+                    ["wati"],
+                    "WhatsApp 赛道",
                     manifest_path=Path(d) / "claims-manifest.json",
                     raw_dir=Path(d) / "02-raw",
                 )
@@ -1004,20 +1184,25 @@ class TestManifestEmission(unittest.TestCase):
             self.assertTrue((Path(d) / "02-raw" / "WATI.engines.json").exists())
 
             manifest = json.loads(
-                (Path(d) / "claims-manifest.json").read_text(encoding="utf-8"))
+                (Path(d) / "claims-manifest.json").read_text(encoding="utf-8")
+            )
             self.assertIn("https://www.wati.io", manifest["fetched"])
             # 定价 vote 行 claim 必须带 quote + 两引擎
-            pricing_claims = [c for c in manifest["claims"]
-                              if "pricing_vote_detail" in c["field"]]
+            pricing_claims = [
+                c for c in manifest["claims"] if "pricing_vote_detail" in c["field"]
+            ]
             self.assertTrue(pricing_claims)
             self.assertEqual(pricing_claims[0]["quote"], "Growth $59/mo")
-            self.assertEqual(sorted(pricing_claims[0]["verified_by"]),
-                             ["crawl4ai", "playwright"])
+            self.assertEqual(
+                sorted(pricing_claims[0]["verified_by"]), ["crawl4ai", "playwright"]
+            )
 
             engines = json.loads(
-                (Path(d) / "02-raw" / "WATI.engines.json").read_text(encoding="utf-8"))
-            self.assertIn("Growth $59/mo",
-                          engines["https://www.wati.io/pricing"]["playwright"])
+                (Path(d) / "02-raw" / "WATI.engines.json").read_text(encoding="utf-8")
+            )
+            self.assertIn(
+                "Growth $59/mo", engines["https://www.wati.io/pricing"]["playwright"]
+            )
 
 
 class TestRunYouziFailures(unittest.TestCase):
@@ -1031,21 +1216,23 @@ class TestRunYouziFailures(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             raw = Path(d) / "02-raw"
             with mock.patch.object(
-                adapters, "scrape_smart", side_effect=RuntimeError("boom"),
+                adapters,
+                "scrape_smart",
+                side_effect=RuntimeError("boom"),
             ):
                 results, failures = run_youzi.step2_crawl(
-                    ["https://dead.example.com"], raw)
+                    ["https://dead.example.com"], raw
+                )
             self.assertEqual(results, {})
             self.assertEqual(len(failures), 1)
             self.assertEqual(failures[0]["url"], "https://dead.example.com")
             mpath = raw.parent / "claims-manifest.json"
             self.assertTrue(mpath.exists())
             manifest = json.loads(mpath.read_text(encoding="utf-8"))
-            self.assertEqual(manifest["failures"][0]["url"],
-                             "https://dead.example.com")
+            self.assertEqual(manifest["failures"][0]["url"], "https://dead.example.com")
             self.assertEqual(
-                manifest["fetched"]["https://dead.example.com"]["status"],
-                "failed")
+                manifest["fetched"]["https://dead.example.com"]["status"], "failed"
+            )
 
 
 class TestFeatureAttributionAllEngines(unittest.TestCase):
@@ -1057,48 +1244,62 @@ class TestFeatureAttributionAllEngines(unittest.TestCase):
 
     def _scrape(self):
         return {
-            "name": "X", "url": "https://x.com",
+            "name": "X",
+            "url": "https://x.com",
             "pricing_source": "https://x.com/pricing",
             "tagline_source": "https://x.com",
-            "founded_source": "", "team_size_source": "",
+            "founded_source": "",
+            "team_size_source": "",
             "headquarters_source": "",
             "raw_markdown": {
                 # merged 定价稿(=primary)不含该功能
                 "home": "# X\n\n## Features\n\n- Team Inbox for shared chats\n\nwhy\n",
                 "pricing": "# Pricing\nGrowth $59/mo\nPro $119/mo\n",
-                "features": "", "about": "", "docs": "",
+                "features": "",
+                "about": "",
+                "docs": "",
             },
-            "page_urls": {"home": "https://x.com",
-                          "pricing": "https://x.com/pricing"},
-            "pricing_evidence": {"pricing": "—", "verified": False,
-                                 "engines": [], "source_url": "",
-                                 "scraped_at": "", "vote_detail": [],
-                                 "tiers": []},
+            "page_urls": {"home": "https://x.com", "pricing": "https://x.com/pricing"},
+            "pricing_evidence": {
+                "pricing": "—",
+                "verified": False,
+                "engines": [],
+                "source_url": "",
+                "scraped_at": "",
+                "vote_detail": [],
+                "tiers": [],
+            },
             # 副本(crawl4ai)里才有 "Single User Plan"(套餐卡功能清单)
             "pricing_all_markdowns": [
                 "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n"
             ],
-            "_manifest": {"fetched": {}, "engines_by_url": {
-                "https://x.com/pricing": {
-                    "crawl4ai": "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n",
+            "_manifest": {
+                "fetched": {},
+                "engines_by_url": {
+                    "https://x.com/pricing": {
+                        "crawl4ai": "# Pricing\nGrowth $59/mo\n- Single User Plan included\n- Contact Info synced\n",
+                    },
                 },
-            }, "failures": []},
+                "failures": [],
+            },
             "site_title": "X — tool",
         }
 
     def test_engine_only_feature_attributed_to_page(self):
         from scripts.crawl_competitors import _build_competitor_entry
+
         entry, _, _ = _build_competitor_entry(self._scrape())
         by_name = {f["name"]: f["source"] for f in entry["feature_catalog"]["X"]}
         # 只存在于副本引擎的套餐功能 → 归因到定价页
-        self.assertEqual(by_name.get("Single User Plan included"),
-                         "https://x.com/pricing")
+        self.assertEqual(
+            by_name.get("Single User Plan included"), "https://x.com/pricing"
+        )
         # merged 里的功能照旧归因
-        self.assertEqual(by_name.get("Team Inbox for shared chats"),
-                         "https://x.com")
+        self.assertEqual(by_name.get("Team Inbox for shared chats"), "https://x.com")
 
     def test_junk_shapes_rejected(self):
         from scripts.crawl_competitors import _is_real_feature
+
         # 真实事故样本(WATI 2026-08-26)
         self.assertFalse(_is_real_feature("Manage {vendorcount} vendors"))
         self.assertFalse(_is_real_feature("Customers Blogs [Chatbot Library](ht"))
@@ -1110,6 +1311,7 @@ class TestFeatureAttributionAllEngines(unittest.TestCase):
     def test_addon_note_with_markdown_emphasis(self):
         """加购价带 markdown 强调(_$24_)也要识别 —— WATI 事故:addon note 为空。"""
         from scripts.crawl_competitors import _build_competitor_entry
+
         scraped = self._scrape()
         scraped["raw_markdown"]["pricing"] = (
             "# Pricing\nmonth _billed annually_\n"
@@ -1126,6 +1328,7 @@ class TestEvidenceQuality(unittest.TestCase):
     def test_meta_description_not_evidence(self):
         """frontmatter/meta 行不是页面证据 —— WATI 'growth partner' 误匹配 GTM。"""
         from scripts.crawl_competitors import _find_evidence_lines
+
         md = (
             "---\ndescription: Discover Wati - your growth partner! Get innovative solutions\n"
             "title: Wati\n---\n"
@@ -1139,6 +1342,7 @@ class TestEvidenceQuality(unittest.TestCase):
     def test_quote_strips_markdown_images_links(self):
         """引文里的 ![alt](url) / [text](url) 替换为 alt/text,不再渲染残骸。"""
         from scripts.crawl_competitors import _find_evidence_lines
+
         md = "![GDPR Compliant](https://assets.respond.io/image/GDPR.svg) compliant badge\n"
         hits = _find_evidence_lines(md, r"gdpr", 1)
         self.assertEqual(hits, ["GDPR Compliant compliant badge"])
@@ -1146,9 +1350,14 @@ class TestEvidenceQuality(unittest.TestCase):
     def test_moat_label_contains_number(self):
         """客户规模标签提取数字 —— '公开客户规模(见引文)' → '16000+ 客户/企业'。"""
         from scripts.crawl_competitors import _derive_moat_evidence
+
         out = _derive_moat_evidence(
-            "超过 16,000 家企业客户的信赖\n", "", "",
-            "https://x.com", "", "",
+            "超过 16,000 家企业客户的信赖\n",
+            "",
+            "",
+            "https://x.com",
+            "",
+            "",
         )
         customers = [e for e in out if "客户" in e["name"] or "规模" in e["name"]]
         self.assertTrue(customers)
@@ -1157,19 +1366,23 @@ class TestEvidenceQuality(unittest.TestCase):
     def test_pricing_display_grouped_by_plan(self):
         """定价展示串按套餐分组:同年付/月付合并到同一套餐下,不再交错乱序。"""
         from scripts.crawl_competitors import _extract_pricing_evidence
+
         md = (
             "# Pricing\nFree $0/yr\nGrowth $39/mo\nGrowth billed $468/yr\n"
             "Pro $89/mo\nPro billed $1068/yr\nEnterprise $399/mo\n"
         )
-        r = {"all_results": [
-            {"scraper": e, "success": True, "markdown": md}
-            for e in ("crawl4ai", "playwright")
-        ]}
+        r = {
+            "all_results": [
+                {"scraper": e, "success": True, "markdown": md}
+                for e in ("crawl4ai", "playwright")
+            ]
+        }
         ev = _extract_pricing_evidence(r, "https://x.com/pricing")
         # Growth 的 $39 与 $468 必须相邻(同套餐分组),不与 Pro 价交错
         p = ev["pricing"]
-        self.assertLess(abs(p.find("$39") - p.find("$468")), 40,
-                        f"Growth 月/年价不相邻: {p}")
+        self.assertLess(
+            abs(p.find("$39") - p.find("$468")), 40, f"Growth 月/年价不相邻: {p}"
+        )
         self.assertLess(p.find("$39"), p.find("$89"))
 
 
@@ -1179,21 +1392,59 @@ class TestPlaceholderSectionsHonesty(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import tempfile
+
         minimal = {
-            "topic": "t", "executive_summary": "x",
+            "topic": "t",
+            "executive_summary": "x",
             "competitors": [
-                {"name": "A", "url": "https://a.com", "tagline": "t",
-                 "scores": {k: 5 for k in (
-                     "feature_richness", "ux", "pricing_value",
-                     "integration", "ai_capability", "momentum")}},
-                {"name": "B", "url": "https://b.com", "tagline": "t",
-                 "scores": {k: 5 for k in (
-                     "feature_richness", "ux", "pricing_value",
-                     "integration", "ai_capability", "momentum")}},
-                {"name": "C", "url": "https://c.com", "tagline": "t",
-                 "scores": {k: 5 for k in (
-                     "feature_richness", "ux", "pricing_value",
-                     "integration", "ai_capability", "momentum")}},
+                {
+                    "name": "A",
+                    "url": "https://a.com",
+                    "tagline": "t",
+                    "scores": {
+                        k: 5
+                        for k in (
+                            "feature_richness",
+                            "ux",
+                            "pricing_value",
+                            "integration",
+                            "ai_capability",
+                            "momentum",
+                        )
+                    },
+                },
+                {
+                    "name": "B",
+                    "url": "https://b.com",
+                    "tagline": "t",
+                    "scores": {
+                        k: 5
+                        for k in (
+                            "feature_richness",
+                            "ux",
+                            "pricing_value",
+                            "integration",
+                            "ai_capability",
+                            "momentum",
+                        )
+                    },
+                },
+                {
+                    "name": "C",
+                    "url": "https://c.com",
+                    "tagline": "t",
+                    "scores": {
+                        k: 5
+                        for k in (
+                            "feature_richness",
+                            "ux",
+                            "pricing_value",
+                            "integration",
+                            "ai_capability",
+                            "momentum",
+                        )
+                    },
+                },
             ],
             "sources": [],
             "market_segments": [],
@@ -1203,10 +1454,20 @@ class TestPlaceholderSectionsHonesty(unittest.TestCase):
         p.write_text(json.dumps(minimal, ensure_ascii=False), encoding="utf-8")
         out = Path(cls.dir.name) / "r.html"
         import subprocess
+
         subprocess.run(
-            [sys.executable, str(ROOT / "render.py"), "--input", str(p),
-             "--output", str(out), "--no-check"],
-            check=True, capture_output=True)
+            [
+                sys.executable,
+                str(ROOT / "render.py"),
+                "--input",
+                str(p),
+                "--output",
+                str(out),
+                "--no-check",
+            ],
+            check=True,
+            capture_output=True,
+        )
         cls.html = out.read_text(encoding="utf-8")
 
     @classmethod
@@ -1214,10 +1475,10 @@ class TestPlaceholderSectionsHonesty(unittest.TestCase):
         cls.dir.cleanup()
 
     def test_no_medals_for_placeholder_scores(self):
+        # 2026-08-27:4.1 六维评分节整体移除(占位分无价值)
         self.assertNotIn("🥇", self.html)
-        self.assertIn("评分待 Step 3", self.html)
-        # 评分表体不渲染(CSS 里的 .rank-1 类定义除外)
         self.assertNotIn('<td class="score-cell', self.html)
+        self.assertNotIn("6 维评分横向对比", self.html)
 
     def test_no_fake_composite_stats(self):
         self.assertNotIn("综合领先", self.html)
@@ -1239,20 +1500,36 @@ class TestUniqueFeatureSanity(unittest.TestCase):
     def test_garbage_shapes_all_rejected(self):
         """真实事故样本(2026-08-26 报告 131 个'独家'里的一半)。"""
         from scripts.crawl_competitors import _is_real_feature
+
         garbage = [
             # cookie/GDPR 横幅
-            "About Cookies", "Always active", "Functional Functional Always active",
-            "Confirm my preferences", "Save preferences", "View preferences",
-            "Preferences Preferences", "Please provide your information",
+            "About Cookies",
+            "Always active",
+            "Functional Functional Always active",
+            "Confirm my preferences",
+            "Save preferences",
+            "View preferences",
+            "Preferences Preferences",
+            "Please provide your information",
             # 计划卡 CTA / 状态
-            "Upgrade to Pro", "Upgrade to Growth", "Upgrade to Enterprise",
-            "Current plan", "Compare plans and features", "View Demo",
-            "No Credit Card Required", "Prices are in USD",
+            "Upgrade to Pro",
+            "Upgrade to Growth",
+            "Upgrade to Enterprise",
+            "Current plan",
+            "Compare plans and features",
+            "View Demo",
+            "No Credit Card Required",
+            "Prices are in USD",
             "Not available for this country",
             # 杂项页面碎片
-            "Empty Heading", "Key features", "Learn more",
-            "Frequently asked questions", "YCloud on Youtube",
-            "Docs and Support", "INTEGRATIONS", "Analytics Analytics",
+            "Empty Heading",
+            "Key features",
+            "Learn more",
+            "Frequently asked questions",
+            "YCloud on Youtube",
+            "Docs and Support",
+            "INTEGRATIONS",
+            "Analytics Analytics",
             "Marketing Marketing",
             # 营销句
             "Acquire, engage, and qualify",
@@ -1263,9 +1540,16 @@ class TestUniqueFeatureSanity(unittest.TestCase):
     def test_multilingual_translations_merged(self):
         """WATI 葡/西/印尼语翻译 = 同一功能,不得各算一个'独家'。"""
         from scripts.crawl_competitors import _merge_translation_equivalents
-        feats = ["No Code Chatbots", "Chatbots sin código",
-                 "Chatbots Sem Código", "Chatbot Tanpa Kode",
-                 "Shared Team Inbox", "Team Inbox", "Broadcasts"]
+
+        feats = [
+            "No Code Chatbots",
+            "Chatbots sin código",
+            "Chatbots Sem Código",
+            "Chatbot Tanpa Kode",
+            "Shared Team Inbox",
+            "Team Inbox",
+            "Broadcasts",
+        ]
         merged = _merge_translation_equivalents(feats)
         # 四种语言的无代码机器人合并为一条
         bots = [f for f in merged if "hatbot" in f.lower()]

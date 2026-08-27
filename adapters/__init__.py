@@ -54,22 +54,44 @@ _URL_TYPE_PATTERNS = [
     ("dashboard", _re_route.compile(r"^https?://app\.", _re_route.I)),
     ("dashboard", _re_route.compile(r"^https?://(console|panel|admin)\.", _re_route.I)),
     # 定价页 (JS 重,firecrawl/playwright 强)
-    ("pricing", _re_route.compile(r"/pricing[-_]?(plan|plans|tier|tiers)?$", _re_route.I)),
+    (
+        "pricing",
+        _re_route.compile(r"/pricing[-_]?(plan|plans|tier|tiers)?$", _re_route.I),
+    ),
     ("pricing", _re_route.compile(r"/plan[-_]?s?$", _re_route.I)),
     ("pricing", _re_route.compile(r"/price", _re_route.I)),
     # 公司信息
-    ("about", _re_route.compile(r"/(about|company|our[-_]?story|team|leadership|careers)", _re_route.I)),
+    (
+        "about",
+        _re_route.compile(
+            r"/(about|company|our[-_]?story|team|leadership|careers)", _re_route.I
+        ),
+    ),
     # 集成 / 合作伙伴
     ("integration", _re_route.compile(r"/integrations?(?:/|$)", _re_route.I)),
     ("integration", _re_route.compile(r"/marketplace(?:/|$)", _re_route.I)),
     # 客户案例
-    ("customer", _re_route.compile(r"/(customer[-_]?stor(y|ies)|case[-_]?stud(y|ies))", _re_route.I)),
+    (
+        "customer",
+        _re_route.compile(
+            r"/(customer[-_]?stor(y|ies)|case[-_]?stud(y|ies))", _re_route.I
+        ),
+    ),
     # 博客 / 文章
     ("blog", _re_route.compile(r"/(blog|news|article|press|release)", _re_route.I)),
     # 产品 / 功能页
-    ("feature", _re_route.compile(r"/(feature|features|product|capabilities|whatsapp[-_]?business[-_]?api)", _re_route.I)),
+    (
+        "feature",
+        _re_route.compile(
+            r"/(feature|features|product|capabilities|whatsapp[-_]?business[-_]?api)",
+            _re_route.I,
+        ),
+    ),
     # changelog
-    ("changelog", _re_route.compile(r"/(changelog|release[-_]?notes?|updates?)", _re_route.I)),
+    (
+        "changelog",
+        _re_route.compile(r"/(changelog|release[-_]?notes?|updates?)", _re_route.I),
+    ),
 ]
 
 # 各 URL 类型推荐的爬虫组合(按优先级,前几个 = 主力,后面 = 补充)。
@@ -79,27 +101,51 @@ _URL_TYPE_PATTERNS = [
 #   - docs/feature: 内容型页面,firecrawl/crawl4ai 主力
 #   - about/blog/customer: 静态文章型,轻量正文抽取器就够(省资源、快)
 _URL_TYPE_SCRAPERS = {
-    # 组合按 storage/engine-stats.json 的真实历史质量校准(2026-08-26,
-    # 214+ 次真实爬取):playwright 在 JS 页质量最高(pricing q=0.50)、
-    # trafilatura 文档型最强(docs q=0.77)、markdownify/readability 在
-    # about 上成功率仅 44-51% 已替换。
-    "docs":        ["trafilatura", "firecrawl", "crawl4ai"],        # 文档站:trafilatura q=0.77 王
-    "dashboard":   ["playwright", "camoufox"],                       # dashboard:必须浏览器
-    "pricing":     ["firecrawl", "playwright", "crawl4ai", "trafilatura"],  # 定价:JS 组 + 静态对照
-    "about":       ["firecrawl", "trafilatura", "readability"],     # about:公司信息页要 JS 渲染,firecrawl 主力
-    "integration": ["firecrawl", "trafilatura", "readability"],     # 集成页
-    "customer":    ["trafilatura", "firecrawl", "newspaper3k"],      # 客户案例:文章型 + firecrawl 兜底
-    "blog":        ["trafilatura", "firecrawl", "newspaper3k"],     # 博客:文章型
-    "feature":     ["firecrawl", "playwright", "crawl4ai"],         # 功能页:JS 展示页,playwright 进组(trafilatura 在 feature ok 仅 39% 已移出)
-    "changelog":   ["firecrawl", "trafilatura", "readability"],     # changelog
-    "homepage":    ["firecrawl", "playwright", "crawl4ai", "trafilatura"],  # 首页:功能区块 JS 渲染,playwright 补全 DOM(trafilatura 保留:tagline frontmatter)
+    # 组合按 storage/engine-stats.json 的真实历史质量校准(2026-08-27
+    # 第三轮重规划,n=700+ 次真实爬取):
+    #   - pricing: playwright 渲染等待后 q 最高(本轮 WATI 4 档全中),
+    #     trafilatura 静态对照(交叉验证第二票),jina 第三方渲染;
+    #     firecrawl 移出(402 欠费不可用),crawl4ai 移出(75k chars 里
+    #     全是 CSS 变量垃圾 q=0.27,价格行极少还拖慢合并)
+    #   - homepage/feature: playwright 主力 + trafilatura/jina 对照
+    #   - docs: trafilatura q=0.77 王者不动
+    #   - about/blog 轻量组维持
+    "pricing": ["playwright", "trafilatura", "jina"],
+    "docs": ["trafilatura", "firecrawl", "crawl4ai"],
+    "dashboard": ["playwright", "camoufox"],
+    "about": ["firecrawl", "trafilatura", "readability"],
+    "integration": ["firecrawl", "trafilatura", "readability"],
+    "customer": ["trafilatura", "firecrawl", "newspaper3k"],
+    "blog": ["trafilatura", "firecrawl", "newspaper3k"],
+    "feature": ["playwright", "jina", "trafilatura", "crawl4ai"],
+    "changelog": ["firecrawl", "trafilatura", "readability"],
+    "testimonials": ["trafilatura", "newspaper3k", "firecrawl"],
+    "homepage": ["playwright", "trafilatura", "jina", "crawl4ai"],
 }
 
-# 定价类页面:证据语义强、顺序敏感,禁止跨引擎合并补充段落(防价格污染)
-_NO_SUPPLEMENT_TYPES = {"pricing"}
+# 证据敏感页面:跨引擎"补充段落"会把不同引擎的碎片拼在一起(张冠李戴
+# 温床),且拼接段落无法归属哪个引擎看到原文 → 全部证据页禁拼接。
+# 各引擎完整原文始终保留在 all_results / manifest.engines_by_url。
+_NO_SUPPLEMENT_TYPES = {
+    "pricing",
+    "feature",
+    "docs",
+    "about",
+    "customer",
+    "blog",
+    "testimonials",
+    "changelog",
+    "integration",
+    "homepage",
+    "dashboard",
+}
 
 # 引擎历史统计文件(成功率 + 质量分,按 url_type 分桶) —— 智能路由的学习数据
-_ENGINE_STATS_PATH = __import__("pathlib").Path(__file__).resolve().parent.parent / "storage" / "engine-stats.json"
+_ENGINE_STATS_PATH = (
+    __import__("pathlib").Path(__file__).resolve().parent.parent
+    / "storage"
+    / "engine-stats.json"
+)
 
 
 def _load_engine_stats() -> Dict[str, Any]:
@@ -112,7 +158,9 @@ def _load_engine_stats() -> Dict[str, Any]:
 def _save_engine_stats(stats: Dict[str, Any]) -> None:
     try:
         _ENGINE_STATS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _ENGINE_STATS_PATH.write_text(json.dumps(stats, ensure_ascii=False, indent=1), encoding="utf-8")
+        _ENGINE_STATS_PATH.write_text(
+            json.dumps(stats, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
     except Exception:
         pass  # 统计写失败不影响爬取
 
@@ -124,7 +172,9 @@ def record_engine_outcome(url_type: str, outcomes: Dict[str, Any]) -> None:
     """
     stats = _load_engine_stats()
     for eng, oc in outcomes.items():
-        bucket = stats.setdefault(eng, {}).setdefault(url_type, {"n": 0, "ok": 0, "q_sum": 0.0})
+        bucket = stats.setdefault(eng, {}).setdefault(
+            url_type, {"n": 0, "ok": 0, "q_sum": 0.0}
+        )
         bucket["n"] += 1
         if oc.get("success"):
             bucket["ok"] += 1
@@ -204,8 +254,8 @@ def _build_adapter_registry():
         html2text_scraper,
         requests_html_scraper,
         # 第三批（v1.2 新增 2 个反爬爬虫）
-        crawlee_scraper,    # 现代爬虫框架 + 反爬（Apify 出品）
-        camoufox_scraper,   # Firefox 隐身浏览器 + 反 Cloudflare
+        crawlee_scraper,  # 现代爬虫框架 + 反爬（Apify 出品）
+        camoufox_scraper,  # Firefox 隐身浏览器 + 反 Cloudflare
     )
 
     return {
@@ -359,9 +409,18 @@ async def _scrape_parallel(
 # 引擎质量优先级(数字越小越可信):商业 API > 专用正文抽取 > 通用 fallback
 # primary 按此顺序选,长度只做 tie-break —— "最长"经常是 nav/JS 垃圾最多的那份
 _ENGINE_QUALITY = {
-    "firecrawl": 0, "crawl4ai": 1, "jina": 2, "trafilatura": 3,
-    "readability": 4, "newspaper3k": 5, "scrapy": 6, "camoufox": 7,
-    "playwright": 8, "crawlee": 9, "markdownify": 10, "html2text": 11,
+    "firecrawl": 0,
+    "crawl4ai": 1,
+    "jina": 2,
+    "trafilatura": 3,
+    "readability": 4,
+    "newspaper3k": 5,
+    "scrapy": 6,
+    "camoufox": 7,
+    "playwright": 8,
+    "crawlee": 9,
+    "markdownify": 10,
+    "html2text": 11,
     "requests_html": 12,
 }
 
@@ -395,8 +454,13 @@ def _md_quality(md: str) -> float:
     link_density = link_chars / total_chars
     # 纯文本长度奖励(对数,防长垃圾)
     import math
+
     length_bonus = min(math.log10(max(len(md), 10)) / 5, 1.0)
-    base = max(0.0, 1.0 - junk_ratio * 1.5) * 0.5 + structure_ratio * 0.3 + length_bonus * 0.2
+    base = (
+        max(0.0, 1.0 - junk_ratio * 1.5) * 0.5
+        + structure_ratio * 0.3
+        + length_bonus * 0.2
+    )
     return base * max(0.05, 1.0 - link_density * 1.2)
 
 
@@ -406,18 +470,18 @@ def _norm_para(p: str) -> str:
 
 
 def _merge_results(
-    results: List[Dict[str, Any]], max_chars: int = 50000,
-    allow_supplements: bool = True,
+    results: List[Dict[str, Any]],
+    max_chars: int = 50000,
+    allow_supplements: bool = False,
 ) -> Dict[str, Any]:
     """智能合并多个 scraper 的结果。
 
     策略(顺序敏感 —— 乱序会破坏 "套餐名 ↔ 价格" 的对应关系):
     - primary:按引擎质量优先级选,垃圾占比高的一票否决;长度只做 tie-break
     - primary markdown 原序保留为文档主体
-    - 其他引擎只追加 primary 没有的补充段落(归一化去重,保留各引擎内部顺序)
-    - allow_supplements=False(pricing 等证据敏感页):禁止跨引擎拼正文 ——
-      价格/套餐名来自不同引擎的碎片拼在一起 = 张冠李戴的温床。每个引擎
-      的完整原文保留在 all_results 里供上层逐引擎取证。
+    - allow_supplements 默认 False(全部证据页禁拼接 —— 跨引擎拼正文
+      = 张冠李戴的温床,拼接段落无法归属引擎)。每个引擎的完整原文
+      保留在 all_results 里供上层逐引擎取证。
     - 截图:优先 firecrawl > playwright > 其他
     """
     success = [r for r in results if r.get("success") and r.get("markdown")]
@@ -443,11 +507,18 @@ def _merge_results(
 
     def primary_key(r):
         q = _md_quality(r.get("markdown", ""))
-        # 垃圾占比过高(quality < 0.3)的引擎没有资格当 primary。
+        # 垃圾占比过高(quality < 0.35)的引擎没有资格当 primary。
+        # 阈值从 0.3 提到 0.35:engine-stats 实测 crawl4ai docs q≈0.05、
+        # feature q≈0.09 的低质输出曾混入 primary 位。
         # 注意用 max() 选 key:rank 取负 —— _ENGINE_QUALITY 越小越可信,
         # 取负后 max() 才会优先 firecrawl 等高可信引擎(历史 bug:未取负时
         # 反而选出"质量达标里最不可信"的引擎当 primary)。
-        return (q >= 0.3, -_ENGINE_QUALITY.get(r["scraper"], 99), q, len(r.get("markdown", "")))
+        return (
+            q >= 0.35,
+            -_ENGINE_QUALITY.get(r["scraper"], 99),
+            q,
+            len(r.get("markdown", "")),
+        )
 
     primary = max(success, key=primary_key)
     used_scrapers = [r["scraper"] for r in success]
@@ -473,7 +544,9 @@ def _merge_results(
     supplements = [] if not allow_supplements else supplements
     merged_md = primary_md
     if allow_supplements and supplements:
-        merged_md += "\n\n<!-- 以下为其他引擎补充段落 -->\n\n" + "\n\n".join(supplements)
+        merged_md += "\n\n<!-- 以下为其他引擎补充段落 -->\n\n" + "\n\n".join(
+            supplements
+        )
     if len(merged_md) > max_chars:
         merged_md = merged_md[:max_chars] + "\n\n[... 内容已截断 ...]"
 
@@ -561,20 +634,25 @@ async def _scrape_smart_async(
         enabled_scrapers=enabled_scrapers,
     )
     merged = _merge_results(
-        results, max_chars,
+        results,
+        max_chars,
         allow_supplements=url_type not in _NO_SUPPLEMENT_TYPES,
     )
     merged["url_type"] = url_type
 
     # ── 引擎表现学习:喂给下一轮智能路由 ──
     try:
-        record_engine_outcome(url_type, {
-            r.get("scraper", "?"): {
-                "success": bool(r.get("success") and r.get("markdown")),
-                "quality": _md_quality(r.get("markdown", "")),
-            }
-            for r in results if r.get("scraper") not in (None, "none", "unknown")
-        })
+        record_engine_outcome(
+            url_type,
+            {
+                r.get("scraper", "?"): {
+                    "success": bool(r.get("success") and r.get("markdown")),
+                    "quality": _md_quality(r.get("markdown", "")),
+                }
+                for r in results
+                if r.get("scraper") not in (None, "none", "unknown")
+            },
+        )
     except Exception:
         pass  # 统计失败绝不影响爬取结果
 

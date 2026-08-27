@@ -63,7 +63,8 @@ _FOUNDED_PATTERNS = [
 ]
 # 版权行/URL 日期不是成立年份(真实事故:WATI founded=2026 来自版权/URL 里的日期)
 _FOUNDED_JUNK_RX = re.compile(
-    r"©|\(c\)|copyright|all\s+rights|/20\d{2}/|uploads/|assets/|reserved", re.I,
+    r"©|\(c\)|copyright|all\s+rights|/20\d{2}/|uploads/|assets/|reserved",
+    re.I,
 )
 
 _LOCATION_PATTERNS = [
@@ -152,23 +153,33 @@ def _extract_price(markdown: str) -> str:
             # 豁免:命中自身带强套餐信号(/month、/mo、/月、per month,或前面
             # 紧邻套餐词 Starter/Growth/Pro/from/起)—— "Earned $600k revenue.
             # Starter $49/month" 里的 $49 是真价格,不能被隔壁 revenue 误杀
-            tail = md[m.end():m.end() + 6]
+            tail = md[m.end() : m.end() + 6]
             if re.match(r"\s*(?:m\b|b\b|bn\b|k\b|million|billion|万|亿)", tail, re.I):
                 continue
-            after = md[m.end():m.end() + 12]
-            before = md[max(0, m.start() - 20):m.start()]
+            after = md[m.end() : m.end() + 12]
+            before = md[max(0, m.start() - 20) : m.start()]
             strong_price_signal = bool(
-                re.match(r"\s*(?:/(?:mo|month|yr|year|月)|per\s+(?:month|user))", after, re.I)
-                or re.search(r"(?:starter|growth|pro|plus|business|team|basic|from|起|free)\s*[*~`]?\s*$", before, re.I)
+                re.match(
+                    r"\s*(?:/(?:mo|month|yr|year|月)|per\s+(?:month|user))", after, re.I
+                )
+                or re.search(
+                    r"(?:starter|growth|pro|plus|business|team|basic|from|起|free)\s*[*~`]?\s*$",
+                    before,
+                    re.I,
+                )
             )
             if strong_price_signal:
                 hits.append(hit)
                 continue
             line_start = md.rfind("\n", 0, m.start()) + 1
             line_end = md.find("\n", m.end())
-            line = md[line_start:line_end if line_end != -1 else len(md)]
+            line = md[line_start : line_end if line_end != -1 else len(md)]
             if len(line) > 60:
-                ctx = md[max(line_start, m.start() - 40):min(m.end() + 40, line_end if line_end != -1 else len(md))]
+                ctx = md[
+                    max(line_start, m.start() - 40) : min(
+                        m.end() + 40, line_end if line_end != -1 else len(md)
+                    )
+                ]
             else:
                 ctx = line
             if _NOT_A_PRICE_RX.search(ctx):
@@ -195,13 +206,15 @@ def _extract_price(markdown: str) -> str:
 _PLAN_CONTEXT_RX = re.compile(
     r"(plan|pricing|per\s+(?:month|mo|user|seat|agent|month/user)|/mo|/month|月|免费"
     r"|free|trial|starter|growth|pro|plus|business|enterprise|team|basic"
-    r"|billed\s+(?:annually|monthly)|\bmonth\b|contact\s+sales|报价|定制|起)", re.I,
+    r"|billed\s+(?:annually|monthly)|\bmonth\b|contact\s+sales|报价|定制|起)",
+    re.I,
 )
 
 # 套餐名词(用于从孤立价格标题上方的标题里恢复套餐名)
 _PLAN_NAME_RX = re.compile(
     r"starter|growth|\bpro\b|plus|business|enterprise|team|basic|free\b|solo"
-    r"|scale|advanced|essential|standard|premium|lite|fundamental|专业版|企业版|免费版", re.I,
+    r"|scale|advanced|essential|standard|premium|lite|fundamental|专业版|企业版|免费版",
+    re.I,
 )
 
 
@@ -234,19 +247,22 @@ def _dedupe_plan_name(name: str) -> str:
         out.append(w)
     return " ".join(out) if out else name
 
+
 # 严格计费周期(周期字段只认这些 —— 邻行营销文案"Big wins for small teams"
 # 曾因含 "team" 匹配上下文词而被误当计费周期)
 _PERIOD_STRICT_RX = re.compile(
     r"per\s+(?:user|seat|agent)\s*(?:/|per\s*)\s*(?:month|mo)\b"  # 组合优先,防"per user"吞掉"/month"
     r"|billed\s+(?:annually|monthly|yearly)|annually|monthly|yearly"
     r"|per\s+(?:month|user|seat|year)|/mo(?:nth)?|/yr|/year|one[-\s]?time"
-    r"|月付|年付|按月|按年|/月|/年", re.I,
+    r"|月付|年付|按月|按年|/月|/年",
+    re.I,
 )
 # 划线促销价:~~$99~~ now $79 —— 划线段是旧价,不能当现价提取
 _STRIKETHROUGH_RX = re.compile(r"~~[^~]+~~")
 _PRICE_TOKEN_RX = re.compile(
     r"(?:US\$|\$|US＄|€|£|S\$|₹)\s?\d[\d,\.]*|\bRs\.\s?\d[\d,\.]*|免费|Free\s+(?:trial|plan|forever)"
-    r"|\d+\s*credits?|联系销售|Contact\s+Sales|企业报价|Custom\s+pricing", re.I,
+    r"|\d+\s*credits?|联系销售|Contact\s+Sales|企业报价|Custom\s+pricing",
+    re.I,
 )
 
 
@@ -262,7 +278,10 @@ _PRICE_ADDON_RX = re.compile(
     r"|add\s+more|top\s*up|充值"
     r"|课程|course|training|webinar|ebook|白皮书|udemy|academy"
     r"|shopify|complemento|compra\s+do\s+aplicativo|requiere\s+la\s+compra|加购|附加"
-    r"|refer\s*\s*&?\s*earn|referral|奖励|推荐有礼",
+    r"|refer\s*\s*&?\s*earn|referral|奖励|推荐有礼"
+    r"|ai\s+co-?pilot|automation\s+trigger|one\s+off|one-off|credits?/mo"
+    r"|additional\s+whatsapp|numbers?\s*\$|/\s*number\b"
+    r"|select\s+quantity",
     re.I,
 )
 # CTA 整行(聚类后代表行也要再查一遍 —— 不同引擎的变体可能绕过行级过滤)
@@ -278,6 +297,30 @@ _CTA_PHRASES_RX = re.compile(
     r"|立即(?:体验|咨询|购买)|talk\s*to\s*sales|request\s*a\s*demo|sign\s*up|log\s*in",
     re.I,
 )
+
+
+def _strip_css_junk(md: str) -> str:
+    """剥 CSS/JS 块行(存储配额保真)。
+
+    WATI 类站点 markdownify 输出 353k chars,前 150k 全是内联 CSS
+    (html body.xxx { display:none }),真实定价卡在尾部 —— 存储副本
+    按 75k 截断时价格全被切掉,G2 quote 回查失据。CSS 行特征:含 {}
+    或「属性: 值;」形态,营销正文从不长这样。
+    """
+    if not md:
+        return md
+    kept = []
+    for ln in md.split("\n"):
+        s = ln.strip()
+        if not s:
+            kept.append(ln)
+            continue
+        if "{" in s or "}" in s:
+            continue
+        if s.endswith(";") and ":" in s and len(s.split()) <= 6:
+            continue
+        kept.append(ln)
+    return "\n".join(kept)
 
 
 def _extract_price_lines(markdown: str) -> List[Dict]:
@@ -313,6 +356,44 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
         tok = _PRICE_TOKEN_RX.search(line)
         if not tok:
             continue
+        # 「Billed $468 /yr」伴随计费行:套餐名在上方同卡片的主价行
+        # (YCloud 形态:"$39 /mo" 下一行 "Billed $468 /yr")。该行自身
+        # 无套餐词、±2 窗口也全是无词行 —— 通用上下文通道必然跳过它
+        # (历史缺陷:年付价全丢)。向上 6 行找已入选主价行继承套餐名。
+        if re.match(r"^billed?\b", line, re.I):
+            _bm = re.match(
+                r"^billed?\s+((?:US\$|HK\$|NT\$|CA\$|A\$|S\$|\$|€|£|₹|Rs\.)\s?\d[\d,\.]*)"
+                r"\s*/?\s*(yr|year|mo|month|annually|monthly)\b",
+                line,
+                re.I,
+            )
+            if _bm:
+                for pl in reversed(out):
+                    if any(
+                        raw_lines[j].strip()[:12] in pl.get("raw_line", "")
+                        or pl["line"].startswith(raw_lines[j].strip()[:20])
+                        for j in range(i - 1, max(0, i - 7), -1)
+                        if raw_lines[j].strip()
+                    ):
+                        if pl.get("plan"):
+                            _pv_b = re.sub(
+                                r"([A-Za-z]{1,2}\$|Rs\.)\s+(\d)", r"\1\2", _bm.group(1)
+                            )
+                            key_b = f"{pl['plan']}|{_pv_b}".lower()
+                            if key_b not in seen:
+                                seen.add(key_b)
+                                out.append(
+                                    {
+                                        "line": f"{pl['plan']} · {line[:80]}",
+                                        "raw_line": verbatim,
+                                        "plan": pl["plan"],
+                                        "price": _pv_b,
+                                        "period": _bm.group(2).lower(),
+                                    }
+                                )
+                            break
+                        break
+                continue
         # 价格行仍防代码垃圾,但纯价格+markdown符号的短行(## $119)放行
         # —— len<15 噪音规则会误杀孤立价格标题(真实事故:WATI $59/$119/$279)
         if _is_noise_line(line) and not (
@@ -326,28 +407,34 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             continue
         # 卡片内噪音扫描(带上边界):addon/充值标签常与价格分离 ——
         #   "Shopify Integration" 标签在 "$4.99/Month" 上方 2 行(WATI 中文区)
-        #   "Shopify addon" 与 "$4.99/month" 同行或紧邻(英文区)
         #   "…back as message credits" 在 "₹999" 标题下方(印度充值 promo)
         # 向上最多 3 行、向下 1 行;扫到套餐名标题/裸套餐行即停 ——
         # 那是新卡片边界,噪音行属于上一张卡(±2 裸窗口会误伤隔壁真套餐)。
-        ctx_probe = [line]  # 本行也要查:WATI "Pay ₹999 … message credits" 同行自带充值语境
+        # ⚠ 向上只扫短行(≤8 词):卡片营销描述(如 Pro 卡 "…driving
+        # revenue")含 revenue/raised 等词,长句进探测窗会把真套餐价
+        # 整行误杀(WATI 事故:$119/$279 全丢,只剩 Growth)—— addon
+        # 标签都是短语,营销句从来不是 addon 语境
+        ctx_probe = [
+            line
+        ]  # 本行也要查:WATI "Pay ₹999 … message credits" 同行自带充值语境
         if i + 1 < len(raw_lines) and raw_lines[i + 1].strip():
             ctx_probe.append(raw_lines[i + 1].strip())
         for j in range(i - 1, max(0, i - 4), -1):
             w = raw_lines[j].strip()
             if not w:
                 continue
+            if len(w.split()) > 8:
+                continue  # 营销长句不进噪音探测窗
             ctx_probe.append(w)
-            m_h = re.match(r"^[\->\s]*#{1,4}\s+(.+)$", w)
+            m_h = re.match(r"^[*\->\s]*#{1,4}\s+(.+)$", w)
             h_txt = m_h.group(1) if m_h else w
             is_card_head = (
-                (m_h and len(h_txt.split()) <= 4 and _PLAN_NAME_RX.search(h_txt))
-                or (
-                    2 <= len(w) <= 25
-                    and len(w.split()) <= 3
-                    and re.fullmatch(r"[\w\s\-+\u4e00-\u9fff]+", w)
-                    and _PLAN_NAME_RX.search(w)
-                )
+                m_h and len(h_txt.split()) <= 4 and _PLAN_NAME_RX.search(h_txt)
+            ) or (
+                2 <= len(w) <= 25
+                and len(w.split()) <= 3
+                and re.fullmatch(r"[\w\s\-+\u4e00-\u9fff]+", w)
+                and _PLAN_NAME_RX.search(w)
             )
             if is_card_head:
                 break
@@ -359,14 +446,22 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             ctx_line = line  # 形态 a:自带上下文
         else:
             # 形态 b:孤立价格行,看 ±2 行窗口
-            window = raw_lines[max(0, i - 2): i + 3]
-            ctx_hits = [w.strip() for w in window
-                        if w.strip() and _PLAN_CONTEXT_RX.search(w)
-                        and not _PRICE_TOKEN_RX.search(w)]
+            window = raw_lines[max(0, i - 2) : i + 3]
+            ctx_hits = [
+                w.strip()
+                for w in window
+                if w.strip()
+                and _PLAN_CONTEXT_RX.search(w)
+                and not _PRICE_TOKEN_RX.search(w)
+            ]
             if not ctx_hits:
                 continue
             # 取最近的一条上下文(优先下方 —— 计费周期通常在价格正下方)
-            below = [w for w in ctx_hits if w in [x.strip() for x in raw_lines[i + 1: i + 3]]]
+            below = [
+                w
+                for w in ctx_hits
+                if w in [x.strip() for x in raw_lines[i + 1 : i + 3]]
+            ]
             ctx_word = (below or ctx_hits)[-1]
             # 周期字段只认严格周期词;邻行是营销文案时周期留空(不做猜测)
             pm = _PERIOD_STRICT_RX.search(ctx_word)
@@ -387,10 +482,11 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
         if not plan:
             pm2 = re.search(
                 r"(?:upgrade\s+to|choose\s+|选择|升级到|upgrade)",
-                ctx_line, re.I,
+                ctx_line,
+                re.I,
             )
             if pm2:
-                tail = ctx_line[pm2.end():].strip(" ·:-—()")
+                tail = ctx_line[pm2.end() :].strip(" ·:-—()")
                 nm = re.match(r"([A-Za-z\u4e00-\u9fff][\w\u4e00-\u9fff ]{1,18})", tail)
                 if nm and _PLAN_NAME_RX.search(nm.group(1)):
                     plan = _dedupe_plan_name(nm.group(1).strip())
@@ -410,24 +506,39 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             for j in range(i - 1, max(-1, i - 21), -1):
                 w = raw_lines[j].strip()
                 if _PRICE_TOKEN_RX.search(w) and j < i - 1:
-                    # 撞到价格行:若它已带套餐名,说明是同卡片的另一计费
-                    # 选项(月付行下方的 "Billed $468 /yr")→ 继承套餐名
+                    # 撞到价格行:先看它是不是已入选的真价格行 —— 是则
+                    # (a)带套餐名 = 同卡片另一计费选项,继承;(b)无名 = 真
+                    # 卡片边界,break。被过滤的 addon 价格行($89/user)
+                    # 不在 out 里,不是边界,跳过继续扫(Business $349
+                    # 月价被 addon 行隔断丢 plan 事故)
                     prev_plan = ""
                     for pl in out:
-                        if pl["line"].startswith(w[:20]) or w[:12] in pl["line"]:
+                        if (
+                            pl["line"].startswith(w[:20])
+                            or w[:12] in pl["line"]
+                            or w[:12] in pl.get("raw_line", "")
+                        ):
                             prev_plan = pl.get("plan") or ""
                             break
                     if prev_plan:
                         plan = prev_plan
                         break
-                    break  # 真·卡片边界
-                m2 = re.match(r"^[\->\s]*#{1,4}\s+(.+)$", w)
+                    if any(
+                        w[:12] in pl.get("raw_line", "") or w[:20] in pl["line"]
+                        for pl in out
+                    ):
+                        break  # 已入选的无名价格行 = 真·卡片边界
+                    continue  # addon/被过滤价格行:不是边界,继续向上
+                m2 = re.match(r"^[*\->\s]*#{1,4}\s+(.+)$", w)
                 cand = ""
                 if m2:
                     cand = re.sub(r"[*_`#]", "", m2.group(1)).strip()
-                    if not (_PLAN_NAME_RX.search(cand) and len(cand) < 45
-                            and len(cand.split()) <= 4
-                            and not _PRICE_TOKEN_RX.search(cand)):
+                    if not (
+                        _PLAN_NAME_RX.search(cand)
+                        and len(cand) < 45
+                        and len(cand.split()) <= 4
+                        and not _PRICE_TOKEN_RX.search(cand)
+                    ):
                         cand = ""
                 elif (
                     2 <= len(w) <= 25
@@ -449,7 +560,8 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
         text = re.sub(r"[*_`#>]", "", text).strip()
         text = re.sub(
             r"((?:US\$|S\$|\$|€|£|₹)\s?\d[\d,\.]*)\s*(?=(?:US\$|S\$|\$|€|£|₹)\s?\d)",
-            r"\1 / ", text,
+            r"\1 / ",
+            text,
         )
         # 同行内找计费周期(形态 a 或 period 还没填)—— 只认严格周期词
         if not period:
@@ -458,7 +570,9 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
         # 多价格 token 时:促销格式把旧价放前("$1,188 $948/yr"/"was $99 now $79")
         # —— 首匹配会取到旧价(真实事故:respond.io 年付显示 $1,188 而现价 $948)。
         # 规则:优先取紧邻严格周期词的 token;否则取最后一个(现价在后)。
-        _tok_rx = re.compile(r"(?:US\$|HK\$|NT\$|CA\$|A\$|S\$|\$|€|£|₹|\bRs\.)\s?\d[\d,\.]*", re.I)
+        _tok_rx = re.compile(
+            r"(?:US\$|HK\$|NT\$|CA\$|A\$|S\$|\$|€|£|₹|\bRs\.)\s?\d[\d,\.]*", re.I
+        )
         _toks = list(_tok_rx.finditer(text))
         if _toks:
             pm = _PERIOD_STRICT_RX.search(text)
@@ -466,17 +580,22 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
                 # 周期词前的最近 token(如 "$948/yr" → $948;"billed yearly"前的 $59)
                 price_m = max(
                     (t for t in _toks if t.end() <= pm.start() + 12),
-                    key=lambda t: t.end(), default=_toks[-1],
+                    key=lambda t: t.end(),
+                    default=_toks[-1],
                 )
             else:
                 price_m = _toks[-1]
         else:
-            price_m = re.search(r"免费|Free\s+(?:trial|plan)|联系销售|Contact\s+Sales", text, re.I)
+            price_m = re.search(
+                r"免费|Free\s+(?:trial|plan)|联系销售|Contact\s+Sales", text, re.I
+            )
         # 周期跟随所选价格 token(±15 字符窗口):"$948/yr (billed yearly)"
         # 的周期是 /yr,不能取邻行 "79/month"(真实事故:respond 年付价标成月付)
         if price_m:
-            _near = text[price_m.end():price_m.end() + 15]
-            _pm_near = _PERIOD_STRICT_RX.match(_near) or _PERIOD_STRICT_RX.search(_near[:8])
+            _near = text[price_m.end() : price_m.end() + 15]
+            _pm_near = _PERIOD_STRICT_RX.match(_near) or _PERIOD_STRICT_RX.search(
+                _near[:8]
+            )
             if _pm_near:
                 period = _pm_near.group(0)
         key = text[:40].lower()
@@ -484,17 +603,20 @@ def _extract_price_lines(markdown: str) -> List[Dict]:
             seen.add(key)
             # 币种与数字间的空格排版噪音("US$ 149" → "US$149")
             _pv = re.sub(
-                r"([A-Za-z]{1,2}\$|Rs\.)\s+(\d)", r"\1\2",
+                r"([A-Za-z]{1,2}\$|Rs\.)\s+(\d)",
+                r"\1\2",
                 price_m.group(0) if price_m else "",
             )
-            out.append({
-                "line": text[:100],
-                "raw_line": verbatim,
-                "plan": plan,
-                "price": _pv,
-                "period": period,
-            })
-    return out[:10]
+            out.append(
+                {
+                    "line": text[:100],
+                    "raw_line": verbatim,
+                    "plan": plan,
+                    "price": _pv,
+                    "period": period,
+                }
+            )
+    return out[:14]
 
 
 def _normalize_price_token(s: str) -> str:
@@ -503,7 +625,11 @@ def _normalize_price_token(s: str) -> str:
     币种前缀必须保留:HK$/NT$/CA$/A$ 塌缩成裸 $ 会让不同货币的价
     投成同一票(历史缺陷:港币价和美元价互相"验证")。
     """
-    m = re.search(r"(?:US\$|HK\$|NT\$|CA\$|A\$|S\$|\$|€|£|₹|\bRs\.|¥|￥)\s?(\d+)(?:\.\d+)?", s, re.I)
+    m = re.search(
+        r"(?:US\$|HK\$|NT\$|CA\$|A\$|S\$|\$|€|£|₹|\bRs\.|¥|￥)\s?(\d+)(?:\.\d+)?",
+        s,
+        re.I,
+    )
     if m:
         if "₹" in s or re.search(r"rs\.?", s, re.I):
             cur = "₹"
@@ -545,7 +671,7 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
     每条证据带 source_url + scraped_at,报告端可回链核对。
     """
     per_engine = {}
-    for r in (scrape_result.get("all_results") or []):
+    for r in scrape_result.get("all_results") or []:
         if r.get("success") and r.get("markdown"):
             lines = _extract_price_lines(r["markdown"])
             if lines:
@@ -554,7 +680,7 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
     # F5 引擎独立性:按引擎原文内容哈希判定 —— 名称不同的两个引擎若拿到
     # 逐字相同的内容(同一反爬/区域变体),只是一次取证,不是交叉验证
     engine_hash = {}
-    for r in (scrape_result.get("all_results") or []):
+    for r in scrape_result.get("all_results") or []:
         if r.get("success") and r.get("markdown"):
             engine_hash[r.get("scraper", "?")] = _content_hash(r["markdown"])
 
@@ -574,22 +700,36 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
             for t in toks:
                 token_engines.setdefault(t, set()).add(eng)
             ent = clusters.setdefault(
-                tuple(toks), {"line": pline["line"], "len": len(pline["line"]), "engines": set(), "parts": pline}
+                tuple(toks),
+                {
+                    "line": pline["line"],
+                    "len": len(pline["line"]),
+                    "engines": set(),
+                    "parts": pline,
+                },
             )
             ent["engines"].add(eng)
-            ent.setdefault("hashes", set()).add(
-                engine_hash.get(eng) or f"no-md:{eng}"
-            )
+            ent.setdefault("hashes", set()).add(engine_hash.get(eng) or f"no-md:{eng}")
+
             # 代表行选择:信息量优先(套餐名 > 计费周期),然后取短
             # —— "Growth $59 (billed annually)" 完胜裸 "$59"
             def _rep_key(s: str):
                 return (
                     bool(_PLAN_NAME_RX.search(s)),
-                    bool(re.search(r"billed|/mo|/yr|/month|annual|year|月付|年付", s, re.I)),
+                    bool(
+                        re.search(
+                            r"billed|/mo|/yr|/month|annual|year|月付|年付", s, re.I
+                        )
+                    ),
                     -len(s),
                 )
+
             if _rep_key(pline["line"]) > _rep_key(ent["line"]):
-                ent["line"], ent["len"], ent["parts"] = pline["line"], len(pline["line"]), pline
+                ent["line"], ent["len"], ent["parts"] = (
+                    pline["line"],
+                    len(pline["line"]),
+                    pline,
+                )
 
     # 排序:含真实货币/计费 token 的行绝对优先(营销句"7天免费试用"即使
     # 4 引擎全票也不是价格),然后按引擎一致数,同票取短行;CTA 二次过滤
@@ -659,12 +799,14 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         picked.append(ent)
         if len(picked) >= 8:
             break
+
     # 展示串:由结构化部件生成干净行(plan · price (period)) —— 原始投票行
     # 带验证上下文括号("(Big wins for small teams...)"),留在 vote_detail
     # 供追溯,不进展示。超长时在完整行边界截断(绝不切半行)。
     def _fmt(p):
         core = f"{p['plan']} · {p['price']}" if p["plan"] else p["price"]
         return f"{core} ({p['period']})" if p["period"] else core
+
     pricing, used = [], 0
     for e in picked:
         dl = _fmt(e["parts"])
@@ -676,9 +818,7 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
     pricing = " / ".join(pricing) if pricing else "—"
     # verified 按「内容独立引擎数」:同一变体页被 N 个引擎复述仍只有 1 票
     # (历史缺陷:仅数引擎名个数,反爬变体页被双引擎抓到 = 错价被交叉"验证")
-    max_indep = max(
-        (len(e.get("hashes") or e["engines"]) for e in picked), default=0
-    )
+    max_indep = max((len(e.get("hashes") or e["engines"]) for e in picked), default=0)
     verified = max_indep >= 2
     engines = sorted({e for ent in picked for e in ent["engines"]})
 
@@ -692,9 +832,7 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         v = float(m.group(1).replace(",", ""))
         return (0 if v > 0 else -1, v)  # $0/free 最前,非数值最后
 
-    ordered_parts = sorted(
-        (e["parts"] for e in picked), key=_tier_sort_key
-    )
+    ordered_parts = sorted((e["parts"] for e in picked), key=_tier_sort_key)
     # 不做跨周期合并(历史教训:把 $59(按年结算月价) 与 $69(按月结算月价)
     # 合并成 "$59 或 $69 · 月付/年付" 语义错误 —— $69 不是年价!)。
     # 现在每行保留原始周期文本(billed annually / /yr / /mo ...),
@@ -713,43 +851,209 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         named = 0 if pn else 1
         return (0 if v == 0 else 1, named, grp, v)
 
-    tiers = [
-        {
-            "name": (p["plan"] or "—")[:40],
-            "price": p["price"] or "—",
-            "billing_period": (p["period"][:24] if p["period"] else "—"),
-            "features": [],
-            "source_url": pricing_url,
-        }
-        for p in sorted(ordered_parts, key=_row_key)
-    ][:8]
+    def _norm_period(p: str) -> str:
+        """周期归一:/month|billed monthly → /mo;/year|annually → /yr。
+        「billed annually」= 年结算的**月价**(SaaS 惯例,WATI/Intercom 等),
+        不是年总价 —— 塌缩成 /yr 会让 $59(年结算月价)被当年付总价,
+        配对出 93% 假折扣。保留原文标记,plans 分组时走单独通道。"""
+        if not p or p.strip() in ("—", "-"):
+            return "—"
+        p = re.sub(r"[()]", "", p).strip()
+        has_user = bool(re.search(r"user|seat|agent|坐席", p, re.I))
+        has_month = bool(re.search(r"month|/mo\b|月付|每月|月结", p, re.I))
+        has_year = bool(re.search(r"\byr\b|year|annum|annual|年付|每年|年结", p, re.I))
+        if has_month and not has_year:
+            return "/user/mo" if has_user else "/mo"
+        if has_year and not has_month:
+            # 纯「billed annually/按年结算」形态:年结算月价,语义敏感保留
+            if re.search(r"billed|结算|paid\s+annually", p, re.I):
+                return p[:28]
+            return "/user/yr" if has_user else "/yr"
+        if has_month and has_year:
+            return p[:28]
+        if has_user:
+            return "/user"
+        return p[:28]
 
-    # 展示串按已排序 tiers 重新生成:同套餐的月付/年付合并成一项
-    # "Growth · $39 (/mo) | $468 (/yr)" —— 投票行原始顺序曾是
-    # $0/yr · $39/mo · $468/yr · $89/mo… 交错乱序(真实事故:YCloud
-    # §4 商业策略定价串像乱码)
+    def _is_free_entry(p: Dict) -> bool:
+        from scripts.sufficiency import is_no_period_tier, is_free_tier
+
+        name = (p.get("plan") or "").strip()
+        price = (p.get("price") or "").strip()
+        if is_free_tier(name, price):
+            return True
+        return is_no_period_tier(name, price)
+
+    tiers = []
+    for p in sorted(ordered_parts, key=_row_key):
+        name = (p["plan"] or "—").strip(" ·|—-")[:40] or "—"
+        price = (p["price"] or "—").strip().strip(" |·—-") or "—"
+        free_e = _is_free_entry(p)
+        # Free/Custom 档不标周期(历史 bug:Free · $0 (/yr));
+        # 价格 free/$0 之外的"custom/联系销售"保留原文
+        period = "—" if free_e else _norm_period(p["period"] or "")
+        tiers.append(
+            {
+                "name": name,
+                "price": price,
+                "billing_period": period,
+                "features": [],
+                "source_url": pricing_url,
+            }
+        )
+    tiers = tiers[:8]
+
+    # 定制档识别:Talk to Sales / Contact Sales 卡也是真实套餐结构
+    # (WATI Enterprise 卡只有 CTA 无数字价)。卡片形态 = 套餐名标题
+    # 后 ±4 行内出现报价 CTA。已 picked 的档不重复加。
+    from scripts.sufficiency import is_custom_tier as _sct
+
+    if tiers and not any(_sct(t["name"], t["price"]) for t in tiers):
+        _CUSTOM_CTA_RX = re.compile(
+            r"talk\s+to\s+sales|contact\s+(sales|us)|get\s+a\s+(quote|demo)"
+            r"|book\s+a\s+(call|demo)|预约演示|联系销售|获取报价|面议",
+            re.I,
+        )
+        _tier_names = {t["name"].lower() for t in tiers}
+        _added_custom = set()
+        for _r0 in scrape_result.get("all_results") or []:
+            if not (_r0.get("success") and _r0.get("markdown")):
+                continue
+            _md0 = _r0["markdown"]
+            _lines0 = _md0.split("\n")
+            for _k, _w in enumerate(_lines0):
+                if not _CUSTOM_CTA_RX.search(_w):
+                    continue
+                # 向上找最近的套餐名标题/裸短行(12 行窗 —— WATI 的
+                # Enterprise 卡与 CTA 之间隔 10 行 i18n 营销句);
+                # 已在数字档里的名字跳过(Sleekflow Premium 的 Book a
+                # Demo 不是定制档)
+                _cn = ""
+                for _j in range(_k - 1, max(-1, _k - 13), -1):
+                    _u = _lines0[_j].strip()
+                    _m3 = re.match(r"^[*\->\s]*#{1,4}\s+(.+)$", _u)
+                    _cand = ""
+                    if _m3:
+                        _cand = re.sub(r"[*_`#]", "", _m3.group(1)).strip()
+                    elif 2 <= len(_u) <= 25 and len(_u.split()) <= 3:
+                        _cand = _u
+                    if (
+                        _cand
+                        and _PLAN_NAME_RX.search(_cand)
+                        and not _PRICE_TOKEN_RX.search(_cand)
+                        and not _CUSTOM_CTA_RX.search(_cand)
+                        and not _PRICE_ADDON_RX.search(_cand)
+                    ):
+                        _cn = _dedupe_plan_name(_cand)
+                        break
+                _cn = _cn or "定制方案"
+                if _cn.lower() in _tier_names or _cn in _added_custom:
+                    continue
+                _added_custom.add(_cn)
+                tiers.append(
+                    {
+                        "name": _cn[:40],
+                        "price": "定制(联系销售)",
+                        "billing_period": "—",
+                        "features": [],
+                        "source_url": pricing_url,
+                    }
+                )
+                break
+            if _added_custom:
+                break
+
+    # 月/年配对分组 → plans(模板分栏渲染的数据源)+ 干净展示串。
+    # 历史 bug 全在这修:Free · $0 (/yr) 周期错误 / 悬空 | / 交错乱序
+    plans: List[Dict] = []
+    _round_price = lambda v: (  # noqa: E731 — 年付折算:整数直出,小数留 1 位
+        f"{v:.0f}" if abs(v - round(v)) < 0.05 else f"{v:.1f}"
+    )
     if tiers and _has_real_prices(tiers):
-        _groups: list = []
+        from scripts.sufficiency import is_free_tier as _sft, is_custom_tier as _sct
+
+        _byname: Dict[str, Dict] = {}
         for t in tiers:
-            if (
-                _groups
-                and t["name"] != "—"
-                and _groups[-1][0]["name"] == t["name"]
+            n = t["name"]
+            if n == "—":
+                continue
+            g = _byname.get(n)
+            if g is None:
+                g = {
+                    "name": n,
+                    "monthly": "",
+                    "annual": "",
+                    "other": [],
+                    "is_free": _sft(n, t["price"]),
+                    "is_custom": _sct(n, t["price"]),
+                    "source_url": t.get("source_url") or pricing_url,
+                }
+                _byname[n] = g
+            per = t["billing_period"]
+            # billed-annually = 年结算**月价**(非年总价)—— 与 /mo 同类,
+            # 存 monthly_billed 供展示「$59/月(年付结算)」,绝不进 annual 槽
+            is_billed_annual = bool(re.search(r"billed|结算", per, re.I))
+            if per == "/mo" and not g["monthly"]:
+                g["monthly"] = t["price"]
+            elif is_billed_annual and not g.get("monthly_billed"):
+                g["monthly_billed"] = t["price"]
+            elif per == "/yr" and not g["annual"]:
+                g["annual"] = t["price"]
+            elif per not in ("—",) and t["price"] != "—":
+                g["other"].append(f"{t['price']} ({per})")
+            elif (
+                per == "—"
+                and g["is_custom"]
+                and t["price"] != "—"
+                and not g.get("custom_note")
             ):
-                _groups[-1].append(t)
-            else:
-                _groups.append([t])
+                g["custom_note"] = t["price"]
+        for g in _byname.values():
+            # 年付折算月价 + 省付%:两者都数值可比才算得出
+            def _num(s: str):
+                m = re.search(r"(\d[\d,]*(?:\.\d+)?)", s or "")
+                return float(m.group(1).replace(",", "")) if m else None
+
+            m_v, a_v = _num(g["monthly"]), _num(g["annual"])
+            if m_v and a_v and a_v > 0:
+                cm = re.match(r"^[^\d]+", g["annual"] or "")
+                cur = cm.group(0) if cm else ""
+                g["annual_monthly_equiv"] = f"{cur}{_round_price(a_v / 12)}"
+                save = round((1 - a_v / (m_v * 12)) * 100)
+                if save > 0:
+                    g["save_pct"] = save
+            if g["other"]:
+                g["other_note"] = " / ".join(g["other"][:2])
+            g.pop("other", None)
+            plans.append(g)
+        # 展示串:由 plans 生成,不再由原始 tiers 拼接(悬空 | 根治)
         _parts = []
-        for g in _groups:
-            _seg = " | ".join(
-                f"{t['price']} ({t['billing_period']})"
-                if t["billing_period"] and t["billing_period"] != "—"
-                else t["price"]
-                for t in g
-            )
-            _parts.append(f"{g[0]['name']} · {_seg}" if g[0]["name"] != "—" else _seg)
+        for g in plans:
+            segs = []
+            if g.get("is_free"):
+                segs.append(g["name"])
+            elif g.get("is_custom"):
+                segs.append(f"{g['name']} · {g.get('custom_note', '定制报价')}")
+            else:
+                if g["monthly"] and g["annual"]:
+                    segs.append(f"{g['name']} · {g['monthly']}/月(年付 {g['annual']})")
+                elif g["monthly"] and g.get("monthly_billed"):
+                    segs.append(
+                        f"{g['name']} · {g['monthly']}/月 或 {g['monthly_billed']}/月(年付结算)"
+                    )
+                elif g["monthly"]:
+                    segs.append(f"{g['name']} · {g['monthly']}/月")
+                elif g.get("monthly_billed"):
+                    segs.append(f"{g['name']} · {g['monthly_billed']}/月(年付结算)")
+                elif g["annual"]:
+                    segs.append(f"{g['name']} · {g['annual']}/年")
+                elif g.get("other_note"):
+                    segs.append(f"{g['name']} · {g['other_note']}")
+                else:
+                    segs.append(g["name"])
+            _parts.append(" · ".join([s for s in segs if s]))
         _regen = " / ".join(_parts)
-        if len(_regen) <= 160:
+        if len(_regen) <= 170:
             pricing = _regen
 
     # 无公开价格时的套餐名降级:很多站(尤其中国 SaaS)有套餐结构但
@@ -757,18 +1061,25 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
     # 比 "—" 有信息量且完全诚实
     plan_names = []
     if not picked:
-        for r in (scrape_result.get("all_results") or []):
+        for r in scrape_result.get("all_results") or []:
             if not (r.get("success") and r.get("markdown")):
                 continue
             for pline2 in r["markdown"].split("\n"):
                 pline2 = pline2.strip().lstrip("#*-> ").strip()
                 if (
                     2 <= len(pline2) <= 12
-                    and re.search(r"专业版|企业版|定制版|标准版|基础版|旗舰版|免费版|高级版", pline2)
+                    and re.search(
+                        r"专业版|企业版|定制版|标准版|基础版|旗舰版|免费版|高级版",
+                        pline2,
+                    )
                     and pline2 not in plan_names
                 ):
                     plan_names.append(pline2)
-                elif re.fullmatch(r"starter|basic|standard|pro|premium|enterprise|growth|team|plus", pline2, re.I):
+                elif re.fullmatch(
+                    r"starter|basic|standard|pro|premium|enterprise|growth|team|plus",
+                    pline2,
+                    re.I,
+                ):
                     l2 = pline2.capitalize()
                     if l2 not in plan_names:
                         plan_names.append(l2)
@@ -776,9 +1087,18 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
                 break
         if plan_names:
             # 不断言「未公开」:我们无法区分"官网真不公示"与"本次变体页没抓到"
-            pricing = " / ".join(plan_names[:4]) + "（数字价格本次未能提取，请以官网定价页为准）"
+            pricing = (
+                " / ".join(plan_names[:4])
+                + "（数字价格本次未能提取，请以官网定价页为准）"
+            )
             tiers = [
-                {"name": n, "price": "未能提取(见注)", "billing_period": "—", "features": [], "source_url": pricing_url}
+                {
+                    "name": n,
+                    "price": "未能提取(见注)",
+                    "billing_period": "—",
+                    "features": [],
+                    "source_url": pricing_url,
+                }
                 for n in plan_names[:4]
             ]
 
@@ -791,13 +1111,16 @@ def _extract_pricing_evidence(scrape_result: Dict, pricing_url: str = "") -> Dic
         "source_url": pricing_url if (per_engine or plan_names) else "",
         "scraped_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
         "vote_detail": [
-            {"line": e["line"],
-             "raw_line": (e["parts"].get("raw_line") or e["line"]),
-             "engines": sorted(e["engines"]),
-             "independent_votes": len(e.get("hashes") or e["engines"])}
+            {
+                "line": e["line"],
+                "raw_line": (e["parts"].get("raw_line") or e["line"]),
+                "engines": sorted(e["engines"]),
+                "independent_votes": len(e.get("hashes") or e["engines"]),
+            }
             for e in picked
         ],
         "tiers": tiers,
+        "plans": plans,
         "per_engine_lines": {
             k: [d["line"] for d in v[:3]] for k, v in list(per_engine.items())[:6]
         },
@@ -815,9 +1138,10 @@ def _content_hash(md: str) -> str:
     独立性(F5)—— 两引擎拿到同一反爬变体页时指纹相同,不算交叉验证。
     """
     import hashlib
-    return hashlib.sha256(
-        re.sub(r"\s+", " ", (md or "")).encode("utf-8")
-    ).hexdigest()[:16]
+
+    return hashlib.sha256(re.sub(r"\s+", " ", (md or "")).encode("utf-8")).hexdigest()[
+        :16
+    ]
 
 
 def _load_pricing_cache() -> Dict:
@@ -830,6 +1154,7 @@ def _load_pricing_cache() -> Dict:
 def _save_pricing_cache(cache: Dict) -> None:
     # 原子写(tmp+rename):避免并发运行读到半截 JSON 被静默判损坏
     import os
+
     try:
         _PRICING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         tmp = _PRICING_CACHE_PATH.with_suffix(".json.tmp")
@@ -848,6 +1173,7 @@ def _cache_fresh(cached: Dict) -> bool:
     永久有效 —— verified 定价可能是数月前的价格。
     """
     import calendar
+
     try:
         ts = time.strptime((cached or {}).get("scraped_at", ""), "%Y-%m-%d %H:%M UTC")
         age_days = (time.time() - calendar.timegm(ts)) / 86400.0
@@ -857,21 +1183,24 @@ def _cache_fresh(cached: Dict) -> bool:
 
 
 def _has_real_prices(tiers: list) -> bool:
-    return any(
-        re.search(r"\d", t.get("price") or "") for t in (tiers or [])
-    )
+    # $0/free 不是"真价"(反爬变体只剩 Free 行时不得据此判定已拿到定价)
+    for t in tiers or []:
+        m = re.search(r"(\d[\d,]*(?:\.\d+)?)", t.get("price") or "")
+        if m and float(m.group(1).replace(",", "")) > 0:
+            return True
+    return False
 
 
 def _extract_founded(markdown: str) -> str:
     # 同时在原始文本上匹配:清洗会删掉裸年份行/打乱 "founded in X
-    # 
+    #
     # 2019" 的相邻结构(respond.io 形态),raw 里 founded 与年份只隔 ~20 字符
     md = _clean_markdown(markdown) + "\n" + (markdown or "")
     for pat in _FOUNDED_PATTERNS:
         for m in re.finditer(pat, md, re.IGNORECASE):
             # 版权行/URL 日期不算(排除 "© 2026"/"uploads/2025/08")
             ctx_start = max(0, m.start() - 40)
-            ctx = md[ctx_start:m.end() + 10]
+            ctx = md[ctx_start : m.end() + 10]
             if _FOUNDED_JUNK_RX.search(ctx):
                 continue
             year_match = re.search(r"\b(20\d{2}|19\d{2})\b", m.group(0))
@@ -891,7 +1220,9 @@ def _extract_location(markdown: str) -> str:
         m = re.search(pat, md, re.IGNORECASE)
         if m:
             loc = m.group(1).strip().strip(".,").strip()
-            loc = re.sub(r"^(?:in|at|于|在)\s+", "", loc, flags=re.I)  # "in Kuala Lumpur" → "Kuala Lumpur"
+            loc = re.sub(
+                r"^(?:in|at|于|在)\s+", "", loc, flags=re.I
+            )  # "in Kuala Lumpur" → "Kuala Lumpur"
             # 地名常 <15 字符("Kuala Lumpur"),只挡代码/链接噪音,不做长度噪音判定
             if (
                 loc
@@ -916,9 +1247,9 @@ def _extract_team_size(markdown: str) -> str:
 # F3 行级归属:founded/HQ/team 命中行的上下文特征(找 quote 用)
 _COMPANY_CTX_RX = {
     "founded": re.compile(
-        r"founded|established|launched|成立于|创立于|\b(19|20)\d{2}\b", re.I),
-    "headquarters": re.compile(
-        r"headquartered|based in|总部|位于|address", re.I),
+        r"founded|established|launched|成立于|创立于|\b(19|20)\d{2}\b", re.I
+    ),
+    "headquarters": re.compile(r"headquartered|based in|总部|位于|address", re.I),
     "team_size": re.compile(r"employees|people|团队|员工|人", re.I),
 }
 
@@ -953,7 +1284,8 @@ _TAGLINE_JUNK_RX = re.compile(
     r"technical storage|cookie|gdpr|consent|privacy|terms of service"
     r"|personal data|personal information|third-party tools|we use cookies"
     r"|accept all|do not sell|all rights reserved|copyright"
-    r"|必要的|合法目的|隐私政策|同意|^\s*title\s*[:：]|^\s*-\s*\[", re.I,
+    r"|必要的|合法目的|隐私政策|同意|^\s*title\s*[:：]|^\s*-\s*\[",
+    re.I,
 )
 
 
@@ -970,7 +1302,9 @@ def _clean_tagline_text(text: str) -> str:
     # 剥 markdown 强调符号(Respond.io "**Explore...**" 残留事故)
     text = re.sub(r"[*_`]", "", text)
     # emoji/符号前缀清理(🚀 等 promo banner 图标)
-    text = re.sub(r"^[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\s]+", "", text).strip()
+    text = re.sub(
+        r"^[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\s]+", "", text
+    ).strip()
     # 词级去重(大小写不敏感,保首个):whatsApp WhatsApp → WhatsApp
     words, seen = [], set()
     for w in text.split():
@@ -1075,8 +1409,6 @@ def _looks_like_only_js_or_404(markdown: str) -> bool:
     return js_like / len(lines) > 0.5
 
 
-
-
 def _get_fallback_from_builtin(canonical_name: str) -> Dict:
     """内置 fallback 已删除。
 
@@ -1091,25 +1423,70 @@ def _get_fallback_from_builtin(canonical_name: str) -> Dict:
 # 131 个"独家功能"里一半是这些(cookie 横幅/计划卡 CTA/页面杂项)
 _JUNK_FEATURE_EXACT = {
     # cookie / GDPR 同意横幅
-    "about cookies", "always active", "functional", "functional functional",
-    "functional functional always active", "confirm my preferences",
-    "save preferences", "view preferences", "preferences preferences",
-    "manage preferences", "please provide your information",
-    "accept all cookies", "cookie policy",
+    "about cookies",
+    "always active",
+    "functional",
+    "functional functional",
+    "functional functional always active",
+    "confirm my preferences",
+    "save preferences",
+    "view preferences",
+    "preferences preferences",
+    "manage preferences",
+    "please provide your information",
+    "accept all cookies",
+    "cookie policy",
+    # cookie 横幅按钮/图标(WATI 定价页变体漏网)
+    "cookie icon",
+    "allow all",
+    "reject all",
+    "accept all",
+    "cookie settings",
+    "manage cookies",
+    "cookie preferences",
+    "got it",
+    "close",
+    "dismiss",
     # 计划卡 CTA / 状态标签
-    "upgrade to pro", "upgrade to growth", "upgrade to enterprise",
-    "upgrade to business", "current plan", "compare plans and features",
-    "view demo", "no credit card required", "prices are in usd",
-    "not available for this country", "select plan", "choose your plan",
+    "upgrade to pro",
+    "upgrade to growth",
+    "upgrade to enterprise",
+    "upgrade to business",
+    "current plan",
+    "compare plans and features",
+    "view demo",
+    "no credit card required",
+    "prices are in usd",
+    "not available for this country",
+    "select plan",
+    "choose your plan",
     # 页面杂项碎片
-    "empty heading", "key features", "learn more", "see all", "view all",
-    "frequently asked questions", "faqs", "youtube", "ycloud on youtube",
-    "docs and support", "integrations", "analytics analytics",
-    "marketing marketing", "product product", "other channels",
-    "additional charges apply for messages", "permanent storage",
-    "self-onboarding", "assist-onboarding", "whatsapp template",
-    "business initiated", "customer initiated", "service conversation",
-    "generative ai credits", "translation characters", "ai credits",
+    "empty heading",
+    "key features",
+    "learn more",
+    "see all",
+    "view all",
+    "frequently asked questions",
+    "faqs",
+    "youtube",
+    "ycloud on youtube",
+    "docs and support",
+    "integrations",
+    "analytics analytics",
+    "marketing marketing",
+    "product product",
+    "other channels",
+    "additional charges apply for messages",
+    "permanent storage",
+    "self-onboarding",
+    "assist-onboarding",
+    "whatsapp template",
+    "business initiated",
+    "customer initiated",
+    "service conversation",
+    "generative ai credits",
+    "translation characters",
+    "ai credits",
     "ai prompt",
 }
 _JUNK_FEATURE_EXACT_LC = _JUNK_FEATURE_EXACT
@@ -1128,14 +1505,48 @@ def _merge_translation_equivalents(feats: List[str]) -> List[str]:
     """
     import unicodedata
 
-    _STOP = {"with", "para", "from", "your", "that", "this", "sem",
-             "tanpa", "mais", "mas", "los", "las", "dos", "das", "and",
-             "the", "for", "sin", "com", "sem", "de", "da", "do", "en",
-             "es", "una", "uno"}
+    _STOP = {
+        "with",
+        "para",
+        "from",
+        "your",
+        "that",
+        "this",
+        "sem",
+        "tanpa",
+        "mais",
+        "mas",
+        "los",
+        "las",
+        "dos",
+        "das",
+        "and",
+        "the",
+        "for",
+        "sin",
+        "com",
+        "sem",
+        "de",
+        "da",
+        "do",
+        "en",
+        "es",
+        "una",
+        "uno",
+    }
 
     def _stem(w: str) -> str:
-        for suf in ("ções", "ciones", "ção", "ción", "mente", "ando",
-                    "endo", "agem", "ación"):
+        for suf in (
+            "ções",
+            "ciones",
+            "ção",
+            "ción",
+            "mente",
+            "ando",
+            "endo",
+            "agem",
+            "ación",
+        ):
             if w.endswith(suf) and len(w) > len(suf) + 2:
                 w = w[: -len(suf)]
         w = w.rstrip("oae") or w
@@ -1210,7 +1621,11 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
         return False
     if re.search(r"\{[a-z][a-z0-9_]*\}", t, re.I):  # {vendorcount} 等驼峰模板变量
         return False
-    if re.search(r"accept\s+(all|cookies)|cookie\s+preferences|do\s+not\s+sell|privacy\s+choices|opt-out", t, re.I):
+    if re.search(
+        r"accept\s+(all|cookies)|cookie\s+preferences|do\s+not\s+sell|privacy\s+choices|opt-out",
+        t,
+        re.I,
+    ):
         return False
     # 阿拉伯文/重音字母密集 → 多语言站翻译碎片,不是独立功能(استكشاف 事故)
     if re.search(r"[\u0600-\u06FF]", t):
@@ -1221,7 +1636,9 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     # 服务说明句子(动词开头/含 this/can be/onboarding 等句子性词,来自 pricing
     # 页的服务条款段:"This service can be availed by any…")
     if re.match(r"^(this|these|our|all|the)\b", t, re.I) or re.search(
-        r"\b(can be availed|is included|are available|plan for all|applies to)\b", t, re.I
+        r"\b(can be availed|is included|are available|plan for all|applies to)\b",
+        t,
+        re.I,
     ):
         return False
     # 套餐名融合残留("Premium AIPremium"/"Enterprise AIEnterprise" —— 引擎拼接事故:
@@ -1242,19 +1659,43 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
         return False
     # 语言/地区类(firecrawl 容易误把 footer 语言列表当 feature)
     lang_patterns = (
-        "English", "Chinese", "Bahasa", "Español", "Spanish", "Português",
-        "Français", "French", "Deutsch", "German", "日本語", "Korean",
-        "हिन्दी", "Русский", "العربية", "Türkçe", "Tiếng Việt",
+        "English",
+        "Chinese",
+        "Bahasa",
+        "Español",
+        "Spanish",
+        "Português",
+        "Français",
+        "French",
+        "Deutsch",
+        "German",
+        "日本語",
+        "Korean",
+        "हिन्दी",
+        "Русский",
+        "العربية",
+        "Türkçe",
+        "Tiếng Việt",
     )
     for p in lang_patterns:
         if p in t and len(t.split()) <= 3:
             return False
     # 纯菜单/footer 词
     footer_words = (
-        "Privacy Policy", "Terms of Service", "Cookie Policy",
-        "Sign In", "Sign Up", "Get Started", "Contact Sales",
-        "Try Free", "Book Demo", "Watch Demo", "Learn More",
-        "Read More", "See All", "View All",
+        "Privacy Policy",
+        "Terms of Service",
+        "Cookie Policy",
+        "Sign In",
+        "Sign Up",
+        "Get Started",
+        "Contact Sales",
+        "Try Free",
+        "Book Demo",
+        "Watch Demo",
+        "Learn More",
+        "Read More",
+        "See All",
+        "View All",
     )
     for w in footer_words:
         if w.lower() in t.lower():
@@ -1265,7 +1706,8 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     if re.search(
         r"(explore|discover|power of|trusted by|proven results|here's how"
         r"|learn how|see how|introducing|get to know|why choose)",
-        t, re.I,
+        t,
+        re.I,
     ):
         return False
     if t.endswith((".", "!", "?")) or ". " in t:  # 是句子,不是功能名
@@ -1278,14 +1720,22 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     if re.search(r"\s[a-z]$", t):
         return False
     # 无实义开头短语("Trusted by …"/"Mais de … clientes satisfeitos" 营销残句)
-    if re.match(r"^(trusted by|mais de|powered by|selected by|highly praised)\b", t, re.I):
+    if re.match(
+        r"^(trusted by|mais de|powered by|selected by|highly praised)\b", t, re.I
+    ):
         return False
     # 剩余残句形态(2026-08-26 三轮实测):"Saya sangat"/"Pricing article"/
     # "Select quantity"/"Envio de Modelos w"/"Template Submission w"
     if t.lower() in {
-        "saya sangat", "pricing article", "select quantity",
-        "contact info", "analytics", "customer service",
-        "customer support", "product development", "product & development",
+        "saya sangat",
+        "pricing article",
+        "select quantity",
+        "contact info",
+        "analytics",
+        "customer service",
+        "customer support",
+        "product development",
+        "product & development",
     }:
         return False
     # 营销动词短语(逗号分隔的三连动词:"Acquire, engage, and qualify" ——
@@ -1301,7 +1751,8 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     if re.search(
         r"^(message|template|delivery|conversation|order)\s+"
         r"(received|sent|failed|delivered|read|status)",
-        t, re.I,
+        t,
+        re.I,
     ) or re.search(r"\bis\s+(read|sent|delivered|failed)\b", t, re.I):
         return False
     # webhook 事件参数名(WATI docs 事故:"Chatbot Triggered"/"(BSUID)" 变体)
@@ -1310,7 +1761,11 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     # 事件状态名结尾:"Template Message FAILED" / "Message Delivered"
     if re.search(r"\s(received|failed|delivered|read)$", t.strip(), re.I):
         return False
-    if re.search(r"^(api|endpoint|openapi|swagger)\s+(documentation|reference|availability)", t, re.I):
+    if re.search(
+        r"^(api|endpoint|openapi|swagger)\s+(documentation|reference|availability)",
+        t,
+        re.I,
+    ):
         return False
     if re.search(r"webhook\s+events?\s*(&|and)?\s*(payloads?|types)", t, re.I):
         return False
@@ -1319,26 +1774,121 @@ def _is_real_feature(text: str, min_len: int = 8) -> bool:
     # 必须有"功能动词"或"技术词"(中文/英文两套词表)
     if has_cjk:
         cjk_words = (
-            "转化", "分层", "掌控", "互动", "弃购", "营销", "客服", "群发",
-            "自动化", "数据", "分析", "消息", "客户", "用户", "订单", "回复",
-            "提醒", "通知", "模板", "渠道", "广播", "聊天", "机器人", "智能",
-            "集成", "同步", "管理", "追踪", "推送", "发送", "触达", "增长",
-            "成交", "复购", "召回", "唤醒", "挽留", "裂变", "私域", "引流",
-            "跟单", "导购", "导出", "报表", "看板", "权限", "协作", "受理",
+            "转化",
+            "分层",
+            "掌控",
+            "互动",
+            "弃购",
+            "营销",
+            "客服",
+            "群发",
+            "自动化",
+            "数据",
+            "分析",
+            "消息",
+            "客户",
+            "用户",
+            "订单",
+            "回复",
+            "提醒",
+            "通知",
+            "模板",
+            "渠道",
+            "广播",
+            "聊天",
+            "机器人",
+            "智能",
+            "集成",
+            "同步",
+            "管理",
+            "追踪",
+            "推送",
+            "发送",
+            "触达",
+            "增长",
+            "成交",
+            "复购",
+            "召回",
+            "唤醒",
+            "挽留",
+            "裂变",
+            "私域",
+            "引流",
+            "跟单",
+            "导购",
+            "导出",
+            "报表",
+            "看板",
+            "权限",
+            "协作",
+            "受理",
         )
         return any(w in t for w in cjk_words)
     action_words = (
-        "集成", "API", "SDK", "Webhook", "AI", "自动化", "管理", "分析",
-        "发送", "接收", "推送", "同步", "导出", "导入", "跟踪", "追踪",
-        "Support", "Manage", "Analytics", "Integration", "Send",
-        "Receive", "Track", "Sync", "Export", "Import", "Push",
-        "Monitor", "Report", "Configure", "Workflow", "Bot", "Chat",
-        "Launch", "Drive", "Engage", "Unlock", "Automate", "Create",
-        "Grow", "Convert", "Maximize", "Campaign", "Inbox", "Journey",
-        "Calling", "Shop", "Broadcast", "Routing", "Segment",
-        "Payment", "Voip", "Email", "Calls", "Links",
-        "Capture", "Retain", "Nurture", "Onboard", "Qualify",
-        "Respond", "Selling", "Outreach", "Prospecting",
+        "集成",
+        "API",
+        "SDK",
+        "Webhook",
+        "AI",
+        "自动化",
+        "管理",
+        "分析",
+        "发送",
+        "接收",
+        "推送",
+        "同步",
+        "导出",
+        "导入",
+        "跟踪",
+        "追踪",
+        "Support",
+        "Manage",
+        "Analytics",
+        "Integration",
+        "Send",
+        "Receive",
+        "Track",
+        "Sync",
+        "Export",
+        "Import",
+        "Push",
+        "Monitor",
+        "Report",
+        "Configure",
+        "Workflow",
+        "Bot",
+        "Chat",
+        "Launch",
+        "Drive",
+        "Engage",
+        "Unlock",
+        "Automate",
+        "Create",
+        "Grow",
+        "Convert",
+        "Maximize",
+        "Campaign",
+        "Inbox",
+        "Journey",
+        "Calling",
+        "Shop",
+        "Broadcast",
+        "Routing",
+        "Segment",
+        "Payment",
+        "Voip",
+        "Email",
+        "Calls",
+        "Links",
+        "Capture",
+        "Retain",
+        "Nurture",
+        "Onboard",
+        "Qualify",
+        "Respond",
+        "Selling",
+        "Outreach",
+        "Prospecting",
     )
     return any(w.lower() in t.lower() for w in action_words)
 
@@ -1357,7 +1907,11 @@ def _extract_cjk_feature_cards(markdown: str, max_count: int = 15) -> List[str]:
     lines = [ln.strip() for ln in markdown.split("\n")]
     out = []
     for i, s in enumerate(lines):
-        if not s or s in ("—", "-") or s.startswith(("#", "-", "*", "!", "[", "|", "http")):
+        if (
+            not s
+            or s in ("—", "-")
+            or s.startswith(("#", "-", "*", "!", "[", "|", "http"))
+        ):
             continue
         if not _CJK_FEATURE_TITLE_RX.match(s):
             continue
@@ -1367,7 +1921,11 @@ def _extract_cjk_feature_cards(markdown: str, max_count: int = 15) -> List[str]:
             continue
         # 下一行必须是描述(更长的中文句) —— 结构信号
         nxt = lines[i + 1] if i + 1 < len(lines) else ""
-        if not (10 <= len(nxt) <= 90 and re.search(r"[\u4e00-\u9fff]", nxt) and nxt.endswith(("。", ".", "，", ",", "！", "!", ""))):
+        if not (
+            10 <= len(nxt) <= 90
+            and re.search(r"[\u4e00-\u9fff]", nxt)
+            and nxt.endswith(("。", ".", "，", ",", "！", "!", ""))
+        ):
             continue
         if not _is_real_feature(s):
             continue
@@ -1448,9 +2006,22 @@ def _extract_features(markdown: str, max_count: int = 40) -> List[str]:
         for m in re.finditer(r"^#{1,6}\s+([^\n]{3,60})$", md, re.MULTILINE):
             text = re.sub(r"[*_`]", "", m.group(1)).strip()
             is_colon_prefix = False
-            skip_words_h2 = ("Solutions", "Resources", "Industries", "Login", "Sign up",
-                             "Get Started", "Learn More", "Read More", "Contact Us",
-                             "Products", "Pricing", "Docs", "Blog", "About")
+            skip_words_h2 = (
+                "Solutions",
+                "Resources",
+                "Industries",
+                "Login",
+                "Sign up",
+                "Get Started",
+                "Learn More",
+                "Read More",
+                "Contact Us",
+                "Products",
+                "Pricing",
+                "Docs",
+                "Blog",
+                "About",
+            )
             # 冒号前缀形态:"Capture: Unify customer touch points to drive revenue"
             # → 功能名取前缀(respond.io 事故:整段 54 字符被 len<40 全杀)
             colon_m = re.match(r"^([A-Za-z][\w\s&-]{2,18}):(\s+.+)$", text)
@@ -1480,7 +2051,7 @@ def _extract_features(markdown: str, max_count: int = 40) -> List[str]:
     if len(features) < max_count:
         _ACRONYMS = {"api", "ai", "crm", "sdk", "ctwa", "sms", "csp", "rbac"}
         _CAMEL_SPLIT = re.compile(
-            r"(?<=[a-z])(?=[A-Z])"          # 小写|大写边界: Campaign|Drive
+            r"(?<=[a-z])(?=[A-Z])"  # 小写|大写边界: Campaign|Drive
             r"|(?<=[A-Z]{2})(?=[A-Z][a-z])"  # 缩略词|TitleCase: API|Launch, CTWA|Maximize
         )
         _DESC_START = re.compile(
@@ -1501,9 +2072,22 @@ def _extract_features(markdown: str, max_count: int = 40) -> List[str]:
             words = slug.split("-")
             # 纯导航页(pricing/docs/blog/contact)不配当功能
             nav_slugs = {
-                "pricing", "docs", "blog", "contact", "about", "login",
-                "sign-up", "signup", "careers", "partners", "demo", "home",
-                "features", "solutions", "resources", "support",
+                "pricing",
+                "docs",
+                "blog",
+                "contact",
+                "about",
+                "login",
+                "sign-up",
+                "signup",
+                "careers",
+                "partners",
+                "demo",
+                "home",
+                "features",
+                "solutions",
+                "resources",
+                "support",
             }
             if slug in nav_slugs or words[0] in ("blog", "docs", "help"):
                 continue
@@ -1511,7 +2095,7 @@ def _extract_features(markdown: str, max_count: int = 40) -> List[str]:
             name = ""
             for mm in _CAMEL_SPLIT.finditer(text):
                 cand = text[: mm.start()].strip()
-                if 3 <= len(cand) <= 60 and _DESC_START.match(text[mm.start():]):
+                if 3 <= len(cand) <= 60 and _DESC_START.match(text[mm.start() :]):
                     name = cand
                     break
             if not name and len(words) >= 2:
@@ -1552,8 +2136,6 @@ def _classify_feature(text: str) -> str:
     return "其他"
 
 
-
-
 def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[str]:
     """定价页专用:套餐卡内的功能清单常是无标记的独立短行。
 
@@ -1564,12 +2146,42 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
     if not markdown:
         return []
     _NAV_WORDS = {
-        "product", "products", "solutions", "features", "pricing", "customers",
-        "company", "blog", "docs", "login", "log in", "contact", "about", "home",
-        "resources", "industries", "platform", "overview", "why us",
-        "help center", "video guides", "success stories", "careers", "press",
-        "partners", "affiliate", "whitepaper", "webinar", "ebook", "glossary",
-        "api docs", "changelog", "status", "roadmap", "community", "support",
+        "product",
+        "products",
+        "solutions",
+        "features",
+        "pricing",
+        "customers",
+        "company",
+        "blog",
+        "docs",
+        "login",
+        "log in",
+        "contact",
+        "about",
+        "home",
+        "resources",
+        "industries",
+        "platform",
+        "overview",
+        "why us",
+        "help center",
+        "video guides",
+        "success stories",
+        "careers",
+        "press",
+        "partners",
+        "affiliate",
+        "whitepaper",
+        "webinar",
+        "ebook",
+        "glossary",
+        "api docs",
+        "changelog",
+        "status",
+        "roadmap",
+        "community",
+        "support",
     }
     out, seen = [], set()
     for raw in markdown.split("\n"):
@@ -1596,13 +2208,26 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         if _PERIOD_STRICT_RX.search(t) or _PRICE_CTA_LINE_RX.match(t):
             continue
         if t.lower() in (
-            "most popular", "best value", "popular", "free", "custom",
-            "select plan", "choose plan", "get started", "contact sales",
-            "book a demo", "try free", "try for free", "sign up", "log in",
+            "most popular",
+            "best value",
+            "popular",
+            "free",
+            "custom",
+            "select plan",
+            "choose plan",
+            "get started",
+            "contact sales",
+            "book a demo",
+            "try free",
+            "try for free",
+            "sign up",
+            "log in",
         ):
             continue
         # cookie/GDPR 按钮融合("CancelSave My Preferences")
-        if re.search(r"cancel\s*save|save my preferences|accept\s*all|manage\s*cookies?", t, re.I):
+        if re.search(
+            r"cancel\s*save|save my preferences|accept\s*all|manage\s*cookies?", t, re.I
+        ):
             continue
         # 垃圾黑名单同样管束套餐提取通道(真实事故:定价页 CTA 状态标签
         # "View Demo"/"Current plan"/"About Cookies"/"Saya sangat"/
@@ -1611,9 +2236,7 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         if t.lower() in _JUNK_FEATURE_EXACT_LC:
             continue
         words = t.split()
-        if t.lower() in _NAV_WORDS or (
-            len(words) == 1 and not _is_real_feature(t)
-        ):
+        if t.lower() in _NAV_WORDS or (len(words) == 1 and not _is_real_feature(t)):
             continue  # 单词必须是已知能力词(挡导航项);多词名词短语放行
         # 分隔/递进句("Everything in Growth, plus:")与冒号结尾行不是功能
         if t.endswith(":") or re.search(r"everything in\b", t, re.I):
@@ -1622,21 +2245,25 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         _camel = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+", t)
         if len(_camel) >= 3 and _camel[-1] in _camel[:-1]:
             continue
-        if not _is_real_feature(t) and not (
-            # 名词短语形态:套餐卡功能清单常是 "Dedicated number connection
-            # assistance"/"Single User Plan included" 这类无动作词的 Title Case
-            # —— 前置过滤器(套餐名/CTA/周期/导航/驼峰融合)已挡住绝大多数
-            # 垃圾,这里对"≥2 词且每词首字母大写"放行(真实事故:WATI 套餐
-            # 功能因 "included" 小写被动作词表全杀)
-            len(words) >= 2
-            and all(w[0].isupper() or w in ("&", "and", "of", "for") for w in words)
-        ) and not re.fullmatch(
-            # 收紧版兜底:Title Case 开头 + 仅限白名单小写后缀
-            # (included/enabled/assistance/…)。"Saya sangat"/"Select quantity"
-            # 这类任意小写残留不再放行
-            r"[A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+)*"
-            r"(?:\s+(?:included|enabled|assistance|support|management|connectivity|rates|discounts))?$",
-            t,
+        if (
+            not _is_real_feature(t)
+            and not (
+                # 名词短语形态:套餐卡功能清单常是 "Dedicated number connection
+                # assistance"/"Single User Plan included" 这类无动作词的 Title Case
+                # —— 前置过滤器(套餐名/CTA/周期/导航/驼峰融合)已挡住绝大多数
+                # 垃圾,这里对"≥2 词且每词首字母大写"放行(真实事故:WATI 套餐
+                # 功能因 "included" 小写被动作词表全杀)
+                len(words) >= 2
+                and all(w[0].isupper() or w in ("&", "and", "of", "for") for w in words)
+            )
+            and not re.fullmatch(
+                # 收紧版兜底:Title Case 开头 + 仅限白名单小写后缀
+                # (included/enabled/assistance/…)。"Saya sangat"/"Select quantity"
+                # 这类任意小写残留不再放行
+                r"[A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+)*"
+                r"(?:\s+(?:included|enabled|assistance|support|management|connectivity|rates|discounts))?$",
+                t,
+            )
         ):
             continue
         key = t.lower()
@@ -1646,7 +2273,6 @@ def _extract_pricing_tier_features(markdown: str, max_count: int = 18) -> List[s
         if len(out) >= max_count:
             break
     return out
-
 
 
 def _extract_features_from_page(markdown: str) -> List[Dict]:
@@ -1663,7 +2289,9 @@ def _extract_features_from_page(markdown: str) -> List[Dict]:
     return feats
 
 
-def _enrich_features_with_source(features: List[Dict], fallback_source: str) -> List[Dict]:
+def _enrich_features_with_source(
+    features: List[Dict], fallback_source: str
+) -> List[Dict]:
     """给每个 feature 加 source URL (normalize 时会分配 _ref)。
 
     即使 firecrawl 没抓到具体 feature URL, 也可作为该 feature
@@ -1721,19 +2349,17 @@ def _derive_core_features(c) -> list:
         en_title = bool(re.match(r"^[A-Z][a-z]+(\s+[A-Za-z&]+)*$", t)) and latin > cjk
         zh_short = cjk >= 4 and len(t) <= 18
         return (
-            0 if en_title else 1 if zh_short else 2,   # 语言形态优先级
-            1 if diacritics else 0,                     # 翻译变体降权
+            0 if en_title else 1 if zh_short else 2,  # 语言形态优先级
+            1 if diacritics else 0,  # 翻译变体降权
             1 if has_digits_or_junk else 0,
-            len(t),                                     # 短的优先
+            len(t),  # 短的优先
         )
 
     ranked = sorted(fc, key=_score)
     # 去重同类:词干签名相同只留一个
-    seen_sigs = []
     out = []
     for f in ranked:
         nm = (f.get("name") or "").strip()
-        sig = _merge_translation_equivalents([nm])
         if nm and nm not in out:
             out.append(nm)
         if len(out) >= 5:
@@ -1767,6 +2393,148 @@ _TECH_SIGNAL_VOCAB = [
 ]
 
 
+def _enrich_tech_signals(scraped: Dict, signals: List[Dict]) -> List[Dict]:
+    """§3 深链补链:tech_signals 必须锚定 docs 具体子页(非栏目首页)。
+
+    两种场景:
+    a) 已有信号但锚在栏目首页/域名根 → 用 site: 搜索重锚到具体文档页;
+    b) 完全没有信号(docs 页 404/未爬到)→ 按核心词表逐词深链探测,
+       term 在该家官方域的具体页面真实出现才收录(绝不编造)。
+    预算耗尽/搜索失败 → 保留现状(诚实)。
+    """
+    from scripts.sufficiency import assess_tech_signals
+
+    deadline = scraped.get("_budget_deadline") or 0
+    if time.time() > deadline:
+        return signals
+    from scripts.deep_link import locate_tech
+    from urllib.parse import urlparse
+
+    domain = urlparse(scraped["url"]).netloc.replace("www.", "")
+    manifest = scraped.get("_manifest") or {}
+
+    def _register(dp, kw):
+        hit_line = ""
+        for ln in dp["markdown"].split("\n"):
+            s = ln.strip()
+            # 跳过 YAML frontmatter/元数据行(trafilatura 输出的
+            # "title: Webhook Integration Guide" 不是正文引文)
+            if re.match(r"^(title|description|url|date|author|tags?)\s*:", s, re.I):
+                continue
+            if s.startswith(("---", "===", "Title:", "URL Source")):
+                continue
+            if kw.lower() in s.lower() and len(s) > 10:
+                hit_line = s.lstrip("#*- >")[:100]
+                break
+        if not hit_line:
+            return None
+        manifest.setdefault("fetched", {})[dp["url"]] = {
+            "status": "ok",
+            "engines": {
+                dp.get("engine") or "deep-link": {
+                    "ok": True,
+                    "chars": len(dp["markdown"]),
+                    "content_hash": _content_hash(dp["markdown"]),
+                }
+            },
+            "fetched_at": dp.get("fetched_at"),
+            "discovered_by": "search",
+        }
+        manifest.setdefault("engines_by_url", {})[dp["url"]] = {
+            dp.get("engine") or "deep-link": dp["markdown"][:30000]
+        }
+        return hit_line
+
+    # 场景 b:零信号 → 核心词表深链发现(来源 = 该家官方域具体页)
+    if not signals:
+        for kw, label in (
+            ("webhook", "Webhooks(事件推送)"),
+            ("REST API", "REST API"),
+            ("SDK", "官方 SDK"),
+            ("SSO", "OAuth / SSO 登录"),
+        ):
+            if time.time() > deadline:
+                break
+            try:
+                dp = locate_tech(domain, kw, timeout=30)
+            except Exception:
+                dp = None
+            if not dp:
+                continue
+            hit_line = _register(dp, kw)
+            if not hit_line:
+                continue
+            signals.append(
+                {
+                    "name": label,
+                    "source": dp["url"],
+                    "quote": hit_line,
+                    "engine": dp.get("engine") or "deep-link",
+                }
+            )
+        return signals
+
+    # 场景 a:已有信号重锚
+    if assess_tech_signals(signals)["sufficient"]:
+        return signals
+    for sig in signals:
+        if time.time() > deadline:
+            break
+        kw = re.match(r"[A-Za-z][A-Za-z0-9 ./+-]*", sig.get("name") or "")
+        kw = kw.group(0).strip() if kw else ""
+        if not kw:
+            continue
+        try:
+            dp = locate_tech(domain, kw, timeout=30)
+        except Exception:
+            dp = None
+        if not dp:
+            continue
+        hit_line = _register(dp, kw)
+        if not hit_line:
+            continue
+        sig["source"] = dp["url"]
+        sig["quote"] = hit_line
+        sig["engine"] = dp.get("engine") or "deep-link"
+    return signals
+
+
+def _enrich_feedback(scraped: Dict, feedback: List[Dict], product: str) -> List[Dict]:
+    """§3 深链补链:官网 testimonials 没抓到引语时,搜索第三方具体
+    评论页(G2 reviews > Trustpilot > HN/Reddit 帖)提取用户反馈。"""
+    deadline = scraped.get("_budget_deadline") or 0
+    if feedback or time.time() > deadline:
+        return feedback
+    from scripts.deep_link import locate_feedback
+
+    try:
+        dp = locate_feedback(product, timeout=30)
+    except Exception:
+        dp = None
+    if not dp:
+        return feedback
+    items = _extract_user_feedback(dp["markdown"], dp["url"])
+    if not items:
+        return feedback
+    manifest = scraped.get("_manifest") or {}
+    manifest.setdefault("fetched", {})[dp["url"]] = {
+        "status": "ok",
+        "engines": {
+            dp.get("engine") or "deep-link": {
+                "ok": True,
+                "chars": len(dp["markdown"]),
+                "content_hash": _content_hash(dp["markdown"]),
+            }
+        },
+        "fetched_at": dp.get("fetched_at"),
+        "discovered_by": "search",
+    }
+    manifest.setdefault("engines_by_url", {})[dp["url"]] = {
+        dp.get("engine") or "deep-link": dp["markdown"][:30000]
+    }
+    return items
+
+
 def _derive_tech_signals(docs_md: str, docs_url: str) -> list:
     """从 docs 页原文提取可验证的技术信号(每条附 docs 页 source URL)。
 
@@ -1793,15 +2561,21 @@ _DISCOVER_PATTERNS = {
     "features": re.compile(
         r"features?|functionalit|capabilities|platform|product|产品|功能", re.I
     ),
-    "about": re.compile(r"^about|about[-\s]us|company|our[-\s]story|team$|关于|公司", re.I),
+    "about": re.compile(
+        r"^about|about[-\s]us|company|our[-\s]story|team$|关于|公司", re.I
+    ),
     "docs": re.compile(r"^docs?$|documentation|developers?|api[-\s]docs", re.I),
     # 口碑/案例页(§7 用户反馈的真实引语来源;G2/Trustpilot 全反爬,
     # 官网 testimonials/customers 是可达的金矿 —— WATI 实测 10k 字符)
     "testimonials": re.compile(
         r"testimonials?|customer[-\s]?stor(y|ies)|case[-\s]?stud|success[-\s]?stor"
-        r"|customers$|reviews?|口碑|客户案例|用户评价", re.I),
+        r"|customers$|reviews?|口碑|客户案例|用户评价",
+        re.I,
+    ),
     # 博客/更新页(§6 迭代信号来源:产品动态/版本发布常发在博客)
-    "blog": re.compile(r"^blog$|blogs?/|news|changelog|release[-\s]?notes?|updates?|博客|动态", re.I),
+    "blog": re.compile(
+        r"^blog$|blogs?/|news|changelog|release[-\s]?notes?|updates?|博客|动态", re.I
+    ),
 }
 
 
@@ -1824,14 +2598,19 @@ def _discover_urls(home_md: str, base_url: str) -> Dict[str, str]:
             continue
         try:
             from urllib.parse import urlparse
-            if urlparse(full).netloc.replace("www.", "") != urlparse(base_url).netloc.replace("www.", ""):
+
+            if urlparse(full).netloc.replace("www.", "") != urlparse(
+                base_url
+            ).netloc.replace("www.", ""):
                 continue
         except Exception:
             continue
         for kind, pat in _DISCOVER_PATTERNS.items():
             if kind in found:
                 continue
-            if pat.search(text) or pat.search(full.replace(base_url.rstrip("/"), "", 1).split("?")[0]):
+            if pat.search(text) or pat.search(
+                full.replace(base_url.rstrip("/"), "", 1).split("?")[0]
+            ):
                 url_clean = full.split("?")[0].split("#")[0]
                 # testimonials/blog 只收"栏目页"(路径 ≤2 段),不收深链文章
                 # (真实事故:respond.io 首页 Customers 卡片链接到具体案例
@@ -1853,7 +2632,7 @@ def _extract_site_title(scrape_result: Dict) -> Dict[str, str]:
     (WATI 事故:正文全是横幅,真 tagline 埋在导航垃圾下)。
     """
     title, desc = "", ""
-    for r in (scrape_result.get("all_results") or []):
+    for r in scrape_result.get("all_results") or []:
         if not (r.get("success") and r.get("markdown")):
             continue
         md = r["markdown"][:1200]
@@ -1883,7 +2662,13 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
          猜测路径 —— 猜测路径 404 时(YCloud /features 事故)自动换用发现
          的 URL 重爬;两者都无则该模块标空(后续字段显示"未获取")
     about 页供 founded/headquarters/team_size 提取(此前根本不爬,全空)。
+
+    §2 闭环:每竞品 5 分钟墙钟预算;定价不达标沿引擎升级梯重爬,
+    预算耗尽诚实标「未验证」。深链补链在 _build_competitor_entry。
     """
+    from scripts.sufficiency import COMPETITOR_BUDGET_SECONDS
+
+    deadline = time.time() + COMPETITOR_BUDGET_SECONDS
     result = {
         "name": resolved["canonical_name"],
         "url": resolved["url"],
@@ -1894,6 +2679,7 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
         "headquarters_source": "",
         "raw_markdown": {},
         "page_urls": {"home": resolved["url"]},
+        "_budget_deadline": deadline,
         # F8 证据包:本轮抓取记录 + 各引擎原文 + 失败清单
         # (verify.py G1/G2/G3 的消费对象,落盘到 claims-manifest.json)
         "_manifest": {"fetched": {}, "engines_by_url": {}, "failures": []},
@@ -1907,13 +2693,17 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             # 把全部真实套餐价切掉,只剩页首营销句
             # 定价页 3x;首页/功能页 2x(功能区块在页面深处,截断即丢);
             # about/docs 维持 1x
-            page_max = max_chars * (3 if kind == "pricing" else 2 if kind in ("home", "features") else 1)
+            page_max = max_chars * (
+                3 if kind == "pricing" else 2 if kind in ("home", "features") else 1
+            )
             r = scrape_smart(url, max_chars=page_max, timeout=timeout)
             dt = time.time() - t0
             md = r.get("markdown", "") if r.get("success") else ""
             # F8 证据包:本轮抓取记录(状态 + 各引擎指纹)+ 引擎原文
             m_ent = {
-                "status": "ok" if (r.get("success") and r.get("markdown")) else "failed",
+                "status": "ok"
+                if (r.get("success") and r.get("markdown"))
+                else "failed",
                 "engines": {},
                 "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
             }
@@ -1922,31 +2712,37 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             # 感觉"链接不准")。落点记在 manifest.fetched.final_url,
             # 渲染端把 source URL 映射为 final_url(G1/G2 仍按抓取 URL 溯源)
             fu = None
-            for x in (r.get("all_results") or []):
+            for x in r.get("all_results") or []:
                 if x.get("final_url"):
                     fu = x["final_url"]
                     break
             if fu and fu != url:
                 m_ent["final_url"] = fu
-            for x in (r.get("all_results") or []):
+            for x in r.get("all_results") or []:
                 if x.get("scraper") and x.get("success") and x.get("markdown"):
                     m_ent["engines"][x["scraper"]] = {
-                        "ok": True, "chars": len(x["markdown"]),
+                        "ok": True,
+                        "chars": len(x["markdown"]),
                         "content_hash": _content_hash(x["markdown"]),
                     }
                     # 截断上限 = 该页抓取配额(定价页 3x):硬编码 50000 会切掉
-                    # 长定价页尾部的价格段,G2 回查时 quote 在存储副本里找不到
-                    result["_manifest"]["engines_by_url"].setdefault(
-                        url, {}
-                    )[x["scraper"]] = x["markdown"][:page_max]
+                    # 长定价页尾部的价格段,G2 回查时 quote 在存储副本里找不到。
+                    # 存储前先剥 CSS 块行(WATI 353k md 前 150k 是 CSS,
+                    # 价格在尾部 —— 直接截断 = 价格全丢)
+                    result["_manifest"]["engines_by_url"].setdefault(url, {})[
+                        x["scraper"]
+                    ] = _strip_css_junk(x["markdown"])[:page_max]
             result["_manifest"]["fetched"][url] = m_ent
             if m_ent["status"] == "failed":
                 # G4:非异常失败(全部引擎空/JS-only)也必须留痕
-                result["_manifest"]["failures"].append({
-                    "competitor": resolved["canonical_name"],
-                    "url": url, "kind": kind.replace("*", "").rstrip("?"),
-                    "error": "all engines failed/empty",
-                })
+                result["_manifest"]["failures"].append(
+                    {
+                        "competitor": resolved["canonical_name"],
+                        "url": url,
+                        "kind": kind.replace("*", "").rstrip("?"),
+                        "error": "all engines failed/empty",
+                    }
+                )
             if kind == "pricing":
                 result["pricing_evidence"] = _extract_pricing_evidence(r, url)
                 # 各引擎的定价页原文都保留 —— 套餐功能清单常只在某一个
@@ -1959,30 +2755,33 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             # 定价页 0 价格行 = 页面返回了反爬/区域变体(WATI 真实事故:
             # 某轮全部引擎拿到无价变体 → 回退断言「价格未公开」= 把
             # "没抓到"当"没公示"输出)→ 触发 playwright 重试
-            _pricing_starved = (
-                kind == "pricing"
-                and not (result.get("pricing_evidence") or {}).get("vote_detail")
-            )
+            _pricing_starved = kind == "pricing" and not (
+                result.get("pricing_evidence") or {}
+            ).get("vote_detail")
             # firecrawl 等跑回 JS-only 时用 playwright 单独兜底(SPA 专用)
             if _looks_like_only_js_or_404(md) or _pricing_starved:
                 pr = {}
                 for _attempt in range(2):
                     try:
                         from adapters import playwright_scraper
+
                         pr = playwright_scraper.scrape(
-                            url, wait_selector=None, screenshot_path=None,
+                            url,
+                            wait_selector=None,
+                            screenshot_path=None,
                             timeout=timeout * 1000,
                         )
                         if pr.get("success") and pr.get("markdown"):
                             break
                     except Exception as _e:
-                        print(f"    [{resolved['canonical_name']}] {kind} rescue#{_attempt} FAIL: {_e}")
+                        print(
+                            f"    [{resolved['canonical_name']}] {kind} rescue#{_attempt} FAIL: {_e}"
+                        )
                 try:
                     if pr.get("success") and pr.get("markdown"):
                         pm = pr["markdown"][:page_max]
-                        if (
-                            not _looks_like_only_js_or_404(pm)
-                            and (len(pm) > len(md) or _pricing_starved)
+                        if not _looks_like_only_js_or_404(pm) and (
+                            len(pm) > len(md) or _pricing_starved
                         ):
                             md = pm
                             if kind == "pricing":
@@ -1990,33 +2789,171 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
                                 # rescue 之前算;starved 重试同样要重算)
                                 merged = dict(r)
                                 merged["all_results"] = [
-                                    x for x in (r.get("all_results") or [])
+                                    x
+                                    for x in (r.get("all_results") or [])
                                     if x.get("scraper") != "playwright"
                                 ] + [
-                                    {"scraper": "playwright", "success": True, "markdown": pm}
+                                    {
+                                        "scraper": "playwright",
+                                        "success": True,
+                                        "markdown": pm,
+                                    }
                                 ]
                                 new_ev = _extract_pricing_evidence(merged, url)
                                 # 只有拿到更多证据才覆盖(starved 重试失败时保留原结果)
                                 if len(new_ev.get("vote_detail") or []) >= len(
-                                    (result.get("pricing_evidence") or {}).get("vote_detail") or []
+                                    (result.get("pricing_evidence") or {}).get(
+                                        "vote_detail"
+                                    )
+                                    or []
                                 ):
                                     result["pricing_evidence"] = new_ev
                             # F8:rescue 的 playwright 原文也进证据包 ——
                             # vote 行可能出自 rescue 引擎,G2 要能回查
-                            result["_manifest"]["fetched"].setdefault(url, {}).setdefault(
-                                "engines", {}
-                            )["playwright"] = {
-                                "ok": True, "chars": len(pm),
+                            result["_manifest"]["fetched"].setdefault(
+                                url, {}
+                            ).setdefault("engines", {})["playwright"] = {
+                                "ok": True,
+                                "chars": len(pm),
                                 "content_hash": _content_hash(pm),
                             }
-                            result["_manifest"]["engines_by_url"].setdefault(
-                                url, {}
-                            )["playwright"] = pm[:page_max]
+                            result["_manifest"]["engines_by_url"].setdefault(url, {})[
+                                "playwright"
+                            ] = _strip_css_junk(pm)[:page_max]
                 except Exception:
                     pass
-            # 定价来源只在真正拿到内容时记录(历史缺陷:抓取失败也写 source,
-            # 读者点进去是一个 404,反而质疑其他真来源)
-            if kind == "pricing" and md and not _looks_like_only_js_or_404(md):
+            # ── §2 引擎升级梯:定价充分性不达标 → 换未用引擎重爬 ──
+            # (playwright rescue 只覆盖 JS-only/starved;ladder 覆盖
+            # 「抓到了但周期缺失/单引擎票」这类质量不达标)
+            if kind == "pricing" and time.time() < deadline:
+                from scripts.sufficiency import assess_pricing, ladder_engines
+
+                _ev = result.get("pricing_evidence") or {}
+                _a = assess_pricing(
+                    _ev.get("tiers") or [], _ev.get("vote_detail") or []
+                )
+                if not _a["sufficient"]:
+                    _pool = [
+                        x
+                        for x in (r.get("all_results") or [])
+                        if x.get("success") and x.get("markdown")
+                    ]
+                    _used = [x.get("scraper") for x in _pool]
+                    for eng in ladder_engines("pricing", _used)[:2]:
+                        if time.time() > deadline:
+                            break
+                        try:
+                            r2 = scrape_smart(
+                                url,
+                                max_chars=page_max,
+                                timeout=timeout,
+                                enabled_scrapers=[eng],
+                            )
+                            r2_hits = [
+                                x
+                                for x in (r2.get("all_results") or [])
+                                if x.get("success") and x.get("markdown")
+                            ]
+                            if not r2_hits:
+                                continue
+                            _pool = _pool + r2_hits
+                            for x in r2_hits:
+                                result["_manifest"]["fetched"].setdefault(
+                                    url, {}
+                                ).setdefault("engines", {})[x["scraper"]] = {
+                                    "ok": True,
+                                    "chars": len(x["markdown"]),
+                                    "content_hash": _content_hash(x["markdown"]),
+                                }
+                                result["_manifest"]["engines_by_url"].setdefault(
+                                    url, {}
+                                )[x["scraper"]] = _strip_css_junk(x["markdown"])[
+                                    :page_max
+                                ]
+                                result.setdefault("pricing_all_markdowns", []).append(
+                                    x["markdown"]
+                                )
+                            new_ev = _extract_pricing_evidence(
+                                {"all_results": _pool}, url
+                            )
+                            _a2 = assess_pricing(
+                                new_ev.get("tiers") or [],
+                                new_ev.get("vote_detail") or [],
+                            )
+                            if len(new_ev.get("vote_detail") or []) >= len(
+                                (_ev.get("vote_detail") or [])
+                            ):
+                                result["pricing_evidence"] = new_ev
+                                _ev = new_ev
+                            print(
+                                f"    [{resolved['canonical_name']}] pricing ladder[{eng}] "
+                                f"{'✓ 达标' if _a2['sufficient'] else '仍不达标: ' + '; '.join(_a2['problems'][:2])}"
+                            )
+                            if _a2["sufficient"]:
+                                break
+                        except Exception as _e:
+                            print(
+                                f"    [{resolved['canonical_name']}] pricing ladder[{eng}] FAIL: {_e}"
+                            )
+            # ── §3 定价页全灭 → 搜索发现官方定价页 ──
+            if (
+                kind == "pricing"
+                and time.time() < deadline
+                and not (result.get("pricing_evidence") or {}).get("vote_detail")
+            ):
+                try:
+                    from scripts.deep_link import locate_pricing_page
+                    from urllib.parse import urlparse as _up
+
+                    _dom = _up(url).netloc.replace("www.", "")
+                    dp = locate_pricing_page(_dom, timeout=timeout)
+                    if dp:
+                        _ev2 = _extract_pricing_evidence(
+                            {
+                                "all_results": [
+                                    {
+                                        "scraper": dp.get("engine") or "deep-link",
+                                        "success": True,
+                                        "markdown": dp["markdown"],
+                                    }
+                                ]
+                            },
+                            dp["url"],
+                        )
+                        if _ev2.get("vote_detail"):
+                            result["pricing_evidence"] = _ev2
+                            result["pricing_source"] = dp["url"]
+                            result["page_urls"]["pricing"] = dp["url"]
+                            result["_manifest"]["fetched"][dp["url"]] = {
+                                "status": "ok",
+                                "engines": {
+                                    dp.get("engine") or "deep-link": {
+                                        "ok": True,
+                                        "chars": len(dp["markdown"]),
+                                        "content_hash": _content_hash(dp["markdown"]),
+                                    }
+                                },
+                                "fetched_at": dp.get("fetched_at"),
+                                "discovered_by": "search",
+                            }
+                            result["_manifest"]["engines_by_url"][dp["url"]] = {
+                                dp.get("engine") or "deep-link": dp["markdown"][
+                                    :page_max
+                                ]
+                            }
+                            print(
+                                f"    [{resolved['canonical_name']}] pricing deep-link ✓ {dp['url']}"
+                            )
+                except Exception as _e:
+                    print(
+                        f"    [{resolved['canonical_name']}] pricing deep-link FAIL: {_e}"
+                    )
+            if (
+                kind == "pricing"
+                and md
+                and not _looks_like_only_js_or_404(md)
+                and (result.get("pricing_evidence") or {}).get("source_url", url) == url
+            ):
                 result["pricing_source"] = url
             stats = r.get("stats") or {}
             n_succ = stats.get("successful", 0)
@@ -2037,14 +2974,18 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
             print(f"    [{resolved['canonical_name']}] {kind:8s} FAIL: {e}")
             # F8:失败必须留痕(verify G4:静默吞掉的失败 = 报告缺口无解释)
             result["_manifest"]["fetched"][url] = {
-                "status": "failed", "engines": {},
+                "status": "failed",
+                "engines": {},
                 "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
             }
-            result["_manifest"]["failures"].append({
-                "competitor": resolved["canonical_name"],
-                "url": url, "kind": kind.replace("*", "").rstrip("?"),
-                "error": f"{type(e).__name__}: {e}",
-            })
+            result["_manifest"]["failures"].append(
+                {
+                    "competitor": resolved["canonical_name"],
+                    "url": url,
+                    "kind": kind.replace("*", "").rstrip("?"),
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
             return ""
 
     # 1) home 先爬
@@ -2067,8 +3008,7 @@ def _scrape_one(resolved: Dict, timeout: int = 30, max_chars: int = 25000) -> Di
     # 25017 字符但无公司信息,真正的 /about-us/ 因"先到先得"被跳过)
     # → 逐个试,按公司信息信号密度(founded/HQ/team 词)取最高分
     about_guesses = [
-        resolved["url"].rstrip("/") + p
-        for p in ("/about", "/about-us", "/company")
+        resolved["url"].rstrip("/") + p for p in ("/about", "/about-us", "/company")
     ]
 
     def _about_score(md_text: str) -> int:
@@ -2200,18 +3140,32 @@ def _detect_currency(pricing: str, price_tokens=None) -> str:
 
 _GTM_EVIDENCE_PATTERNS = [
     # (正则, 证据句) —— CTA 形态揭示获客模式
-    (r"start\s+free\s+trial|try\s+for\s+free|免费试用", "self_trial",
-     "官网提供自助免费试用入口"),
-    (r"book\s+a\s+demo|request\s+a\s+demo|预约演示|预约 Demo", "sales_demo",
-     "官网主打预约演示(销售驱动获客)"),
-    (r"contact\s+sales|联系销售|获取报价|get\s+a\s+quote", "sales_quote",
-     "官网引导联系销售获取报价"),
-    (r"get\s+started\s+free|sign\s+up\s+free|免费注册", "self_signup",
-     "官网提供免费注册自助开通"),
-    (r"partner|channel\s+partner|reseller|代理商|渠道", "channel",
-     "官网展示合作伙伴/渠道体系"),
-    (r"\bAPI-first\b|developer|开发者", "dev_first",
-     "官网面向开发者/API 优先定位"),
+    (
+        r"start\s+free\s+trial|try\s+for\s+free|免费试用",
+        "self_trial",
+        "官网提供自助免费试用入口",
+    ),
+    (
+        r"book\s+a\s+demo|request\s+a\s+demo|预约演示|预约 Demo",
+        "sales_demo",
+        "官网主打预约演示(销售驱动获客)",
+    ),
+    (
+        r"contact\s+sales|联系销售|获取报价|get\s+a\s+quote",
+        "sales_quote",
+        "官网引导联系销售获取报价",
+    ),
+    (
+        r"get\s+started\s+free|sign\s+up\s+free|免费注册",
+        "self_signup",
+        "官网提供免费注册自助开通",
+    ),
+    (
+        r"partner|channel\s+partner|reseller|代理商|渠道",
+        "channel",
+        "官网展示合作伙伴/渠道体系",
+    ),
+    (r"\bAPI-first\b|developer|开发者", "dev_first", "官网面向开发者/API 优先定位"),
 ]
 
 # ── §7 用户反馈 / §6 迭代信号:从 testimonials/customers/blog 页提取 ──
@@ -2220,13 +3174,17 @@ _GTM_EVIDENCE_PATTERNS = [
 _QUOTE_LINE_RX = re.compile(r"[\"“]([^\"”]{30,240})[\"”]")
 _QUOTE_SENTIMENT_RX = re.compile(
     r"helped|love|great|amazing|excellent|improve|increase|boost|saved"
-    r"|seamless|easy to|recommend|satisfied|帮助|提升|节省|满意|推荐", re.I)
+    r"|seamless|easy to|recommend|satisfied|帮助|提升|节省|满意|推荐",
+    re.I,
+)
 # 量化效果("185% Increase in Leads"/"reduced response time by 40%")
 _METRIC_RX = re.compile(
     r"\d[\d.,]*\s*%\s*(?:increase|decrease|reduction|growth|improvement"
     r"| uplift|boost|more|less|faster|ROI)"
     r"|(?:reduc\w+|increas\w+|improv\w+|boost\w*)\w*\s+(?:response time|"
-    r"sales|leads|conversions?|productivity|efficiency)[^\n]{0,30}?\bby\s+\d", re.I)
+    r"sales|leads|conversions?|productivity|efficiency)[^\n]{0,30}?\bby\s+\d",
+    re.I,
+)
 
 
 def _extract_user_feedback(testimonials_md: str, source_url: str) -> List[Dict]:
@@ -2245,7 +3203,12 @@ def _extract_user_feedback(testimonials_md: str, source_url: str) -> List[Dict]:
         t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)
         t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
         # 引擎 frontmatter 残留("title: …"/"date: …" 前缀)不是正文
-        t = re.sub(r"^(?:title|description|url|hostname|sitename|date)\s*:\s*", "", t, flags=re.I)
+        t = re.sub(
+            r"^(?:title|description|url|hostname|sitename|date)\s*:\s*",
+            "",
+            t,
+            flags=re.I,
+        )
         # 行尾按钮残词
         t = re.sub(r"\s*Read\s*$", "", t, flags=re.I)
         t = " ".join(t.split())
@@ -2253,7 +3216,7 @@ def _extract_user_feedback(testimonials_md: str, source_url: str) -> List[Dict]:
             continue
         # 标题复读形态("X by 50%X by 50%")去重 —— 引擎拼接事故
         half = t[: len(t) // 2]
-        if len(t) >= 20 and t.endswith(half[len(half)//2:]):
+        if len(t) >= 20 and t.endswith(half[len(half) // 2 :]):
             t = half.strip()
         # 带引号的引语
         m = _QUOTE_LINE_RX.search(t)
@@ -2304,16 +3267,22 @@ def _extract_user_feedback(testimonials_md: str, source_url: str) -> List[Dict]:
 # 博客/更新页的迭代信号:带日期的标题行(YYYY-MM / Mon YYYY / "New feature:")
 _RELEASE_HEAD_RX = re.compile(
     r"(20\d{2}[-/年.]\s?\d{1,2}|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+20\d{2}\b"
-    r"|\d+\s+ago|·\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d)", re.I)
+    r"|\d+\s+ago|·\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d)",
+    re.I,
+)
 _FEATURE_NEWS_RX = re.compile(
     r"new\s+(?:feature|integration|capability|release|version|api|ai)"
     r"|introducing|now\s+(?:available|supports?)|launch(?:ed|es)?"
-    r"|v\d+\.\d+|新功能|上线|发布|新增", re.I)
+    r"|v\d+\.\d+|新功能|上线|发布|新增",
+    re.I,
+)
 # 内容标题信号(博客列表的文章行:描述句/指南/对比/策略 —— 内容营销节奏
 # 也是迭代活跃度的代理指标;比"功能发布"词覆盖面大得多)
 _ARTICLE_HEAD_RX = re.compile(
     r"\b(?:learn|discover|master|guide|how\s+to|compare|top\s*\d+|"
-    r"strateg|tips?|best|practical|explains?)\b|教学|指南|攻略|对比", re.I)
+    r"strateg|tips?|best|practical|explains?)\b|教学|指南|攻略|对比",
+    re.I,
+)
 
 
 def _extract_product_momentum(blog_md: str, source_url: str) -> List[Dict]:
@@ -2330,7 +3299,12 @@ def _extract_product_momentum(blog_md: str, source_url: str) -> List[Dict]:
         t = raw.strip().strip("*_`#> ").lstrip("-").strip()
         t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)
         t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
-        t = re.sub(r"^(?:title|description|url|date)\s*:\s*\"?([^\"]*)\"?", r"\1", t, flags=re.I)
+        t = re.sub(
+            r"^(?:title|description|url|date)\s*:\s*\"?([^\"]*)\"?",
+            r"\1",
+            t,
+            flags=re.I,
+        )
         t = re.sub(r"\s*Read\s*$", "", t, flags=re.I)
         t = " ".join(t.split())
         if not (15 <= len(t) <= 140):
@@ -2356,11 +3330,27 @@ def _extract_product_momentum(blog_md: str, source_url: str) -> List[Dict]:
     return out
 
 
-_MOAT_EVIDENCE_PATTERNS = [    # (正则, 证据句) —— 客观资产:客户数/认证/官方身份/融资/规模
-    (r"\d[\d,.+]*\s*(?:k\+?|m\+?|\+)?\s*(?:teams|businesses|customers|companies|brands|merchants|users|企业|客户|家)", "customers", None),
-    (r"(soc\s*2|iso\s*27001|gdpr|hipaa|合格认证|数据安全认证)", "compliance", "持有国际合规认证(SOC2/ISO27001/GDPR)"),
-    (r"(official\s+(?:business|solution|tech)\s+partner|meta\s+partner|bsp\b|官方(合作伙伴|服务商)|官方授权)", "official_partner", "Meta 官方合作伙伴/BSP 身份"),
-    (r"(series\s+[a-e]\b|raised|funding|融资|轮)", "funding", "已获风险融资(详见融资料)"),
+_MOAT_EVIDENCE_PATTERNS = [  # (正则, 证据句) —— 客观资产:客户数/认证/官方身份/融资/规模
+    (
+        r"\d[\d,.+]*\s*(?:k\+?|m\+?|\+)?\s*(?:teams|businesses|customers|companies|brands|merchants|users|企业|客户|家)",
+        "customers",
+        None,
+    ),
+    (
+        r"(soc\s*2|iso\s*27001|gdpr|hipaa|合格认证|数据安全认证)",
+        "compliance",
+        "持有国际合规认证(SOC2/ISO27001/GDPR)",
+    ),
+    (
+        r"(official\s+(?:business|solution|tech)\s+partner|meta\s+partner|bsp\b|官方(合作伙伴|服务商)|官方授权)",
+        "official_partner",
+        "Meta 官方合作伙伴/BSP 身份",
+    ),
+    (
+        r"(series\s+[a-e]\b|raised|funding|融资|轮)",
+        "funding",
+        "已获风险融资(详见融资料)",
+    ),
     (r"(\d[\d,.+]*\s*(?:employees|people|团队|员工|人))", "team", None),
     (r"(patent|专利)", "patent", "持有专利"),
 ]
@@ -2369,7 +3359,9 @@ _MOAT_EVIDENCE_PATTERNS = [    # (正则, 证据句) —— 客观资产:客户�
 # frontmatter / meta 行是页面摘要,不是页面正文证据 —— "description: ... your
 # growth partner" 曾让 partner 模式误匹配成 GTM 证据(真实事故:WATI 的
 # "官网展示合作伙伴/渠道体系"引文是 meta description)
-_META_LINE_RX = re.compile(r"^(description|title|taxonomy|keywords?|author|og:|twitter:)\s*[:：]", re.I)
+_META_LINE_RX = re.compile(
+    r"^(description|title|taxonomy|keywords?|author|og:|twitter:)\s*[:：]", re.I
+)
 
 
 def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
@@ -2385,8 +3377,8 @@ def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
         t = raw.strip().strip("*_`#> ")
         if _META_LINE_RX.match(t):
             continue
-        t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)   # 图片 → alt
-        t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)    # 链接 → text
+        t = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", t)  # 图片 → alt
+        t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)  # 链接 → text
         t = " ".join(t.split())
         # 残骸检查:剥完语法后太短("GDPR ISO")或含图标类名残留
         # ("arrow-icon")不是可读引文 —— 找下一条
@@ -2399,7 +3391,9 @@ def _find_evidence_lines(md: str, pattern: str, max_hits: int = 2):
     return out
 
 
-def _derive_gtm_evidence(home_md: str, about_md: str, home_url: str, about_url: str) -> list:
+def _derive_gtm_evidence(
+    home_md: str, about_md: str, home_url: str, about_url: str
+) -> list:
     """从官网 CTA/定位文本推导 GTM 模式,每条带 quote+source。
 
     同一证据行同时命中「自助试用 + 预约演示」时不再各报一条
@@ -2434,20 +3428,28 @@ def _derive_gtm_evidence(home_md: str, about_md: str, home_url: str, about_url: 
                     break
                 seen.add(key)
                 hit_lines[key] = quotes[0]
-                out.append({
-                    "name": label,
-                    "quote": quotes[0],
-                    "source": url,
-                    "_key": key,
-                })
+                out.append(
+                    {
+                        "name": label,
+                        "quote": quotes[0],
+                        "source": url,
+                        "_key": key,
+                    }
+                )
                 break
     for e in out:
         e.pop("_key", None)
     return out[:3]
 
 
-def _derive_moat_evidence(home_md: str, about_md: str, pricing_md: str,
-                          home_url: str, about_url: str, pricing_url: str) -> list:
+def _derive_moat_evidence(
+    home_md: str,
+    about_md: str,
+    pricing_md: str,
+    home_url: str,
+    about_url: str,
+    pricing_url: str,
+) -> list:
     """从官网客观资产(客户数/认证/官方身份)推导护城河,每条带 quote+source。"""
     out, seen = [], set()
     sources = (
@@ -2469,18 +3471,24 @@ def _derive_moat_evidence(home_md: str, about_md: str, pricing_md: str,
                     if re.search(r"employees|people|团队|员工", text, re.I):
                         m_n = re.search(
                             r"(\d[\d,.]*\s*(?:k\+?|m\+?|万\+?|\+)?)\s*(?:名\s*)?(?:employees|people|团队|员工|人)",
-                            text, re.I)
+                            text,
+                            re.I,
+                        )
                         lab = (
                             f"{m_n.group(1).strip()} 团队规模"
-                            if m_n else "公开团队规模(见引文)"
+                            if m_n
+                            else "公开团队规模(见引文)"
                         )
                     else:
                         m_n = re.search(
                             r"(\d[\d,.]*\s*(?:k\+?|m\+?|万\+?|\+)?)\s*(?:家|teams|businesses|customers|companies|brands|merchants|企业|客户)",
-                            text, re.I)
+                            text,
+                            re.I,
+                        )
                         lab = (
                             f"{m_n.group(1).strip()} 客户/企业"
-                            if m_n else "公开客户规模(见引文)"
+                            if m_n
+                            else "公开客户规模(见引文)"
                         )
                 else:
                     lab = label
@@ -2489,7 +3497,9 @@ def _derive_moat_evidence(home_md: str, about_md: str, pricing_md: str,
     return out[:3]
 
 
-def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str], List[Dict]]:
+def _build_competitor_entry(
+    scraped: Dict, idx: int = 0
+) -> Tuple[Dict, List[str], List[Dict]]:
     """从 scrape 结果构建 13 字段 competitor entry。
 
     Returns:
@@ -2524,17 +3534,13 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         for f in pricing_features
     ]
     if len(page_features) < 5 and docs_md:
-        page_features = _extract_features_from_page(
-            features_base_md + "\n" + docs_md
-        )
+        page_features = _extract_features_from_page(features_base_md + "\n" + docs_md)
     # 翻译变体合并:多语言站被引擎全量抓取,"No Code Chatbots"/"Chatbots sin
     # código"/"Chatbots Sem Código" 是同一功能(真实事故:WATI 4 个语言版本
     # 各算一个"独家",131 个独家里一半是翻译/垃圾)
     page_features = [
         {"category": _classify_feature(n), "name": n, "desc": ""}
-        for n in _merge_translation_equivalents(
-            [f["name"] for f in page_features]
-        )
+        for n in _merge_translation_equivalents([f["name"] for f in page_features])
     ]
     # 逐条归因:功能文本在哪个页面出现,source 就指向哪个页面的 URL
     # (历史缺陷:全部归到 features 页/首页 —— 从 pricing 页提取的功能
@@ -2556,13 +3562,15 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     for f in page_features:
         ftxt = (f.get("name") or "").strip()
         src = ""
+        orig = ""
         for md, u in page_candidates:
             if md and u and ftxt and ftxt[:30] in md:
                 src = u
+                orig = ftxt  # 页面上逐字存在的原始写法(合并/翻译前)
                 break
         # F4:定位不到出处 → source 留空(render 已兼容空 source),
         # 不再默认挂 default_src —— 挂错页比不挂更误导
-        enriched_features.append({**f, "source": src})
+        enriched_features.append({**f, "source": src, "text_orig": orig})
 
     # 构造本地 c 字典,用于 _derive_*_from_features 类函数
     c = {
@@ -2592,8 +3600,11 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     failed_pages = [
         kind
         for kind, md in (
-            ("home", home_md), ("features", feat_md),
-            ("pricing", pricing_md), ("about", about_md), ("docs", docs_md),
+            ("home", home_md),
+            ("features", feat_md),
+            ("pricing", pricing_md),
+            ("about", about_md),
+            ("docs", docs_md),
         )
         if scraped.get("page_urls", {}).get(kind) and _looks_like_only_js_or_404(md)
     ]
@@ -2612,11 +3623,14 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     else:
         tagline = _extract_tagline(home_md)
     founded, founded_src, founded_quote = _extract_company_field(
-        company_pages, _extract_founded, _COMPANY_CTX_RX["founded"])
+        company_pages, _extract_founded, _COMPANY_CTX_RX["founded"]
+    )
     location, hq_src, hq_quote = _extract_company_field(
-        company_pages, _extract_location, _COMPANY_CTX_RX["headquarters"])
+        company_pages, _extract_location, _COMPANY_CTX_RX["headquarters"]
+    )
     team_size, team_src, team_quote = _extract_company_field(
-        company_pages, _extract_team_size, _COMPANY_CTX_RX["team_size"])
+        company_pages, _extract_team_size, _COMPANY_CTX_RX["team_size"]
+    )
     pricing = _extract_price(pricing_md) or _extract_price(home_md)
 
     # 定价:优先用跨引擎投票结果(带验证标记 + 来源 + 时间戳)
@@ -2624,28 +3638,57 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     _pricing_starved_note = ""
     _pcache = _load_pricing_cache()
     _ckey = name
-    if not pricing_ev.get("vote_detail"):
-        # 全引擎 0 价格行:反爬/区域变体页。回退上次成功抓取的缓存
-        # (≤14 天,带原时间戳如实标注)—— 消除运行间不稳定
+    # §2 充分性:反爬变体常返回"只剩 free 行/单引擎票"的非空但劣质证据
+    # (WATI 事故:vote_detail 非空绕过缓存回退,报告只剩 Free/免费)——
+    # 不达标且缓存有真价时同样回退
+    from scripts.sufficiency import assess_pricing as _ap
+
+    _ev_insufficient = not _ap(
+        pricing_ev.get("tiers") or [], pricing_ev.get("vote_detail") or []
+    )["sufficient"]
+    if not pricing_ev.get("vote_detail") or (
+        _ev_insufficient and not pricing_ev.get("verified")
+    ):
+        # 全引擎 0 价格行/不达标且未交叉验证:反爬/区域变体页(单引擎
+        # 未验证价 < 已验证缓存)。回退上次成功抓取的缓存(≤14 天,带原
+        # 时间戳如实标注)—— 消除运行间不稳定;本轮已验证则用本轮。
+        # 本轮已拿到数字真价时也不回退:新鲜单引擎数据 + ladder 继续
+        # 补第二引擎,优于 14 天前的旧缓存(WATI 事故:改 UA 后真爬到
+        # $59/$119/$279 却被旧缓存覆盖)
         cached = _pcache.get(_ckey)
         # F1: TTL 生效 —— 过期缓存视为 miss(此前永不过期,陈旧价永久 verified)
-        if cached and _has_real_prices(cached.get("tiers")) and _cache_fresh(cached):
+        _cur_has_prices = _has_real_prices(pricing_ev.get("tiers") or [])
+        if (
+            cached
+            and cached.get("verified")
+            and _has_real_prices(cached.get("tiers") or [])
+            and _cache_fresh(cached)
+            and not _cur_has_prices
+        ):
             pricing_ev = dict(cached)
             _pricing_starved_note = (
                 f"本次爬取遇反爬/区域变体页,定价为上次成功抓取"
                 f"({cached.get('scraped_at', '?')})的已验证数据,请以官网为准"
             )
-        else:
+        elif not pricing_ev.get("vote_detail"):
             _pricing_starved_note = (
                 "本次爬取未提取到数字价格(页面可能返回了反爬/区域变体),"
                 "请以官网定价页为准 —— 官网未必未公示"
             )
-    elif _has_real_prices(pricing_ev.get("tiers")):
+    elif _has_real_prices(pricing_ev.get("tiers") or []):
         # 本轮成功 → 写缓存供下轮反爬时回退
         _pcache[_ckey] = {
             k: pricing_ev.get(k)
-            for k in ("pricing", "verified", "engines", "tiers",
-                      "vote_detail", "source_url", "scraped_at")
+            for k in (
+                "pricing",
+                "verified",
+                "engines",
+                "tiers",
+                "plans",
+                "vote_detail",
+                "source_url",
+                "scraped_at",
+            )
         }
         _save_pricing_cache(_pcache)
     _pricing_blob = "\n".join(
@@ -2667,7 +3710,9 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     _main_price_lines = "\n".join(
         v["line"] for v in (pricing_ev.get("vote_detail") or [])
     )
-    _PER_USER = bool(_strong_rx.search(_main_price_lines) or _strong_rx.search(_pricing_blob))
+    _PER_USER = bool(
+        _strong_rx.search(_main_price_lines) or _strong_rx.search(_pricing_blob)
+    )
     _PER_USER_ADDON = (not _PER_USER) and bool(_addon_rx.search(_pricing_blob))
     if pricing_ev.get("pricing") and pricing_ev["pricing"] != "—":
         pricing = pricing_ev["pricing"]
@@ -2688,7 +3733,9 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         "pricing": pricing,
         "pricing_verified": bool(pricing_ev.get("verified")),
         # 定价是否来自缓存回退(反爬 starved 时)—— 报告端如实展示
-        "pricing_from_cache": bool(_pricing_starved_note and pricing_ev.get("verified")),
+        "pricing_from_cache": bool(
+            _pricing_starved_note and pricing_ev.get("verified")
+        ),
         # per-user 计价检测:respond.io "Additional Users at $" / 官网
         # "per user/month" —— 缺了 /user 语义,$79/month 就是错的
         "pricing_unit": "per user" if _PER_USER else "",
@@ -2702,7 +3749,7 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
             {
                 **t,
                 "billing_period": (
-                    f'per user · {t["billing_period"]}'
+                    f"per user · {t['billing_period']}"
                     if _PER_USER
                     and t.get("billing_period")
                     and "per user" not in t["billing_period"]
@@ -2712,13 +3759,22 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
             for t in pricing_ev.get("tiers", [])
         ],
         "pricing_engines": pricing_ev.get("engines", []),
+        # §4a 月/年配对分组(模板分栏渲染的数据源;Free/custom 档无周期)。
+        # or [] —— 旧缓存里 plans 字段可能是 null(get 默认值不处理 None)
+        "pricing_plans": pricing_ev.get("plans") or [],
         # F2:定价来源优先投票证据的 source_url;稀松回退(_extract_price
         # 从首页提到价)时如实指向首页;两者皆无 → 空(绝不用猜测 URL 兜底)
         "pricing_source": (
             pricing_ev.get("source_url")
-            or (scraped["url"]
-                if (pricing != "—" and not pricing_ev.get("pricing")
-                    and _extract_price(pricing_md)) else "")
+            or (
+                scraped["url"]
+                if (
+                    pricing != "—"
+                    and not pricing_ev.get("pricing")
+                    and _extract_price(pricing_md)
+                )
+                else ""
+            )
         ),
         "pricing_scraped_at": pricing_ev.get("scraped_at", ""),
         "pricing_vote_detail": pricing_ev.get("vote_detail", []),
@@ -2729,9 +3785,7 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         ),
         "target_users": _derive_target_users(c),
         "core_features": _derive_core_features(c),
-        "feature_catalog": {
-            name: enriched_features
-        },
+        "feature_catalog": {name: enriched_features},
         # strengths 种子:官网自述的量化事实(客户数/认证/官方身份/GTM 信号)
         # —— 每条带原文 quote + source_url,读者可点开核对。这不是伪造:
         # 官网说 "Trusted by 8000+ teams" 就是可引用的自述事实。
@@ -2739,44 +3793,63 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
         "strengths": [
             {
                 "point": ev["name"],
-                "evidence": f"官网原文: \"{ev['quote']}\"",
+                "evidence": f'官网原文: "{ev["quote"]}"',
                 "score": 0,
                 "source": ev["source"],
             }
-            for ev in (_derive_moat_evidence(
-                home_md, about_md, pricing_md,
-                scraped["url"],
-                scraped.get("page_urls", {}).get("about", ""),
-                scraped.get("page_urls", {}).get("pricing", ""),
-            ) + _derive_gtm_evidence(
-                home_md, about_md, scraped["url"],
-                scraped.get("page_urls", {}).get("about", ""),
-            ))[:3]
+            for ev in (
+                _derive_moat_evidence(
+                    home_md,
+                    about_md,
+                    pricing_md,
+                    scraped["url"],
+                    scraped.get("page_urls", {}).get("about", ""),
+                    scraped.get("page_urls", {}).get("pricing", ""),
+                )
+                + _derive_gtm_evidence(
+                    home_md,
+                    about_md,
+                    scraped["url"],
+                    scraped.get("page_urls", {}).get("about", ""),
+                )
+            )[:3]
         ],
         "weaknesses": [],  # 弱点 = 负面评价,官网不会自述,必须 Step 3 从
         #                   第三方(G2/Reddit/评测)提取 —— 脚本绝不编造
-        "differentiators": _derive_differentiators(name, pricing, features_str_for_diff(name, feat_md)),
+        "differentiators": _derive_differentiators(
+            name, pricing, features_str_for_diff(name, feat_md)
+        ),
         # GTM/护城河:基于 home+about 原文证据推导(每条带 quote+source,
         # 模板渲染为可点引用;区别于历史"待 Step 3"空占位 —— 读者现在
         # 就能看到有据可查的商业模式信号)
         "gtm_evidence": _derive_gtm_evidence(
-            home_md, about_md, scraped["url"],
+            home_md,
+            about_md,
+            scraped["url"],
             scraped.get("page_urls", {}).get("about", ""),
         ),
         "moat_evidence": _derive_moat_evidence(
-            home_md, about_md, pricing_md,
+            home_md,
+            about_md,
+            pricing_md,
             scraped["url"],
             scraped.get("page_urls", {}).get("about", ""),
             scraped.get("page_urls", {}).get("pricing", ""),
         ),
-        "tech_signals": _derive_tech_signals(
-            docs_md, scraped.get("page_urls", {}).get("docs", "")
+        "tech_signals": _enrich_tech_signals(
+            scraped,
+            _derive_tech_signals(docs_md, scraped.get("page_urls", {}).get("docs", "")),
         ),
         # §7 真实用户反馈(官网 testimonials/customers 客户引语 + 量化效果;
         # G2/Trustpilot 反爬不可达时的诚实替代源 —— 官网公示,可点开核对)
-        "user_feedback": _extract_user_feedback(
-            scraped["raw_markdown"].get("testimonials", ""),
-            scraped.get("page_urls", {}).get("testimonials", ""),
+        # §3:官网没抓到时深链搜索第三方具体评论页(G2/Trustpilot/HN/Reddit)
+        "user_feedback": _enrich_feedback(
+            scraped,
+            _extract_user_feedback(
+                scraped["raw_markdown"].get("testimonials", ""),
+                scraped.get("page_urls", {}).get("testimonials", ""),
+            ),
+            name,
         ),
         # §6 迭代信号(博客/更新页的带日期功能发布行 —— 比 momentum 占位分可信)
         "product_momentum": _extract_product_momentum(
@@ -2810,44 +3883,83 @@ def _build_competitor_entry(scraped: Dict, idx: int = 0) -> Tuple[Dict, List[str
     # F8 claims:本竞品全部可验证断言(verify.py G1/G2 的消费对象)
     claims = []
 
-    def _claim(field, value, source_url, quote="", engine="", verified_by=None,
-               from_cache=False, scraped_at=""):
-        claims.append({
-            "field": f"competitors[{idx}].{field}", "value": str(value),
-            "source_url": source_url, "quote": (quote or "")[:120],
-            "engine": engine, "verified_by": verified_by or [],
-            "from_cache": from_cache, "scraped_at": scraped_at,
-        })
+    def _claim(
+        field,
+        value,
+        source_url,
+        quote="",
+        engine="",
+        verified_by=None,
+        from_cache=False,
+        scraped_at="",
+    ):
+        claims.append(
+            {
+                "field": f"competitors[{idx}].{field}",
+                "value": str(value),
+                "source_url": source_url,
+                "quote": (quote or "")[:120],
+                "engine": engine,
+                "verified_by": verified_by or [],
+                "from_cache": from_cache,
+                "scraped_at": scraped_at,
+            }
+        )
 
     _purl = entry.get("pricing_source") or ""
     _psat = entry.get("pricing_scraped_at") or ""
     for j, t in enumerate(entry.get("pricing_tiers") or []):
         if t.get("price") and "未能提取" not in str(t.get("price")):
-            _claim(f"pricing_tiers[{j}].price", t["price"],
-                   t.get("source_url") or _purl, quote="", scraped_at=_psat,
-                   verified_by=entry.get("pricing_engines") or [],
-                   from_cache=bool(entry.get("pricing_from_cache")))
+            _claim(
+                f"pricing_tiers[{j}].price",
+                t["price"],
+                t.get("source_url") or _purl,
+                quote="",
+                scraped_at=_psat,
+                verified_by=entry.get("pricing_engines") or [],
+                from_cache=bool(entry.get("pricing_from_cache")),
+            )
     for k, v in enumerate(entry.get("pricing_vote_detail") or []):
-        _claim(f"pricing_vote_detail[{k}].line", v.get("line", ""),
-               _purl, quote=v.get("raw_line") or v.get("line", ""),
-               scraped_at=_psat,
-               verified_by=v.get("engines") or [],
-               from_cache=bool(entry.get("pricing_from_cache")))
+        _claim(
+            f"pricing_vote_detail[{k}].line",
+            v.get("line", ""),
+            _purl,
+            quote=v.get("raw_line") or v.get("line", ""),
+            scraped_at=_psat,
+            verified_by=v.get("engines") or [],
+            from_cache=bool(entry.get("pricing_from_cache")),
+        )
     for key in ("gtm_evidence", "moat_evidence"):
         for k, ev in enumerate(entry.get(key) or []):
-            _claim(f"{key}[{k}]", ev.get("name", ""), ev.get("source", ""),
-                   quote=ev.get("quote", ""))
+            _claim(
+                f"{key}[{k}]",
+                ev.get("name", ""),
+                ev.get("source", ""),
+                quote=ev.get("quote", ""),
+            )
     for k, s in enumerate(entry.get("strengths") or []):
         m = re.search(r'官网原文:\s*"(.+?)"', s.get("evidence") or "")
-        _claim(f"strengths[{k}]", s.get("point", ""), s.get("source", ""),
-               quote=m.group(1) if m else "")
+        _claim(
+            f"strengths[{k}]",
+            s.get("point", ""),
+            s.get("source", ""),
+            quote=m.group(1) if m else "",
+        )
     if entry.get("tagline") and entry["tagline"] != "—":
-        _claim("tagline", entry["tagline"], entry.get("tagline_source", ""),
-               quote=entry["tagline"])
+        _claim(
+            "tagline",
+            entry["tagline"],
+            entry.get("tagline_source", ""),
+            quote=entry["tagline"],
+        )
     for fld in ("founded", "headquarters", "team_size"):
         if entry.get(fld) and entry[fld] != "—":
-            _claim(fld, entry[fld], entry.get(f"{fld}_source", ""),
-                   quote=entry.get(f"{fld}_quote", ""))
+            _claim(
+                fld,
+                entry[fld],
+                entry.get(f"{fld}_source", ""),
+                quote=entry.get(f"{fld}_quote", ""),
+            )
     return entry, warnings, claims
 
 
@@ -2874,8 +3986,9 @@ def _auto_detect_feature_aliases(competitors):
     return aliases
 
 
-def crawl_and_build(names: List[str], topic: str, timeout: int = 30,
-                    manifest_path=None, raw_dir=None) -> Dict:
+def crawl_and_build(
+    names: List[str], topic: str, timeout: int = 30, manifest_path=None, raw_dir=None
+) -> Dict:
     """主入口:接收名称列表,返回完整分析 JSON。
 
     manifest_path/raw_dir 给定时,F8 证据包(claims-manifest.json +
@@ -2985,7 +4098,8 @@ def crawl_and_build(names: List[str], topic: str, timeout: int = 30,
         mpath = Path(manifest_path)
         mpath.parent.mkdir(parents=True, exist_ok=True)
         mpath.write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+            json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
         if raw_dir:
             rd = Path(raw_dir)
             rd.mkdir(parents=True, exist_ok=True)
@@ -2993,7 +4107,8 @@ def crawl_and_build(names: List[str], topic: str, timeout: int = 30,
                 safe = re.sub(r"[^\w.-]", "_", name_key)
                 (rd / f"{safe}.engines.json").write_text(
                     json.dumps(engines_by_url, ensure_ascii=False, indent=1),
-                    encoding="utf-8")
+                    encoding="utf-8",
+                )
         print(f"💾 证据包: {mpath}")
     return analysis
 
@@ -3004,21 +4119,34 @@ def _derive_market_segments(competitors):
     按 BSP / SaaS 工具 / 广告投放 等聚类。
     """
     from collections import defaultdict
+
     by_stage = defaultdict(list)
     for c in competitors:
         stage = c.get("stage", "未知")
         by_stage[stage].append(c["name"])
 
     segment_templates = {
-        "巨头": {"label": "电信级平台 / BSP", "desc": "Twilio/Infobip 等大型 CPaaS 厂商,做底层 API + 大客户合规"},
-        "成长期": {"label": "SaaS 工具(中小客户)", "desc": "中小 SaaS 厂商,瞄准中小企业,开箱即用"},
-        "早期": {"label": "新势力 / 早期产品", "desc": "较新的厂商,灵活度更高,功能可能不完整"},
+        "巨头": {
+            "label": "电信级平台 / BSP",
+            "desc": "Twilio/Infobip 等大型 CPaaS 厂商,做底层 API + 大客户合规",
+        },
+        "成长期": {
+            "label": "SaaS 工具(中小客户)",
+            "desc": "中小 SaaS 厂商,瞄准中小企业,开箱即用",
+        },
+        "早期": {
+            "label": "新势力 / 早期产品",
+            "desc": "较新的厂商,灵活度更高,功能可能不完整",
+        },
         "未知": {"label": "其他 / 待识别", "desc": "暂未分类"},
     }
     # 每个 stage 一个 segment(不截断,多 stage 多细分)
     segments = [
-        {**segment_templates.get(stage, segment_templates["未知"]),
-         "players": players, "source": ""}
+        {
+            **segment_templates.get(stage, segment_templates["未知"]),
+            "players": players,
+            "source": "",
+        }
         for stage, players in by_stage.items()
     ]
     # 同一 stage 人太多时,按定价模式二次细分(自助服务 vs 企业销售)——证据来自 pricing 字段
@@ -3027,10 +4155,13 @@ def _derive_market_segments(competitors):
         for c in competitors:
             p = c.get("pricing", "")
             m = re.search(r"\$(\d+)", p)
-            low_entry = ("免费" in p or "Free" in p or (m and int(m.group(1)) <= 49))
+            low_entry = "免费" in p or "Free" in p or (m and int(m.group(1)) <= 49)
             key = "自助服务(免费/低价起步)" if low_entry else "企业销售(高客单/定制)"
             by_pricing[key].append(c["name"])
-        if by_pricing["自助服务(免费/低价起步)"] and by_pricing["企业销售(高客单/定制)"]:
+        if (
+            by_pricing["自助服务(免费/低价起步)"]
+            and by_pricing["企业销售(高客单/定制)"]
+        ):
             segments = [
                 {
                     "label": label,
@@ -3055,8 +4186,15 @@ _GAP_KEYWORDS: Dict[str, List[str]] = {
     "Webhook 事件推送": ["webhook"],
     "AI 转人工升级": ["human hand", "转人工", "escalat", "ai agent", "ai chatbot"],
     "多渠道接入 (Omnichannel Aggregation)": [
-        "omnichannel", "multi-channel", "multichannel", "channels in one",
-        "one thread", "all channels", "every channel", "多渠道", "全渠道",
+        "omnichannel",
+        "multi-channel",
+        "multichannel",
+        "channels in one",
+        "one thread",
+        "all channels",
+        "every channel",
+        "多渠道",
+        "全渠道",
     ],
     "数据导出 (Data Export)": ["export", "导出"],
     "权限与团队管理 (RBAC)": ["rbac", "role-based", "team member", "权限", "坐席"],
@@ -3086,7 +4224,10 @@ def _derive_market_gaps(competitors):
     expected_core = [
         ("Webhook 事件推送", "Webhook 是开发者集成基础,缺失说明产品还没做开发者生态"),
         ("AI 转人工升级", "AI 自动升级到人工客服是基本能力"),
-        ("多渠道接入 (Omnichannel Aggregation)", "多渠道整合是行业标配,缺失说明产品单一渠道"),
+        (
+            "多渠道接入 (Omnichannel Aggregation)",
+            "多渠道整合是行业标配,缺失说明产品单一渠道",
+        ),
         ("数据导出 (Data Export)", "数据可移植性是合规基本要求"),
         ("权限与团队管理 (RBAC)", "RBAC 是企业级必备"),
         ("审计日志 (Audit Logs)", "审计日志是企业合规必备"),
@@ -3096,17 +4237,19 @@ def _derive_market_gaps(competitors):
         keywords = _GAP_KEYWORDS.get(feat_name, [feat_name.lower().split(" ")[0]])
         if any(k in all_text for k in keywords):
             continue
-        gaps.append({
-            "gap": feat_name,
-            "rationale": rationale,
-            "severity": "medium",
-            "candidates": True,  # 标记:脚本级候选,需 LLM Step 3 复核后定稿
-            "checked_vendors": [
-                {"name": c["name"], "evidence_url": c.get("url", "")}
-                for c in competitors
-            ],
-            "source": "",  # 证据 = 各家官网爬取文本本身,不伪造第三方 URL
-        })
+        gaps.append(
+            {
+                "gap": feat_name,
+                "rationale": rationale,
+                "severity": "medium",
+                "candidates": True,  # 标记:脚本级候选,需 LLM Step 3 复核后定稿
+                "checked_vendors": [
+                    {"name": c["name"], "evidence_url": c.get("url", "")}
+                    for c in competitors
+                ],
+                "source": "",  # 证据 = 各家官网爬取文本本身,不伪造第三方 URL
+            }
+        )
     return gaps[:6]
 
 
@@ -3149,7 +4292,9 @@ def main():
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     analysis = crawl_and_build(
-        names, args.topic, timeout=args.timeout,
+        names,
+        args.topic,
+        timeout=args.timeout,
         manifest_path=out.parent / "claims-manifest.json",
         raw_dir=out.parent / "02-raw",
     )

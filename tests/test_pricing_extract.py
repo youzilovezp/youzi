@@ -93,20 +93,28 @@ class TestMultiPriceCluster(unittest.TestCase):
         # 导航摘要行(多 token)不应挤掉真正的分档行
         md = (
             "Choose your plan: Starter $39 Pro $99\n"  # 摘要行
-            "## Starter\n**$39**\nper month\n"           # 真分档 1
-            "## Pro\n**$99**\nper month\n"                # 真分档 2
+            "## Starter\n**$39**\nper month\n"  # 真分档 1
+            "## Pro\n**$99**\nper month\n"  # 真分档 2
         )
-        r = {"all_results": [
-            {"scraper": "e1", "success": True, "markdown": md},
-            {"scraper": "e2", "success": True,
-             "markdown": "## Starter\n$39 /month\n## Pro\n$99 /month"},
-        ]}
+        r = {
+            "all_results": [
+                {"scraper": "e1", "success": True, "markdown": md},
+                {
+                    "scraper": "e2",
+                    "success": True,
+                    "markdown": "## Starter\n$39 /month\n## Pro\n$99 /month",
+                },
+            ]
+        }
         ev = _extract_pricing_evidence(r, "https://x.com/pricing")
         toks = " ".join(t["price"] for t in ev["tiers"])
         self.assertIn("$39", toks)
         self.assertIn("$99", toks)
-        self.assertEqual(len([t for t in ev["tiers"] if t["price"] in ("$39", "$99")]), 2,
-                         f"分档被吞: {ev['tiers']}")
+        self.assertEqual(
+            len([t for t in ev["tiers"] if t["price"] in ("$39", "$99")]),
+            2,
+            f"分档被吞: {ev['tiers']}",
+        )
 
 
 class TestCreditsAndAddons(unittest.TestCase):
@@ -163,16 +171,25 @@ class TestRenderEvidenceEnforcement(unittest.TestCase):
         data = normalize(self._minimal_analysis())
         self.assertTrue(data["evidence_warnings"], "0 来源必须产生警告")
         self.assertTrue(any("没有任何带 URL" in w for w in data["evidence_warnings"]))
-        self.assertTrue(any("未经" in w and "交叉验证" in w for w in data["evidence_warnings"]))
+        self.assertTrue(
+            any("未经" in w and "交叉验证" in w for w in data["evidence_warnings"])
+        )
 
     def test_scores_not_fabricated(self):
         from render import normalize
 
         raw = self._minimal_analysis()
-        raw["competitors"][0]["scores"] = {k: 5 for k in (
-            "feature_richness", "ux", "pricing_value", "integration",
-            "ai_capability", "momentum",
-        )}
+        raw["competitors"][0]["scores"] = {
+            k: 5
+            for k in (
+                "feature_richness",
+                "ux",
+                "pricing_value",
+                "integration",
+                "ai_capability",
+                "momentum",
+            )
+        }
         data = normalize(raw)
         # 全相等默认分 → 标记低置信,不得被关键词启发式"发明"出新分数
         self.assertEqual(data["competitors"][0]["scores_confidence"], "low")
@@ -184,13 +201,17 @@ class TestRealCrawlRegressions(unittest.TestCase):
 
     def test_usd_not_sgd_on_us_prefix(self):
         # Sleekflow: "US$149" 含子串 "S$" → 整站被标 SGD
-        self.assertEqual(_detect_currency("Pro AI · US$149 (/month)", ["US$149"]), "USD")
+        self.assertEqual(
+            _detect_currency("Pro AI · US$149 (/month)", ["US$149"]), "USD"
+        )
         self.assertEqual(_detect_currency("S$58", ["S$58"]), "SGD")
         self.assertEqual(_detect_currency("HK$348", ["HK$348"]), "HKD")
 
     def test_currency_dominant_from_tiers(self):
         # WATI: 页面混 ₹999 充值 promo,tiers 是 $59/$119 → USD 不是 INR
-        self.assertEqual(_detect_currency("... ₹999 ... $59 $119 ...", ["$119", "$59"]), "USD")
+        self.assertEqual(
+            _detect_currency("... ₹999 ... $59 $119 ...", ["$119", "$59"]), "USD"
+        )
 
     def test_addon_window_filter(self):
         # WATI: playwright 把 "$4.99/Month" 与 "Shopify addon" 拆成相邻行
@@ -209,9 +230,11 @@ class TestRealCrawlRegressions(unittest.TestCase):
     def test_free_trial_not_tier(self):
         # WATI: "7 days free trial" 4 引擎全票但不是定价档
         md = "Growth\n$59/mo\n7 days free trial, zero setup fees and affordable pricing"
-        r = {"all_results": [
-            {"scraper": f"e{i}", "success": True, "markdown": md} for i in range(3)
-        ]}
+        r = {
+            "all_results": [
+                {"scraper": f"e{i}", "success": True, "markdown": md} for i in range(3)
+            ]
+        }
         ev = _extract_pricing_evidence(r, "https://x.com/pricing")
         names_prices = [(t["name"], t["price"]) for t in ev["tiers"]]
         self.assertNotIn("free trial", " ".join(p for _, p in names_prices).lower())
@@ -256,6 +279,7 @@ class TestRealCrawlRegressions(unittest.TestCase):
         r = {"all_results": [{"scraper": "e1", "success": True, "markdown": md}]}
         ev = _extract_pricing_evidence(r, "u")
         import re as _re
+
         vals = []
         for t in ev["tiers"]:
             m = _re.search(r"(\d[\d,]*)", t["price"])
@@ -279,22 +303,26 @@ class TestPromoAndBillingMerge(unittest.TestCase):
         # $59 billed-annually 与 $69 billed-monthly 合并成 "月付/年付"
         # 会把月价标成年价,历史语义事故)
         md = "## Growth\n$59 (month billed annually)\n$69 (billed monthly)\n## Pro\n$119/month"
-        r = {"all_results": [
-            {"scraper": "e1", "success": True, "markdown": md},
-            {"scraper": "e2", "success": True, "markdown": md},
-        ]}
+        r = {
+            "all_results": [
+                {"scraper": "e1", "success": True, "markdown": md},
+                {"scraper": "e2", "success": True, "markdown": md},
+            ]
+        }
         ev = _extract_pricing_evidence(r, "https://x.com/pricing")
         growth = [t for t in ev["tiers"] if t["name"].lower() == "growth"]
         self.assertEqual(len(growth), 2, f"计费变体应各成行: {ev['tiers']}")
         periods = {t["billing_period"] for t in growth}
-        self.assertTrue(any("annually" in p for p in periods), periods)
-        self.assertTrue(any("monthly" in p for p in periods), periods)
+        # 「billed annually」= 年结算月价,保留原文(塌缩 /yr 会把月价当年
+        # 总价,配对出 93% 假折扣);「billed monthly」归一 /mo
+        self.assertEqual(periods, {"billed annually", "/mo"}, periods)
         for t in ev["tiers"]:
             self.assertNotIn("或", t["price"])
 
     def test_display_no_duplicate_unpublished(self):
         # Meetbot:三个"未公开"只显示一次
         from render import _derive_commercial_strategies
+
         c = {
             "name": "M",
             "pricing": "专业版 / 企业版 / 定制版（价格未公开，需联系销售）",
@@ -306,16 +334,23 @@ class TestPromoAndBillingMerge(unittest.TestCase):
             "differentiators": [],
         }
         cs = _derive_commercial_strategies(c)
-        self.assertEqual(cs["pricing_display"].count("未公开"), 1, cs["pricing_display"])
+        self.assertEqual(
+            cs["pricing_display"].count("未公开"), 1, cs["pricing_display"]
+        )
 
     def test_per_user_annotation(self):
         from render import _derive_commercial_strategies
+
         c = {
             "name": "R",
             "pricing": "starter $79/month",
             "pricing_unit": "per user",
             "pricing_tiers": [
-                {"name": "starter", "price": "$79", "billing_period": "per user · /month"},
+                {
+                    "name": "starter",
+                    "price": "$79",
+                    "billing_period": "per user · /month",
+                },
             ],
             "differentiators": [],
         }
@@ -328,18 +363,29 @@ class TestCitationRefactor(unittest.TestCase):
 
     def test_same_url_different_claims_get_distinct_refs(self):
         from render import normalize
+
         raw = {
-            "topic": "t", "executive_summary": "x",
+            "topic": "t",
+            "executive_summary": "x",
             "competitors": [
-                {"name": "A", "url": "https://a.com", "tagline": "T",
-                 "tagline_source": "https://a.com",
-                 "gtm_evidence": [{"name": "自助试用", "quote": "q", "source": "https://a.com"}],
-                 "moat_evidence": [{"name": "SOC2", "quote": "q2", "source": "https://a.com"}],
-                 "pricing": "—"},
+                {
+                    "name": "A",
+                    "url": "https://a.com",
+                    "tagline": "T",
+                    "tagline_source": "https://a.com",
+                    "gtm_evidence": [
+                        {"name": "自助试用", "quote": "q", "source": "https://a.com"}
+                    ],
+                    "moat_evidence": [
+                        {"name": "SOC2", "quote": "q2", "source": "https://a.com"}
+                    ],
+                    "pricing": "—",
+                },
                 {"name": "B", "url": "https://b.com", "pricing": "—"},
                 {"name": "C", "url": "https://c.com", "pricing": "—"},
             ],
-            "opportunities": [], "gaps": [],
+            "opportunities": [],
+            "gaps": [],
         }
         data = normalize(raw)
         # 同 URL 三个不同 claim → 3 个不同角标
@@ -362,6 +408,7 @@ class TestCacheTTL(unittest.TestCase):
 
     def test_fresh_cache(self):
         import time as _t
+
         ts = _t.strftime("%Y-%m-%d %H:%M UTC", _t.gmtime())
         self.assertTrue(_cache_fresh({"scraped_at": ts}))
 
@@ -392,8 +439,9 @@ class TestEngineIndependence(unittest.TestCase):
 
     def test_identical_content_not_verified(self):
         ev = _extract_pricing_evidence(
-            _mk_result({"playwright": self.PRICING_MD_A,
-                        "crawl4ai": self.PRICING_MD_A}),  # 完全相同 = 变体互证
+            _mk_result(
+                {"playwright": self.PRICING_MD_A, "crawl4ai": self.PRICING_MD_A}
+            ),  # 完全相同 = 变体互证
             "https://x.com/pricing",
         )
         self.assertFalse(ev["verified"])
@@ -401,8 +449,9 @@ class TestEngineIndependence(unittest.TestCase):
 
     def test_different_content_verified(self):
         ev = _extract_pricing_evidence(
-            _mk_result({"playwright": self.PRICING_MD_A,
-                        "crawl4ai": self.PRICING_MD_B}),
+            _mk_result(
+                {"playwright": self.PRICING_MD_A, "crawl4ai": self.PRICING_MD_B}
+            ),
             "https://x.com/pricing",
         )
         self.assertTrue(ev["verified"])
@@ -411,8 +460,7 @@ class TestEngineIndependence(unittest.TestCase):
     def test_source_url_empty_when_no_evidence(self):
         """F2: 全引擎无价格行时 source_url 必须为空(不得让 404 URL 当来源)。"""
         ev = _extract_pricing_evidence(
-            _mk_result({"playwright": "nothing here",
-                        "crawl4ai": "no prices"}),
+            _mk_result({"playwright": "nothing here", "crawl4ai": "no prices"}),
             "https://x.com/pricing-404",
         )
         self.assertEqual(ev["source_url"], "")
