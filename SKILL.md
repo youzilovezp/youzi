@@ -163,6 +163,7 @@ fetch.py（V2 取证层，职责全部列完）：
 5. `stage` — 阶段（早期 / 成长期 / 成熟期 / 巨头）
 6. `target_users` — 目标用户（数组）
 7. `core_features` — 核心功能（≥ 12 条，每条 ≤ 12 字；**必须扫该竞品的 docs 证据页**——台账 kind=docs 的 URL 对应段落——逐条提取，不得只抄 pricing 页套餐清单）
+7.5. `feature_catalog` — **§5.2.1 厂商功能矩阵的唯一数据源，漏写 = 矩阵空白（历史事故）**。结构：`{"<竞品名>": [{"name": "团队共享收件箱", "category": "收件箱与协作", "desc": "厂商原文描述(可选)", "source": "<docs/features 具体子页 URL>"}]}`。跨厂商用**一致的 category 分类**（如 渠道接入/收件箱与协作/营销获客/自动化/AI 能力/电商变现/数据与集成/安全合规）+ 同能力同名（如各家都叫"营销群发"），矩阵才能自动对齐合并；source 逐条锚定（锚不到的留空字符串，gates 允许）。只写 core_features 字符串数组时 render.py 会降级合成（source 为空），但逐条溯源会丢失 —— **规范做法是两个都写**
 8. `pricing` — 定价摘要（"免费 + 付费 $X/月起" + `pricing_verified` + `pricing_source` + `pricing_scraped_at`）
 9. `strengths` — 3 个最强项（各带 quote + URL）
 10. `weaknesses` — 3 个最弱项（各带 quote + URL）
@@ -207,6 +208,7 @@ python3 <skill-root>/render.py \
 `render.py` 退出后会打印**自检报告**，逐项核对：
 
 - [ ] 热力图渲染（功能重叠矩阵齐全）
+- [ ] **§5.2.1 功能矩阵非空（行 ≥ 1）** —— 空矩阵 = feature_catalog 没写，Step 3 必须补（render.py 已加硬失败自检）
 - [ ] 竞品卡片 ≥ 3 张
 - [ ] opportunities ≥ 3 条
 - [ ] 浅色 / 深色 主题都看过（CSS token 完整）
@@ -271,5 +273,6 @@ python3 <skill-root>/verify.py \
 - ❌ opportunities 里全是"加强 AI 能力"这种正确的废话
 - ❌ strengths / weaknesses 不带证据来源（具体到 URL + 引文片段）
 - ❌ 绕过 fetch.py 逐 URL 手动爬（升级梯/台账/充分性闭环都在 fetch.py 里，手动跑会丢 verify.py 依赖的台账）
+- ❌ 只写 core_features 字符串数组、不写 feature_catalog —— §5.2.1 厂商功能矩阵只消费后者，会渲染成空壳（render.py 现有降级合成兜底，但逐条溯源会丢）
 - ❌ **任何形式的伪造**：硬编码价格兜底、关键词模板生成的"差异化/技术栈"、从未访问过的 URL 当 source、训练记忆里的"已知信息"冒充爬取结果
 - ❌ 重新引入脚本侧语义提取（正则套餐/功能/翻译对齐）—— 165KB 单体的历史教训，提取是 LLM 的活

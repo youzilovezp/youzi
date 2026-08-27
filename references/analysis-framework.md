@@ -30,6 +30,12 @@
   "stage": "成熟期",
   "target_users": ["知识工作者", "中小团队", "学生"],
   "core_features": ["AI 逐行审查", "PR 摘要", "一键修复", "安全扫描", "PR 队列分级", "多平台集成", "CLI 审查", "冲突检测", "准入控制", "报告生成", "团队协作", "API 接入"],
+  "feature_catalog": {
+    "Notion": [
+      {"name": "块编辑器", "category": "内容创作", "desc": "Turn any thought into a beautiful page", "source": "https://notion.so/help/what-is-a-block"},
+      {"name": "团队协作", "category": "协作", "source": "https://notion.so/help/..."}
+    ]
+  },
   "pricing": "免费 + Plus $10/月 + Business $15/月",
   "pricing_verified": true,
   "pricing_engines": ["firecrawl", "playwright"],
@@ -77,6 +83,13 @@
 写 "G2 评价：xxx" 之前，必须真的爬过那个 G2 页面 —— 否则整条删掉，写「未收集到」。
 
 **core_features 提取要求**：必须扫该竞品的 **docs 证据页**（claims-manifest 台账里 kind=docs 的 URL 对应 02-raw 段落），每家 ≥ 12 条、每条 ≤ 12 字 —— 不得只抄 pricing 页的套餐功能清单（那是商业包装，不是功能证据）。
+
+**feature_catalog 提取要求（§5.2.1 厂商功能矩阵的唯一数据源）**：
+- 结构 `{"<竞品名>": [{name, category, desc?, source}]}` —— **漏写整个矩阵空白**（历史事故：Step 3 只写了 core_features 字符串数组，报告最核心的对比矩阵渲染成空壳）
+- `category` 跨厂商用**统一分类**（渠道接入 / 收件箱与协作 / 营销获客 / 自动化 / AI 能力 / 电商变现 / 数据与集成 / 安全合规 / 服务），矩阵按 category 分组
+- 同一能力跨厂商**用相同 name**（如各家都叫"营销群发"、"团队共享收件箱"），render 才能自动合并对齐；厂商独有功能用其独有名
+- `source` 逐条锚定 docs/features 具体子页（G7 会查）；确实锚不到的条目 source 留空字符串（gates 允许，矩阵该格显示 ✓ 但无溯源链接）
+- `desc` 可放厂商原文措辞（用户可对比确认同义）
 
 ## 评分维度（6 维 · 1-10 分）
 
@@ -165,6 +178,7 @@ JSON 数组，按「颠覆性指数」降序（颠覆性 = 用户痛点强度 ×
 - [ ] 每个非空字段的 quote 能在 02-raw 里 grep 到（逐字）
 - [ ] strengths / weaknesses 至少各有 1 条带 URL 证据（没有证据就明说，不硬凑）
 - [ ] core_features ≥ 12 条且来自 docs 证据页（非 pricing 套餐清单）
+- [ ] **feature_catalog 每家都写**（§5.2.1 矩阵唯一数据源；category 统一分类、同能力同名、source 逐条锚定）
 - [ ] differentiators 为 dict 结构 `{point, quote, source_url}`，source_url 锚定 docs/features 具体子页
 - [ ] tech_signals / feature_catalog 的 source 无域名根、无 /pricing 锚点（G7）
 - [ ] 定价带 `pricing_verified` / `pricing_source` / `pricing_scraped_at`

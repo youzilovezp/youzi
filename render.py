@@ -4180,9 +4180,39 @@ def _calibrate_scores(c: dict, feature_counts: list) -> None:
         c["scores_confidence"] = "normal"
 
 
+def _synthesize_feature_catalog(c: dict) -> None:
+    """feature_catalog 缺失时从 core_features 合成条目。
+
+    历史缺陷:§5.2.1 厂商功能矩阵只消费 feature_catalog,Step 3 只写
+    core_features 字符串数组时,最核心的功能矩阵被静默渲染成空壳。
+    合成条目 source 留空(gates 允许无锚点条目)——core_features 本身
+    就是 Step 3 从 02-raw 提取的证据,合成只是补挂载形态,不是编造。
+    有真实 feature_catalog 时本函数不动(优先保留逐条溯源)。
+    """
+    name = c.get("name", "")
+    catalog = c.get("feature_catalog")
+    if (
+        isinstance(catalog, dict)
+        and isinstance(catalog.get(name), list)
+        and catalog[name]
+    ):
+        return
+    core = c.get("core_features")
+    if not isinstance(core, list) or not core:
+        return
+    feats = [
+        {"name": f.strip(), "source": ""}
+        for f in core
+        if isinstance(f, str) and f.strip()
+    ]
+    if feats:
+        c.setdefault("feature_catalog", {})[name] = feats
+
+
 def _repair_competitors(competitors: list) -> None:
     """渲染前统一修复竞品数据(必须在 source/_ref 收集之前跑)。"""
     for c in competitors:
+        _synthesize_feature_catalog(c)
         _fix_feature_lists(c)
         # 爬虫约定:strengths/weaknesses 由渲染端推断补全
         if not c.get("strengths") or not c.get("weaknesses"):
@@ -5148,6 +5178,16 @@ def self_check(data, html_str):
             data.get("source_count", 0) > 0,
         ),
         (
+            "§5.2.1 功能矩阵非空(行 ≥ 1)",
+            sum(
+                len(cat.get("features", []))
+                for cat in (data.get("feature_comparison_matrix") or {}).get(
+                    "categories", []
+                )
+            )
+            > 0,
+        ),
+        (
             "无 Python repr 泄漏(乱码回归)",
             "{&#39;" not in html_str and "['" not in html_str and "{'" not in html_str,
         ),
@@ -5168,6 +5208,15 @@ def self_check(data, html_str):
             ok = False
     # opportunities 不再由脚本伪造(历史缺陷)——只提醒,不算失败。
     # 完整报告应跑 SKILL.md Step 3:LLM 基于证据生成。
+    matrix_rows = sum(
+        len(cat.get("features", []))
+        for cat in (data.get("feature_comparison_matrix") or {}).get("categories", [])
+    )
+    if matrix_rows == 0:
+        print(
+            "  ⚠ §5.2.1 功能矩阵 0 行 —— feature_catalog 与 core_features 均为空,"
+            "补 feature_catalog[{竞品名}] = [{name, category, source}](见 references/analysis-framework.md)"
+        )
     if len(data["opportunities"]) < 3:
         print(
             "  ⚠ opportunities < 3 —— 由 LLM Step 3 基于证据生成(见 references/analysis-framework.md),脚本不代劳"
