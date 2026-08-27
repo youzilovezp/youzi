@@ -39,50 +39,73 @@ class TestE2EReal(unittest.TestCase):
 
         # Step 2+3: 爬取 + 证据包
         r = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "crawl_competitors.py"),
-             "--competitors", "wati,respond.io,ycloud",
-             "--topic", "WhatsApp BSP 赛道(生产验收)",
-             "--output", str(out)],
-            cwd=ROOT, capture_output=True, text=True, timeout=1800,
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "fetch.py"),
+                "--competitors",
+                "wati,respond.io,ycloud",
+                "--out-dir",
+                str(E2E_DIR),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=1800,
         )
-        self.assertEqual(
-            r.returncode, 0, f"crawl failed:\n{r.stdout}\n{r.stderr}")
+        self.assertEqual(r.returncode, 0, f"crawl failed:\n{r.stdout}\n{r.stderr}")
 
         analysis = json.loads(out.read_text(encoding="utf-8"))
-        self.assertTrue(
-            (out.parent / "claims-manifest.json").exists(),
-            "证据包未落盘")
-        self.assertTrue(
-            (out.parent / "02-raw").exists(), "02-raw 未落盘")
-        self.assertGreaterEqual(len(analysis["competitors"]), 2,
-                                "真实爬取至少 2 家成功")
+        self.assertTrue((out.parent / "claims-manifest.json").exists(), "证据包未落盘")
+        self.assertTrue((out.parent / "02-raw").exists(), "02-raw 未落盘")
+        self.assertGreaterEqual(
+            len(analysis["competitors"]), 2, "真实爬取至少 2 家成功"
+        )
 
         # Step 4: 渲染
         html = out.parent / "report.html"
         r2 = subprocess.run(
-            [sys.executable, str(ROOT / "render.py"),
-             "--input", str(out), "--output", str(html)],
-            cwd=ROOT, capture_output=True, text=True, timeout=300,
+            [
+                sys.executable,
+                str(ROOT / "render.py"),
+                "--input",
+                str(out),
+                "--output",
+                str(html),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         self.assertIn(r2.returncode, (0, 2), r2.stdout + r2.stderr)
 
         # Step 5: verify 离线门禁(必须全绿)
         rep = verify_analysis(
-            out, out.parent / "claims-manifest.json", out.parent / "02-raw",
+            out,
+            out.parent / "claims-manifest.json",
+            out.parent / "02-raw",
             report_path=out.parent / "verify-report.json",
         )
         self.assertTrue(
             rep["passed"],
-            "离线硬门禁失败:\n" + json.dumps(
-                rep["violations"], ensure_ascii=False, indent=1))
+            "离线硬门禁失败:\n"
+            + json.dumps(rep["violations"], ensure_ascii=False, indent=1),
+        )
 
         # 网络门禁:N1 可达性(真实回访被引用 URL)
         rep_net = verify_analysis(
-            out, out.parent / "claims-manifest.json", out.parent / "02-raw",
-            network=True, sample=10,
+            out,
+            out.parent / "claims-manifest.json",
+            out.parent / "02-raw",
+            network=True,
+            sample=10,
         )
         self.assertFalse(
             [v for v in rep_net["violations"] if v["gate"] == "N1"],
-            "N1 死链:\n" + json.dumps(
+            "N1 死链:\n"
+            + json.dumps(
                 [v for v in rep_net["violations"] if v["gate"] == "N1"],
-                ensure_ascii=False, indent=1))
+                ensure_ascii=False,
+                indent=1,
+            ),
+        )

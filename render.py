@@ -1996,12 +1996,10 @@ def _auto_detect_aliases(competitors):
 
     叠加翻译变体聚类:各家多语言页会产出 "Gestión de contactos API" /
     "Manajemen Kontak API" / "Contact Management" 这类同一功能的翻译,
-    词干签名(与 crawl_competitors._merge_translation_equivalents 同算法)
+    词干签名(本模块 _merge_translation_equivalents 同算法)
     聚成一组后按"出现厂商数 ≥2"判定共性 —— 否则每家都"独家"同一个功能。
     """
     from collections import defaultdict
-
-    from scripts.crawl_competitors import _merge_translation_equivalents
 
     name_to_vendors: dict = defaultdict(set)
     # 第一遍:收集全部名字
@@ -2614,8 +2612,8 @@ def _apply_evidence_notes_overrides(canonical_features, evidence_notes):
 
 
 def _feat_sigs(s: str) -> set:
-    """功能名词干签名(与 crawl_competitors._merge_translation_equivalents
-    同算法)—— 跨家翻译变体对齐用。"""
+    """功能名词干签名 —— 跨家翻译变体对齐用
+    (_merge_translation_equivalents 的签名核)。"""
     import unicodedata
 
     s = unicodedata.normalize("NFKD", s)
@@ -2671,6 +2669,36 @@ def _feat_sigs(s: str) -> set:
         for t in re.findall(r"[a-z]{3,}", s)
         if t not in stop and stem(t) not in stop
     }
+
+
+def _merge_translation_equivalents(feats: list) -> list:
+    """合并同一功能的机器翻译变体(多语言站点产出同一功能的翻译)。
+
+    自 V1 提取单体移植,语义不变:词干签名后 Jaccard ≥0.5,
+    或共享 ≥6 字符实词词干 ⇒ 翻译变体,保留组内首个。
+    宁可少报独家,不可报垃圾独家。
+    """
+    kept: list = []
+    kept_sigs: list = []
+    for f in feats:
+        sig = _feat_sigs(f)
+        if not sig:
+            continue  # 无有效词干的(纯 CJK 由上层处理;碎片丢弃)
+        dup = False
+        for ks in kept_sigs:
+            inter = sig & ks
+            if not inter:
+                continue
+            sim = len(inter) / len(sig | ks)
+            # 共享一个 ≥6 字符的实词词干(如 chatbots/integraç)
+            # 或整体相似度高 → 翻译变体
+            if sim >= 0.5 or any(len(w) >= 6 for w in inter):
+                dup = True
+                break
+        if not dup:
+            kept.append(f)
+            kept_sigs.append(sig)
+    return kept
 
 
 def _find_unique_features(competitors, feature_aliases=None):

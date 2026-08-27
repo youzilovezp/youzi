@@ -32,7 +32,7 @@ from adapters import scrape_smart  # noqa: E402
 from adapters.competitor_resolver import resolve_competitor  # noqa: E402
 from scripts import sufficiency  # noqa: E402
 
-# 首页导航发现模式(自 crawl_competitors 移植,语义不变)
+# 首页导航发现模式(自 V1 提取单体移植,语义不变)
 _DISCOVER_PATTERNS = {
     "pricing": re.compile(r"pricing|price|plans?|定价|价格|套餐", re.I),
     "features": re.compile(

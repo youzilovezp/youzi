@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """verify 的离线门禁集合(G1-G6)。每个 gate 函数签名:
-    def gX(analysis: dict, manifest: dict, engine_index: dict, rep: Report) -> None
+def gX(analysis: dict, manifest: dict, engine_index: dict, rep: Report) -> None
 """
 
 import re
@@ -22,12 +22,16 @@ def run_all(analysis, manifest, engine_index, rep: Report):
 
 # ── 证据 URL 收集:analysis 里所有「指向抓取原文」的字段 ──
 
+
 def _evidence_fields(competitor: dict):
     """迭代 (field, url):竞品 entry 里所有携带来源 URL 的证据字段。"""
     name = competitor.get("name", "?")
     singles = (
-        "pricing_source", "tagline_source", "founded_source",
-        "headquarters_source", "team_size_source",
+        "pricing_source",
+        "tagline_source",
+        "founded_source",
+        "headquarters_source",
+        "team_size_source",
     )
     for k in singles:
         u = (competitor.get(k) or "").strip()
@@ -84,13 +88,17 @@ def g1_source_traceability(analysis, manifest, engine_index, rep: Report):
             ent = fetched.get(url)
             if ent is None:
                 rep.hard(
-                    "G1", field, url,
-                    f"source_url 不在本轮抓取记录中(未访问过的 URL 不得充当来源)",
+                    "G1",
+                    field,
+                    url,
+                    "source_url 不在本轮抓取记录中(未访问过的 URL 不得充当来源)",
                     "删除该字段,或重爬该 URL;绝不允许引用未抓取的地址",
                 )
             elif ent.get("status") != "ok":
                 rep.hard(
-                    "G1", field, url,
+                    "G1",
+                    field,
+                    url,
                     f"source_url 本轮抓取失败(status={ent.get('status')})",
                     "失败页面的 URL 不能当来源;改为「未验证」并记录 failure",
                 )
@@ -98,7 +106,7 @@ def g1_source_traceability(analysis, manifest, engine_index, rep: Report):
 
 _STRENGTH_QUOTE_RX = re.compile(r'官网原文:\s*"(.+?)"\s*"?$')
 
-# 与 crawl_competitors._find_evidence_lines 同款 markdown 清洗 —— 引文展示侧
+# 与 V1 _find_evidence_lines 同款 markdown 清洗 —— 引文展示侧
 # 已把 ![alt](url)→alt / [text](url)→text,回查侧必须同样归一化,否则
 # 清洗后的干净引文永远 grep 不到含原始语法的引擎原文(G2 闭环自抓)
 import functools  # noqa: E402
@@ -139,17 +147,23 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
             if isinstance(s, dict):
                 m = _STRENGTH_QUOTE_RX.search(s.get("evidence") or "")
                 if m:
-                    checks.append((
-                        f"competitors[{name}].strengths[{i}].evidence",
-                        (s.get("source") or "").strip(), m.group(1),
-                    ))
+                    checks.append(
+                        (
+                            f"competitors[{name}].strengths[{i}].evidence",
+                            (s.get("source") or "").strip(),
+                            m.group(1),
+                        )
+                    )
         for key in ("gtm_evidence", "moat_evidence"):
             for i, ev in enumerate(competitor.get(key) or []):
                 if isinstance(ev, dict) and ev.get("quote"):
-                    checks.append((
-                        f"competitors[{name}].{key}[{i}].quote",
-                        (ev.get("source") or "").strip(), ev["quote"],
-                    ))
+                    checks.append(
+                        (
+                            f"competitors[{name}].{key}[{i}].quote",
+                            (ev.get("source") or "").strip(),
+                            ev["quote"],
+                        )
+                    )
         # 定价来自缓存回退(反爬 starved)时,vote 行是上一轮成功运行的证据,
         # 本轮引擎原文天然不包含 —— 无法也不应 grep(新鲜度由 G3 TTL 保证,
         # 报告端有 pricing_crawl_note 如实标注)
@@ -157,19 +171,23 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
             continue
         for i, v in enumerate(competitor.get("pricing_vote_detail") or []):
             if isinstance(v, dict) and (v.get("raw_line") or v.get("line")):
-                checks.append((
-                    f"competitors[{name}].pricing_vote_detail[{i}].line",
-                    (competitor.get("pricing_source") or "").strip(),
-                    # raw_line = 引擎逐字原文;line 可能是套餐名前缀融合的
-                    # 合成串(不可 grep)—— 优先 raw_line,旧数据回退 line
-                    v.get("raw_line") or v.get("line"),
-                ))
+                checks.append(
+                    (
+                        f"competitors[{name}].pricing_vote_detail[{i}].line",
+                        (competitor.get("pricing_source") or "").strip(),
+                        # raw_line = 引擎逐字原文;line 可能是套餐名前缀融合的
+                        # 合成串(不可 grep)—— 优先 raw_line,旧数据回退 line
+                        v.get("raw_line") or v.get("line"),
+                    )
+                )
         for field, url, quote in checks:
             if not url:
                 continue  # 无来源的引文归 G1/G4
             if not _quote_grep(quote, url, engine_index):
                 rep.hard(
-                    "G2", field, url,
+                    "G2",
+                    field,
+                    url,
                     f"quote 未在该 URL 的任何引擎原文中命中: “{quote[:60]}…”",
                     "改写为引擎原文逐字引文(见 02-raw/*.engines.json),或重爬该 URL",
                 )
@@ -216,7 +234,9 @@ def g3_pricing_integrity(analysis, manifest, engine_index, rep: Report):
         tiers = competitor.get("pricing_tiers") or []
         if not tiers:
             rep.hard(
-                "G3", f"{field}.pricing_tiers", src,
+                "G3",
+                f"{field}.pricing_tiers",
+                src,
                 "pricing_verified=true 但 tiers 为空",
                 "补 tiers 或把 pricing_verified 改为 false",
             )
@@ -228,7 +248,9 @@ def g3_pricing_integrity(analysis, manifest, engine_index, rep: Report):
                 hashes.add(h["content_hash"])
         if len(hashes) < 2:
             rep.hard(
-                "G3", f"{field}.pricing_engines", src,
+                "G3",
+                f"{field}.pricing_engines",
+                src,
                 f"verified 定价的内容独立引擎不足({len(hashes)} 个不同哈希,"
                 f"engines={engines})—— 同一变体页被多引擎抓到不算交叉验证",
                 "重爬(换网络环境/等反爬窗口),或降级 pricing_verified=false",
@@ -236,7 +258,9 @@ def g3_pricing_integrity(analysis, manifest, engine_index, rep: Report):
         age = _ts_age_days(competitor.get("pricing_scraped_at"))
         if age > TTL_DAYS:
             rep.hard(
-                "G3", f"{field}.pricing_scraped_at", src,
+                "G3",
+                f"{field}.pricing_scraped_at",
+                src,
                 f"定价证据已陈旧({age:.0f} 天前,TTL={TTL_DAYS} 天)",
                 "重爬定价页刷新证据",
             )
@@ -279,7 +303,9 @@ def g4_missing_honesty(analysis, manifest, engine_index, rep: Report):
     for url, ent in fetched.items():
         if ent.get("status") == "failed" and url not in failed_urls:
             rep.hard(
-                "G4", "manifest.failures", url,
+                "G4",
+                "manifest.failures",
+                url,
                 "抓取失败的 URL 没有进 failures 清单(静默吞掉)",
                 "把该失败写入 manifest.failures {competitor,url,kind,error}",
             )
@@ -288,9 +314,13 @@ def g4_missing_honesty(analysis, manifest, engine_index, rep: Report):
     for competitor in analysis.get("competitors") or []:
         name = competitor.get("name", "?")
         for field in ("founded", "headquarters", "team_size", "tagline"):
-            if _is_missing(competitor.get(field)) and (competitor.get(f"{field}_source") or "").strip():
+            if (
+                _is_missing(competitor.get(field))
+                and (competitor.get(f"{field}_source") or "").strip()
+            ):
                 rep.hard(
-                    "G4", f"competitors[{name}].{field}_source",
+                    "G4",
+                    f"competitors[{name}].{field}_source",
                     competitor[f"{field}_source"],
                     f"{field} 缺失({competitor.get(field)!r})却断言了来源 —— 读者点开找不到内容",
                     f"清空 {field}_source,或补上真实值",
@@ -304,11 +334,21 @@ def g5_antifabrication(analysis, manifest, engine_index, rep: Report):
     def _scan(obj, path):
         if isinstance(obj, str):
             if _FABRICATED_QUOTE_RX.search(obj):
-                rep.hard("G5", path, "", f"命中历史伪造引文黑名单: “{obj[:60]}…”",
-                         "删除或替换为 02-raw 可 grep 的真实引文")
+                rep.hard(
+                    "G5",
+                    path,
+                    "",
+                    f"命中历史伪造引文黑名单: “{obj[:60]}…”",
+                    "删除或替换为 02-raw 可 grep 的真实引文",
+                )
             elif _REPR_LEAK_RX.search(obj):
-                rep.hard("G5", path, "", f"Python repr 泄漏: {obj[:60]}",
-                         "数据应为字符串/数组,不是 str(list/dict) 产物")
+                rep.hard(
+                    "G5",
+                    path,
+                    "",
+                    f"Python repr 泄漏: {obj[:60]}",
+                    "数据应为字符串/数组,不是 str(list/dict) 产物",
+                )
         elif isinstance(obj, dict):
             for k, v in obj.items():
                 _scan(v, f"{path}.{k}")
@@ -321,11 +361,19 @@ def g5_antifabrication(analysis, manifest, engine_index, rep: Report):
     # 占位符不得混入派生板块(与 render.py 同规则)
     for key in ("opportunities", "gaps"):
         for i, item in enumerate(analysis.get(key) or []):
-            blob = " ".join(str(v) for v in (item or {}).values()) if isinstance(item, dict) else str(item)
+            blob = (
+                " ".join(str(v) for v in (item or {}).values())
+                if isinstance(item, dict)
+                else str(item)
+            )
             if "待补充" in blob:
-                rep.hard("G5", f"{key}[{i}]", "",
-                         "派生板块出现「待补充」占位符",
-                         f"{key} 要么有证据支撑,要么整条删除")
+                rep.hard(
+                    "G5",
+                    f"{key}[{i}]",
+                    "",
+                    "派生板块出现「待补充」占位符",
+                    f"{key} 要么有证据支撑,要么整条删除",
+                )
 
 
 def _registrable_domain(host: str) -> str:
@@ -342,15 +390,23 @@ def _registrable_domain(host: str) -> str:
 def g6_url_hygiene(analysis, manifest, engine_index, rep: Report):
     """G6: URL 格式硬检查;证据指向其他竞品主域 = 警告。"""
     for competitor in analysis.get("competitors") or []:
-        name = competitor.get("name", "?")
         own = _registrable_domain(urlparse(competitor.get("url") or "").hostname or "")
         for field, url in _evidence_fields(competitor):
             p = urlparse(url)
             if p.scheme not in ("http", "https") or not p.netloc:
-                rep.hard("G6", field, url, "URL 格式非法(须为绝对 http(s) 地址)",
-                         "修正为合法 URL 或清空")
+                rep.hard(
+                    "G6",
+                    field,
+                    url,
+                    "URL 格式非法(须为绝对 http(s) 地址)",
+                    "修正为合法 URL 或清空",
+                )
                 continue
             src = _registrable_domain(p.hostname or "")
             if own and src and src != own:
-                rep.warn("G6", field, f"证据域名 {src} 与竞品主域 {own} 不同"
-                         "(第三方来源需在 Step 3 确认已实际抓取)")
+                rep.warn(
+                    "G6",
+                    field,
+                    f"证据域名 {src} 与竞品主域 {own} 不同"
+                    "(第三方来源需在 Step 3 确认已实际抓取)",
+                )

@@ -30,7 +30,7 @@ import re
 import sys
 from pathlib import Path
 
-TTL_DAYS = 14  # 与 scripts/crawl_competitors.py::_PRICING_CACHE_TTL_DAYS 保持同值
+TTL_DAYS = 14  # 定价缓存 TTL(与 V1 _PRICING_CACHE_TTL_DAYS 同值)
 
 
 def norm_ws(s: str) -> str:
@@ -48,8 +48,14 @@ class Report:
 
     def hard(self, gate: str, field: str, source_url: str, detail: str, hint: str):
         self.violations.append(
-            {"gate": gate, "severity": "hard", "field": field,
-             "source_url": source_url, "detail": detail, "hint": hint}
+            {
+                "gate": gate,
+                "severity": "hard",
+                "field": field,
+                "source_url": source_url,
+                "detail": detail,
+                "hint": hint,
+            }
         )
 
     def warn(self, gate: str, field: str, detail: str):
@@ -109,8 +115,9 @@ def build_engine_index(raw_dir: Path) -> dict:
     return index
 
 
-def verify_analysis(analysis_path, manifest_path, raw_dir,
-                    network=False, sample=None, report_path=None) -> dict:
+def verify_analysis(
+    analysis_path, manifest_path, raw_dir, network=False, sample=None, report_path=None
+) -> dict:
     """主 API:e2e 测试直接调用。返回 Report.to_dict() 结果。"""
     analysis = load_analysis(Path(analysis_path))
     manifest = load_manifest(Path(manifest_path))
@@ -119,11 +126,13 @@ def verify_analysis(analysis_path, manifest_path, raw_dir,
 
     # Layer 1 离线门禁(Task 2-4 填充)
     import gates  # 延迟 import,门禁函数在各自任务中注册(ROOT 需在 sys.path)
+
     gates.run_all(analysis, manifest, engine_index, rep)
 
     # Layer 2 网络门禁(Task 5 填充)
     if network:
         import network_gates
+
         network_gates.run_all(analysis, manifest, rep, sample=sample)
 
     exit_code = 0 if rep.ok else 2
@@ -131,7 +140,9 @@ def verify_analysis(analysis_path, manifest_path, raw_dir,
     if report_path:
         rp = Path(report_path)
         rp.parent.mkdir(parents=True, exist_ok=True)
-        rp.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+        rp.write_text(
+            json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
     return result
 
 
@@ -142,12 +153,18 @@ def main() -> int:
     ap.add_argument("--raw-dir", required=True, help="02-raw 目录(含 *.engines.json)")
     ap.add_argument("--network", action="store_true", help="启用网络门禁 N1/N2(慢)")
     ap.add_argument("--sample", type=int, default=None, help="网络层抽样 N 条 URL")
-    ap.add_argument("--json", dest="report_path", default=None, help="验证报告 JSON 输出路径")
+    ap.add_argument(
+        "--json", dest="report_path", default=None, help="验证报告 JSON 输出路径"
+    )
     args = ap.parse_args()
 
     result = verify_analysis(
-        args.analysis, args.manifest, args.raw_dir,
-        network=args.network, sample=args.sample, report_path=args.report_path,
+        args.analysis,
+        args.manifest,
+        args.raw_dir,
+        network=args.network,
+        sample=args.sample,
+        report_path=args.report_path,
     )
     for v in result["violations"]:
         print(f"  ✗ [{v['gate']}] {v['field']}: {v['detail']}")

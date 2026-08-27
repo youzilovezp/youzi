@@ -58,11 +58,19 @@ def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
             r = scrape_smart(url, max_chars=max_chars, timeout=timeout)
         except Exception as e:
             print(f"  [{name}] ❌ {type(e).__name__}: {e}")
-            failures.append({"competitor": name, "url": url,
-                             "kind": "home", "error": f"{type(e).__name__}: {e}"})
-            fetched[url] = {"status": "failed", "engines": {},
-                            "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC",
-                                                        time.gmtime())}
+            failures.append(
+                {
+                    "competitor": name,
+                    "url": url,
+                    "kind": "home",
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
+            fetched[url] = {
+                "status": "failed",
+                "engines": {},
+                "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+            }
             continue
         dt = time.time() - t0
         scrapers = r.get("scraper", "?").split("+") if r.get("scraper") else []
@@ -88,14 +96,16 @@ def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
         out_file.write_text(header + r.get("markdown", ""), encoding="utf-8")
         results[name] = r
 
-        # F8 引擎原文 + fetched 记录(与 crawl_competitors._content_hash 同算法)
+        # F8 引擎原文 + fetched 记录(同 V1 _content_hash 算法)
         import hashlib as _hl
+
         engines_md, engines_meta = {}, {}
-        for x in (r.get("all_results") or []):
+        for x in r.get("all_results") or []:
             if x.get("scraper") and x.get("success") and x.get("markdown"):
                 engines_md[x["scraper"]] = x["markdown"][:50000]
                 engines_meta[x["scraper"]] = {
-                    "ok": True, "chars": len(x["markdown"]),
+                    "ok": True,
+                    "chars": len(x["markdown"]),
                     "content_hash": _hl.sha256(
                         " ".join(x["markdown"].split()).encode("utf-8")
                     ).hexdigest()[:16],
@@ -110,20 +120,33 @@ def step2_crawl(competitor_urls, raw_dir, max_chars=20000, timeout=60):
             "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
         }
         if fetched[url]["status"] == "failed":
-            failures.append({"competitor": name, "url": url,
-                             "kind": "home", "error": "all engines empty/failed"})
+            failures.append(
+                {
+                    "competitor": name,
+                    "url": url,
+                    "kind": "home",
+                    "error": "all engines empty/failed",
+                }
+            )
 
     manifest = {
-        "run": {"topic": "",
-                "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
-                "pipeline_version": "2.0"},
-        "fetched": fetched, "claims": [], "failures": failures,
+        "run": {
+            "topic": "",
+            "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+            "pipeline_version": "2.0",
+        },
+        "fetched": fetched,
+        "claims": [],
+        "failures": failures,
     }
     (raw_dir.parent / "claims-manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
     if failures:
-        print(f"\n  ⚠ {len(failures)} 个 URL 爬取失败(已记录到 "
-              f"{raw_dir.parent / 'claims-manifest.json'}):")
+        print(
+            f"\n  ⚠ {len(failures)} 个 URL 爬取失败(已记录到 "
+            f"{raw_dir.parent / 'claims-manifest.json'}):"
+        )
         for f in failures:
             print(f"    - [{f['competitor']}] {f['url']}: {f['error']}")
     return results, failures
@@ -222,7 +245,8 @@ def main():
         # 默认在当前目录下创建 02-raw
         raw_dir = Path(args.raw_dir) if args.raw_dir else Path.cwd() / "02-raw"
         _results, _failures = step2_crawl(
-            urls, raw_dir, max_chars=args.max_chars, timeout=args.timeout)
+            urls, raw_dir, max_chars=args.max_chars, timeout=args.timeout
+        )
         if args.crawl_only:
             print(f"\n✅ Step 2 完成，原始数据落盘到: {raw_dir}")
             return
