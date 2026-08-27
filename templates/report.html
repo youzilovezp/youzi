@@ -1952,7 +1952,7 @@
             {% if show_annual %}
             <span class="pp-yr">
               {%- if p.annual %}{{p.annual}}{% if p.save_pct %}<em class="pp-save">省 {{p.save_pct}}%</em>{% endif %}{% if p.annual_monthly_equiv %}<i class="pp-equiv">≈ {{p.annual_monthly_equiv}}/月</i>{% endif %}
-              {%- elif p.monthly_billed %}{{p.monthly_billed}}<i class="pp-equiv">年付结算月价</i>
+              {%- elif p.monthly_billed %}{{p.monthly_billed}}{% if p.save_pct %}<em class="pp-save">省 {{p.save_pct}}%</em>{% endif %}<i class="pp-equiv">年付结算月价</i>
               {%- elif p.other_note %}<span class="pp-empty">{{p.other_note}}</span>
               {%- else %}<span class="pp-empty">—</span>{% endif %}
             </span>

@@ -141,6 +141,26 @@ fetch.py（V2 取证层，职责全部列完）：
 - 定价页**每个引擎的原文独立保留**，绝不跨引擎拼接后提取
 - 某竞品全灭（0 页，exit code 1）→ 用 WebSearch 找该竞品的 Wikipedia/Crunchbase/G2 评测页作为**替代证据源**，并如实标注来源切换
 
+### Step 2.5 · 情报自我审计（爬取后必跑 · 驱动同会话补爬）
+
+```bash
+python3 <skill-root>/audit.py \
+  --manifest "$OUT_DIR/claims-manifest.json" \
+  --raw-dir "$OUT_DIR/02-raw"
+```
+
+三层审计（详细契约见 audit.py 头注释）：
+1. **L1 覆盖率**：页面类型齐全度 / 定价深度（月付·年付·Free·Custom 配对 + 每引擎价格 token 数）/ 字段完整度（带 --analysis 时）
+2. **L2 准确性**：分析价格值跨引擎投票 / quote 逐字回查（抽样）/ pricing_verified 一致性
+3. **L3 反哺**：next_actions（可执行补采动作）+ **storage/intel-lessons.json 跨会话经验沉淀**
+
+**状态分类（核心）**：`ok / partial / gap / not-published / n-a` —— `not-published` 是**终态情报**（厂商确实不公示，如 0 价格 token×全引擎 + 替代路径已探测），记为已解决而非失败；只有 `gap` 才是采集缺口。
+
+**闭环规则**：
+- exit 1（存在 gap）→ 按 next_actions 补爬（同会话）→ 重跑 audit，直到 gap 清零或转为 not-published/partial
+- audit 自动读写 `storage/intel-lessons.json`（按域名沉淀：不公示结论、单引擎定价、替代证据源、深挖抓手）——**下次运行同域名竞品时先读 lessons，跳过已确认的死路，把预算让给真正的缺口**（自我进化）
+- 定价数据必须区分**月付/年付**两个周期（pricing_tiers 用 `billing_period: "/mo" | "billed"(年付结算月价) | "/yr"` 三通道，render 自动配对双栏展示）；只有单周期时如实标注，audit 会标 partial 并给深挖动作
+
 ### Step 3 · 结构化分析（LLM 基于证据提取 —— 每字段可追溯）
 
 **这一步是 LLM（你）的工作，不是脚本的**：fetch.py 只取证（V2 已删除全部脚本侧语义提取），你必须**逐字段从 02-raw 证据中提取、并核对原文**。
@@ -238,6 +258,17 @@ python3 <skill-root>/verify.py \
 - 网络复核（可选，慢）：加 `--network --sample 10`（N1 死链硬失败 / N2 quote 漂移警告）
 - 新发现的坏数据形状 → 冻结成离线 fixture 进 tests/（延续 test_pricing_extract.py 模式）
 
+**终审审计（audit.py 带 --analysis，交付前跑）**：
+
+```bash
+python3 <skill-root>/audit.py \
+  --manifest "$OUT_DIR/claims-manifest.json" \
+  --raw-dir "$OUT_DIR/02-raw" \
+  --analysis "$OUT_DIR/03-analysis.json"
+```
+
+产出 `04-audit.json`（覆盖率×准确性矩阵 + next_actions），并刷新 lessons。交付话术里向用户摘要：每家竞品的审计状态、不公示终态清单、遗留 partial（如「仅年付价」）——**审计结论本身是情报**。
+
 ### Step 6 · 交付
 
 1. 用 `open <report.html>` 在浏览器打开（macOS）
@@ -263,6 +294,7 @@ python3 <skill-root>/verify.py \
 
 - `references/crawl-strategy.md` — 爬取策略（**智能路由 + 引擎组合 + 交叉验证**）
 - `references/analysis-framework.md` — 13 字段提取 + 证据三元组规范 + opportunities 生成 prompt
+- `audit.py` — 情报自我审计器（覆盖率×准确性×反哺；Step 2.5 驱动补爬，Step 5 终审 + lessons 沉淀）
 - `templates/report.html` — HTML 模板（render.py 解析的）
 - `render.py` — Jinja2 渲染器（内置防伪造自检）
 

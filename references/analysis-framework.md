@@ -84,6 +84,11 @@
 
 **core_features 提取要求**：必须扫该竞品的 **docs 证据页**（claims-manifest 台账里 kind=docs 的 URL 对应 02-raw 段落），每家 ≥ 12 条、每条 ≤ 12 字 —— 不得只抄 pricing 页的套餐功能清单（那是商业包装，不是功能证据）。
 
+**pricing_tiers 提取要求（月付/年付双周期配对）**：
+- `billing_period` 三通道：`"/mo"` = 月付价 · `"billed"` = 年付结算月价（"billed annually"）· `"/yr"` = 年总价；Free/Custom 档**不带周期**
+- 厂商同时公示月付+年付时**两档都要写**（同 name 两条、不同 billing_period），render 自动配对成 月付|年付 双栏并算省%；只有单周期 → 如实只写一侧（audit 会标 partial 并给深挖动作，如 JS toggle/help center/第三方比价）
+- 价格写法保持与原文一致（含货币符号）；跨引擎投票按数字归一比较（`$1,068` ≡ `$1068`）
+
 **feature_catalog 提取要求（§5.2.1 厂商功能矩阵的唯一数据源）**：
 - 结构 `{"<竞品名>": [{name, category, desc?, source}]}` —— **漏写整个矩阵空白**（历史事故：Step 3 只写了 core_features 字符串数组，报告最核心的对比矩阵渲染成空壳）
 - `category` 跨厂商用**统一分类**（渠道接入 / 收件箱与协作 / 营销获客 / 自动化 / AI 能力 / 电商变现 / 数据与集成 / 安全合规 / 服务），矩阵按 category 分组

@@ -83,7 +83,10 @@ def ladder_engines(url_type: str, already_used: List[str]) -> List[str]:
     return out
 
 
-_PRICE_RX = re.compile(r"[$€£¥]\s*\d[\d,\.]*|\d[\d,\.]*\s*(?:usd|eur|€|£|¥|元)", re.I)
+_PRICE_RX = re.compile(
+    r"[$€£¥₹]\s*\d[\d,\.]*|US?\$\s*\d|\d[\d,\.]*\s*(?:usd|eur|€|£|¥|元|rs\.?)",
+    re.I,
+)
 
 
 def assess_pricing(

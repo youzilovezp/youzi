@@ -685,6 +685,19 @@ def _synthesize_plans_from_tiers(tiers):
     for g in plans:
         m = re.search(r"(\d[\d,]*(?:\.\d+)?)", g["monthly"] or "")
         a = re.search(r"(\d[\d,]*(?:\.\d+)?)", g["annual"] or "")
+        # 年付省% 双通道:annual(年总价) 或 monthly_billed(年付结算月价)
+        # 月付 $69 × 年付月价 $59 → 省 14% —— 与用户在官网看到的一致
+        if m and not a and g.get("monthly_billed"):
+            b = re.search(r"(\d[\d,]*(?:\.\d+)?)", g["monthly_billed"])
+            if b:
+                mv, bv = (
+                    float(m.group(1).replace(",", "")),
+                    float(b.group(1).replace(",", "")),
+                )
+                if 0 < bv < mv:
+                    save = round((1 - bv / mv) * 100)
+                    if save > 0:
+                        g["save_pct"] = save
         if m and a:
             mv, av = (
                 float(m.group(1).replace(",", "")),
