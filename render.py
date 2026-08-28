@@ -1041,11 +1041,20 @@ def _derive_user_feedback(c):
     """
     pos = []
     # 官网口碑页引语优先(真实客户声音)
+    # schema 兼容:verify/gates 走 {quote, source, who},爬虫层走 {text, kind}
+    # —— 历史缺陷:只读 text,LLM Step 3 按 gates 契约写的 quote 被静默丢弃,
+    #    反馈区只剩 strengths/weaknesses 复读(§7 引语全空)。
     for fb in (c.get("user_feedback") or [])[:4]:
-        label = "客户引语" if fb.get("kind") == "quote" else "量化效果"
+        label = "客户引语" if (fb.get("kind") or "quote") == "quote" else "量化效果"
+        text = (fb.get("text") or fb.get("quote") or "").strip()
+        who = (fb.get("who") or fb.get("author") or "").strip()
+        if who:
+            text = f"{text} —— {who}" if text else who
+        if not text:
+            continue
         pos.append(
             {
-                "text": fb.get("text", ""),
+                "text": text,
                 "source": fb.get("source", ""),
                 "source_label": _source_label_for_url(fb.get("source", ""))
                 + f" · {label}",

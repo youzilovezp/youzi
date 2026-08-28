@@ -119,6 +119,28 @@ def _price_tokens_per_engine(comp: dict, raw_index: dict) -> Dict[str, int]:
     return counts
 
 
+def _has_genuine_pricing_url(comp: dict, manifest: dict) -> bool:
+    """判「厂商不公示」前先确认抓到的定价页是真实定价页。
+
+    E2E 测试事故:SleekFlow 的涨价 webinar LP(长 slug 博客)被 fetch 当成
+    pricing 页,0 价格 token → 误判 not-published。守卫:至少存在一个
+    短路径定价 URL(/pricing /plans /price /定价格式)才算探测到位。
+    """
+    domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
+    for url, ent in (manifest.get("fetched") or {}).items():
+        if (ent.get("kind") or "") != "pricing":
+            continue
+        u = urlparse(url)
+        if domain and domain not in u.netloc.replace("www.", ""):
+            continue
+        segs = [s.lower() for s in (u.path or "").split("/") if s]
+        if not segs:
+            return True  # 域名根定价页(少见但真实)
+        if segs[-1] in ("pricing", "plans", "price", "prices", "定价", "价格", "套餐"):
+            return True
+    return False
+
+
 def audit_pricing_depth(comp: dict, manifest: dict, raw_index: dict) -> dict:
     """定价深度:月付/年付配对、Free/Custom 语义、价格 token 覆盖。
 
@@ -147,6 +169,7 @@ def audit_pricing_depth(comp: dict, manifest: dict, raw_index: dict) -> dict:
 
     # ── 0 价格 token:不公示 vs 采集失败 ──
     if not engines_with_price:
+        genuine = _has_genuine_pricing_url(comp, manifest)
         probes = [
             u
             for u in (manifest.get("fetched") or {})
@@ -157,12 +180,25 @@ def audit_pricing_depth(comp: dict, manifest: dict, raw_index: dict) -> dict:
                 for k in ("pricing", "docs", "about")
             )
         ]
-        if probes or len((manifest.get("fetched") or {})) > 2:
+        if genuine and (probes or len((manifest.get("fetched") or {})) > 2):
             r = _base(
                 ["厂商不公示订阅价格(全引擎 0 价格 token)—— 本身是情报:B2B 询价制打法"],
                 ["把「价格不公示(询价制)」写进 pricing 字段并附证据链,经验入 lessons"],
             )
             r["status"] = "not-published"
+            return r
+        if not genuine:
+            r = _base(
+                [
+                    "抓到的「定价页」不是真实定价页(长 slug LP/博客被误判),"
+                    "0 价格 token 不能下不公示结论"
+                ],
+                [
+                    "web 搜索 '<竞品> pricing' 定位真实定价页(通常 /pricing /plans 短路径),"
+                    "补爬后再审"
+                ],
+            )
+            r["status"] = "gap"
             return r
         r = _base(
             ["全引擎 0 价格 token 且无替代探测 → 疑似采集失败而非不公示"],

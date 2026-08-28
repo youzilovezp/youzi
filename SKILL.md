@@ -160,6 +160,8 @@ python3 <skill-root>/audit.py \
 - exit 1（存在 gap）→ 按 next_actions 补爬（同会话）→ 重跑 audit，直到 gap 清零或转为 not-published/partial
 - audit 自动读写 `storage/intel-lessons.json`（按域名沉淀：不公示结论、单引擎定价、替代证据源、深挖抓手）——**下次运行同域名竞品时先读 lessons，跳过已确认的死路，把预算让给真正的缺口**（自我进化）
 - 定价数据必须区分**月付/年付**两个周期（pricing_tiers 用 `billing_period: "/mo" | "billed"(年付结算月价) | "/yr"` 三通道，render 自动配对双栏展示）；只有单周期时如实标注，audit 会标 partial 并给深挖动作
+- **定价 toggle 交互取证**：官网只有单周期价时，用 playwright 真实点击「Monthly/Yearly」切换抓另一态（`toggle_crawl.py` 模式：伪引擎键 playwright_toggle_monthly/yearly 写入 engines.json 保持证据链）；引用帮助中心页脚等**死链线索**（如 meetbot.com/charge 404）也算穷尽探测的证据
+- **隐藏入口挖掘**：定价/产品数据抓不到时，依次试 help center 页脚链接、web 搜索 `site:` 定位 changelog/roadmap 独立站（canny 类）、第三方报道（带日期的上线新闻可作 momentum 证据）
 
 ### Step 3 · 结构化分析（LLM 基于证据提取 —— 每字段可追溯）
 
@@ -190,6 +192,8 @@ python3 <skill-root>/audit.py \
 11. `differentiators` — 1-3 个差异化杀手锏，**dict 结构** `[{point, quote(≤100字逐字), source_url}]`（与 strengths 同构；source_url 必须锚定 docs/features 具体子页，quote 可在该页 grep 到）
 12. `tech_signals` — 技术栈线索（来自 docs/blog/changelog，各带 URL；source 必须是 docs 具体子页而非栏目首页/pricing，附 quote 逐字原文）
 13. `scores` — **6 个维度 1-10 分**（feature_richness / ux / pricing_value / integration / ai_capability / momentum）
+14. `user_feedback` — 客户口碑（`[{quote, source, who}]`，quote=逐字引文；**§7 反馈区第一数据源**，每家 2-4 条，量化数字优先；抓不到 testimonials 时用应用市场评论/Reddit 兜底）
+15. `product_momentum` — 产品迭代信号（`[{title, when, source}]`，**title 必须原文逐字**（G2 回查），when=YYYY-MM-DD 或「未注日期」；公开 changelog/roadmap 优先，如 roadmap.respond.io 类 canny 站点；**§6 产品数据分析的第一数据源**）
 
 合并所有竞品后**额外产出**：
 

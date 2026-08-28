@@ -84,10 +84,21 @@
 
 **core_features 提取要求**：必须扫该竞品的 **docs 证据页**（claims-manifest 台账里 kind=docs 的 URL 对应 02-raw 段落），每家 ≥ 12 条、每条 ≤ 12 字 —— 不得只抄 pricing 页的套餐功能清单（那是商业包装，不是功能证据）。
 
+**user_feedback 提取要求（§7 用户反馈区的第一数据源）**：
+- 结构 `[{quote, source, who}]` —— `quote` = 客户原话逐字引文（≤100 字，G2/G7 会回查）、`source` = 具体评论/案例子页（优先 customers/testimonials 子页 > 应用市场评论 > 首页引语区——首页仅警告不硬失败）、`who` = 说话人+头衔
+- **键名必须是 `quote`（与 gates 契约一致）**——历史事故：render 曾只读 `text` 键，quote 形态被静默丢弃，§7 只剩 strengths 复读（现已双向兼容，但新数据一律写 quote）
+- 每家 2-4 条，带量化数字的引语优先（"response time improved by 95%" 这类）
+- 官网 testimonials 抓不到 → 搜应用市场评论页（Shopify/Capterra）/ Reddit JSON 兜底，如实标注第三方来源
+
 **pricing_tiers 提取要求（月付/年付双周期配对）**：
 - `billing_period` 三通道：`"/mo"` = 月付价 · `"billed"` = 年付结算月价（"billed annually"）· `"/yr"` = 年总价；Free/Custom 档**不带周期**
 - 厂商同时公示月付+年付时**两档都要写**（同 name 两条、不同 billing_period），render 自动配对成 月付|年付 双栏并算省%；只有单周期 → 如实只写一侧（audit 会标 partial 并给深挖动作，如 JS toggle/help center/第三方比价）
 - 价格写法保持与原文一致（含货币符号）；跨引擎投票按数字归一比较（`$1,068` ≡ `$1068`）
+
+**product_momentum 提取要求（§6 产品数据分析的第一数据源）**：
+- 结构 `[{title, when, source}]` —— `title` = **原文逐字标题**（G2 会把它当 quote 回查！中文转述会硬失败）、`when` = 日期（YYYY-MM-DD；页面未标日期就写 "2026(未注日期)"）、`source` = changelog/roadmap/博客子页
+- 优先级：公开 changelog/roadmap（如 roadmap.respond.io/canny 类）> 博客 whats-new 分类 > 第三方带日期报道
+- 抓不到时如实留空——render §6 会显示诚实提示而不是编造结论
 
 **feature_catalog 提取要求（§5.2.1 厂商功能矩阵的唯一数据源）**：
 - 结构 `{"<竞品名>": [{name, category, desc?, source}]}` —— **漏写整个矩阵空白**（历史事故：Step 3 只写了 core_features 字符串数组，报告最核心的对比矩阵渲染成空壳）

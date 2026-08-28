@@ -246,3 +246,43 @@ def test_custom_tier_semantic_block():
         'class="pp-row"' not in html
         or "Custom" not in html.split("pc-custom")[0].split("pp-head")[-1]
     )
+
+
+def test_user_feedback_quote_schema_compat():
+    """user_feedback 双契约兼容:gates 校验 {quote, source, who},render 曾只读
+    {text, kind} —— quote 形态被静默丢弃,§7 反馈区只剩 strengths 复读(历史事故)。
+    """
+    import importlib
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT))
+    render = importlib.import_module("render")
+    c = {
+        "name": "X",
+        # gates/框架契约形态(Step 3 LLM 产出)
+        "user_feedback": [
+            {
+                "quote": "Great product saved us hours",
+                "source": "https://x.io/story",
+                "who": "Alice, CEO",
+            },
+            # 爬虫层形态
+            {
+                "text": "12000 users in 2 months",
+                "kind": "metric",
+                "source": "https://x.io/case",
+            },
+            # 空条目(两键都缺)→ 丢弃不渲染
+            {"source": "https://x.io/none"},
+        ],
+        "strengths": [{"point": "官方强项", "source": "https://x.io", "score": 8}],
+        "weaknesses": [],
+    }
+    fb = render._derive_user_feedback(c)
+    texts = [p["text"] for p in fb["positive"]]
+    assert any("Great product saved us hours" in t and "Alice, CEO" in t for t in texts)
+    assert any("12000 users in 2 months" in t for t in texts)
+    assert all(t.strip() for t in texts)  # 无空文本条目
+    labels = [p["source_label"] for p in fb["positive"]]
+    assert any("客户引语" in label for label in labels)
+    assert any("量化效果" in label for label in labels)
