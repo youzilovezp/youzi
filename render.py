@@ -19,6 +19,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pricing_tokens import normalize_billing_period
+
 HERE = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE = HERE / "templates" / "report.html"
 
@@ -814,13 +816,9 @@ def _synthesize_plans_from_tiers(tiers):
         )
         per = (t.get("billing_period") or "").strip()
         price = (t.get("price") or "").strip()
-        # 容忍老数据的原始周期文本(billed annually/monthly)
-        if re.search(r"month|/mo", per, re.I) and not re.search(r"year|yr", per, re.I):
-            per = "/mo"
-        elif re.search(r"billed|结算", per, re.I):
-            per = "billed"  # 年结算月价 → monthly_billed 通道
-        elif re.search(r"year|\byr\b|annual", per, re.I):
-            per = "/yr"
+        # 容忍老数据的原始周期文本 —— 与 gates G8 同源
+        # (pricing_tokens.normalize_billing_period,单一事实源)
+        per = normalize_billing_period(per)
         if per == "/mo" and not g["monthly"]:
             g["monthly"] = price
         elif per == "billed" and not g.get("monthly_billed"):
@@ -1380,439 +1378,22 @@ for _f in _CANONICAL_FEATURES_WHATSAPP:
 # 内置默认别名库 — 覆盖常见集成/CDP/收件箱场景(零配置启用)
 # 优先级最低,被用户配置和自动检测覆盖
 # ─────────────────────────────────────────────────────────
-_DEFAULT_FEATURE_ALIASES = {
-    "团队收件箱 (Team Inbox)": {
-        "aliases": [
-            "团队收件箱",
-            "团队共享收件箱",
-            "Team Inbox",
-            "Shared Inbox",
-            "Unified Inbox",
-            "协作收件箱",
-            "Agent Inbox",
-            "Multi-Agent Inbox",
-            "Inbox",
-        ],
-        # substr:句子型功能名(如 "…unifies them in a team inbox")做词边界包含匹配
-        "substr": [
-            "team inbox",
-            "shared inbox",
-            "unified inbox",
-            "collaborative inbox",
-            "agent inbox",
-            "agent console",
-            "inbox",
-            "收件箱",
-        ],
-        "rationale": "本质都是「多坐席共享同一个对话列表」,各家产品命名不同。",
-    },
-    "对话分配 (Chat Assignment)": {
-        "aliases": [
-            "对话分配",
-            "对话分配规则",
-            "Chat Assignment",
-            "Conversation Routing",
-            "Conversation Assignment",
-        ],
-        "substr": [
-            "conversation routing",
-            "route conversations",
-            "chat assignment",
-            "对话分配",
-        ],
-        "rationale": "把进入的对话按规则分配到坐席(团队/优先级/语言)。",
-    },
-    "REST API 开放接口": {
-        "aliases": ["REST API", "API", "Open API", "RESTful API"],
-        "rationale": "公开 REST 接口供开发者集成。",
-    },
-    "Webhook 事件推送": {
-        "aliases": [
-            "Webhook 双向",
-            "Webhook 事件",
-            "Webhook",
-            "Webhook Events",
-            "Webhook 事件回调",
-            "Events API",
-            "Webhook Callbacks",
-            "新消息/状态变更推送",
-        ],
-        "rationale": "新消息/状态变更等事件实时推送到开发者服务器。",
-    },
-    "电商集成 (E-commerce)": {
-        "aliases": [
-            "Shopify 集成",
-            "Shopify 一键连接",
-            "Shopify Inbox",
-            "Shopify 深度",
-            "WooCommerce",
-            "WooCommerce 连接",
-            "WooCommerce 集成",
-            "E-commerce Integration",
-            "Magento Integration",
-        ],
-        "rationale": "对接电商平台同步订单/库存/客户。Shopify/WooCommerce/Magento 三大主流。",
-    },
-    "HubSpot CRM 集成": {
-        "aliases": ["HubSpot 集成", "HubSpot 连接", "HubSpot CRM Integration"],
-        "rationale": "对接 HubSpot 同步 contacts/deals/通讯记录。",
-    },
-    "Zapier 自动化集成": {
-        "aliases": [
-            "Zapier 集成",
-            "Zapier 连接",
-            "Zapier/Make",
-            "Zapier Integration",
-            "Make.com 集成",
-            "Make Integration",
-        ],
-        "rationale": "通过 Zapier/Make.com 连接 5000+ SaaS 工具做自动化。",
-    },
-    "Mailchimp 集成": {
-        "aliases": ["Mailchimp", "Mailchimp 集成", "Mailchimp Integration"],
-        "rationale": "对接 Mailchimp 做邮件营销协同。",
-    },
-    "Instagram 多渠道接入": {
-        "aliases": ["Instagram DM", "Instagram 集成", "Instagram Integration"],
-        "rationale": "把 Instagram Direct Message 接入统一收件箱。",
-    },
-    "Facebook Messenger 接入": {
-        "aliases": [
-            "Facebook Messenger",
-            "Messenger",
-            "FB Messenger",
-            "Facebook Messenger Integration",
-        ],
-        "rationale": "对接 Meta 的 Facebook Messenger 多渠道能力。",
-    },
-    "Telegram 接入": {
-        "aliases": ["Telegram", "Telegram Bot", "Telegram Integration"],
-        "rationale": "对接 Telegram 多渠道能力。",
-    },
-    "WhatsApp Business API": {
-        "aliases": [
-            "WhatsApp Business API",
-            "WhatsApp Business Platform",
-            "WhatsApp Business",
-            "WhatsApp",
-            "WhatsApp API",
-        ],
-        "rationale": "Meta 官方 WhatsApp Business API 直连。",
-    },
-    "Email API": {
-        "aliases": [
-            "Email API",
-            "SendGrid Email",
-            "Transactional Email",
-            "SMTP API",
-            "Email Service",
-        ],
-        "rationale": "事务性 + 营销邮件 API(SendGrid 等)。",
-    },
-    "SMS API": {
-        "aliases": [
-            "Programmable Messaging",
-            "SMS/MMS/RCS",
-            "SMS API",
-            "Programmable SMS",
-            "Messaging API",
-        ],
-        "rationale": "短信/MMS/RCS 统一消息 API。",
-    },
-    "CDP 客户数据平台": {
-        "aliases": [
-            "Segment CDP",
-            "People CDP",
-            "Personas 身份解析",
-            "Identity Resolution",
-            "CDP",
-            "Customer Data Platform",
-        ],
-        "rationale": "跨渠道客户数据平台,统一用户身份与画像。",
-    },
-    "可视化拖拽流程编辑器": {
-        "aliases": [
-            "可视化拖拽流程",
-            "拖拽流程编辑器",
-            "Visual Flow Builder",
-            "Drag-and-Drop Workflow",
-            "Flow Builder",
-        ],
-        "rationale": "零代码拖拽式工作流编辑。",
-    },
-    "行业模板库 (Workflow Templates)": {
-        "aliases": [
-            "模板市场",
-            "工作流模板库",
-            "Workflow Templates",
-            "Template Library",
-            "Template Marketplace",
-        ],
-        "rationale": "预制行业流程模板让用户快速上手。",
-    },
-    "内部备注 (Internal Notes)": {
-        "aliases": [
-            "内部备注",
-            "Internal Notes",
-            "Internal Chat",
-            "@mention",
-            "Team Chat",
-        ],
-        "rationale": "团队成员私下沟通,客户不可见。",
-    },
-    "AI 转人工升级": {
-        "aliases": [
-            "AI 转人工",
-            "AI 智能路由",
-            "Human Handoff",
-            "Agent Handoff",
-            "Escalation to Human",
-        ],
-        "rationale": "AI 检测到复杂问题后自动升级到人工客服。",
-    },
-    "知识库训练 (Knowledge Base Training)": {
-        "aliases": [
-            "AI 知识库训练",
-            "Lyro 知识库训练",
-            "Knowledge Base",
-            "FAQ Training",
-            "Document Training",
-        ],
-        "rationale": "上传文档/FAQ 让 AI 自动学习。",
-    },
-    # 企业级基础能力 — 每家都应有
-    "多渠道接入 (Omnichannel Aggregation)": {
-        "aliases": [
-            "多渠道接入",
-            "8 渠道统一",
-            "Omnichannel",
-            "Multi-channel Inbox",
-            "Channel API",
-            "Channels API",
-            "渠道聚合",
-        ],
-        "substr": [
-            "omnichannel",
-            "multi-channel",
-            "multichannel",
-            "centralize chats",
-            "unifies them",
-            "渠道统一",
-        ],
-        "rationale": "统一接入 WhatsApp/SMS/Email/Voice/Messenger 等多渠道。",
-    },
-    "数据导出 (Data Export)": {
-        "aliases": [
-            "数据导出",
-            "Data Export",
-            "导出",
-            "CSV/Excel 导出",
-            "Insights Export",
-            "Message Export",
-            "Conversation Export",
-            "对话记录导出",
-            "分析数据导出",
-        ],
-        "rationale": "联系人/对话/分析数据批量导出 — 企业合规与迁移必备。",
-    },
-    "权限与团队管理 (RBAC)": {
-        "aliases": [
-            "权限与角色管理",
-            "权限与团队管理",
-            "RBAC",
-            "Role-Based Access",
-            "团队协作",
-            "角色权限",
-            "Team Permissions",
-            "Workspace 隔离",
-            "Sub-account",
-            "IAM",
-            "团队成员角色",
-            "Operator 角色权限",
-        ],
-        "rationale": "多角色多坐席团队协作必备。RBAC + 工作空间隔离。",
-    },
-    "审计日志 (Audit Logs)": {
-        "aliases": [
-            "审计日志",
-            "Audit Logs",
-            "操作日志",
-            "Audit Trail",
-            "Compliance Logs",
-            "API 调用记录",
-        ],
-        "rationale": "SOC2/HIPAA/ISO27001 等合规审计必需。",
-    },
-    # ── 通用功能家族(R2-D)——「所有竞品都有」的基础能力,爬虫常把官网
-    # 功能描述抓成句子("…to targeted customers"),exact 别名命不中就被判
-    # 成某家独家。substr 列表只放高置信短语(词边界匹配),勿加泛词。
-    "批量群发与营销活动 (Broadcast & Campaigns)": {
-        "aliases": [
-            "Broadcast",
-            "Broadcasts",
-            "Broadcast Messages",
-            "Bulk Messaging",
-            "营销活动",
-            "群发",
-            "广播",
-        ],
-        "substr": [
-            "broadcast",
-            "bulk messaging",
-            "bulk sends",
-            "campaign",
-            "群发",
-            "广播",
-            "营销活动",
-        ],
-        "rationale": "向批量客户/受众发送营销消息 —— 广播/群发/营销活动是同一能力的不同叫法。",
-    },
-    "消息模板 (Message Templates)": {
-        "aliases": [
-            "Message Templates",
-            "Template Messages",
-            "模板消息",
-            "消息模板",
-        ],
-        "substr": ["message template", "template message", "模板消息", "消息模板"],
-        "rationale": "预审批的消息模板(如 WhatsApp Template Message)批量触达。",
-    },
-    "联系人管理 (Contact Management)": {
-        "aliases": ["Contact Management", "Contacts", "联系人管理", "客户管理"],
-        "substr": [
-            "contact management",
-            "contacts and contact",
-            "联系人管理",
-            "客户管理",
-        ],
-        "rationale": "联系人/客户资料的增删改查与分组管理。",
-    },
-    "客户分群 (Segmentation)": {
-        "aliases": [
-            "Segmentation",
-            "Customer Segmentation",
-            "Audience Segmentation",
-            "客户分群",
-        ],
-        "substr": ["segmentation", "客户分群", "受众分群"],
-        "rationale": "按标签/行为把联系人切分为受众群,定向触达。",
-    },
-    "AI 对话机器人 (AI Chatbot)": {
-        "aliases": ["AI Chatbot", "AI Chatbots", "AI Bot", "AI Bots", "聊天机器人"],
-        "substr": ["chatbot", "chat bot", "ai-powered bot", "ai bot", "聊天机器人"],
-        "rationale": "AI 机器人自动应答/筛选线索/处理常见问题。",
-    },
-    "自动化工作流 (Automation Workflow)": {
-        "aliases": [
-            "Automation Workflow",
-            "Marketing Automation",
-            "Customer Journeys",
-            "自动化工作流",
-            "客户旅程",
-        ],
-        "substr": [
-            "automation",
-            "automated customer journey",
-            "customer journey",
-            "journey builder",
-            "workflow",
-            "自动化",
-            "工作流",
-        ],
-        "rationale": "触发器+动作的自动化流程(营销自动化/客户旅程/工作流同源)。",
-    },
-    "数据分析 (Analytics)": {
-        "aliases": [
-            "Analytics",
-            "Conversation Analytics",
-            "Data Insights",
-            "数据分析",
-            "数据洞察",
-        ],
-        "substr": ["analytics", "insights", "数据分析", "数据洞察"],
-        "rationale": "对话/营销/转化数据的报表与洞察。",
-    },
-    "IDE 插件 (IDE Plugin)": {
-        "aliases": ["IDE Plugin", "IDE Integration", "VS Code Extension", "IDE 插件"],
-        "substr": [
-            "vs code",
-            "vscode",
-            "ide plugin",
-            "ide integration",
-            "jetbrains",
-            "visual studio",
-            "cursor",
-        ],
-        "rationale": "在 IDE/编辑器里直接使用(VS Code/Cursor/JetBrains 集成)。",
-    },
-    "AI 代码审查 (AI Code Review)": {
-        "aliases": [
-            "AI Code Review",
-            "Automated Code Review",
-            "Automated AI Review",
-            "AI 代码审查",
-            "自动代码审查",
-        ],
-        "substr": [
-            "ai code review",
-            "automated code review",
-            "code review",
-            "ai review",
-            "代码审查",
-        ],
-        "rationale": "AI 自动审查代码变更(PR diff)并给结论 —— 该品类各家的核心能力。",
-    },
-    "安全扫描 (Security Scanning)": {
-        "aliases": [
-            "Security Scanning",
-            "Vulnerability Scan",
-            "SAST",
-            "安全扫描",
-            "漏洞扫描",
-        ],
-        "substr": [
-            "security scan",
-            "vulnerab*",
-            "sast",
-            "secrets",
-            "安全扫描",
-            "漏洞扫描",
-        ],
-        "rationale": "代码安全扫描(漏洞/密钥泄漏/SAST/依赖风险)。",
-    },
-    "代码托管与项目集成 (Git Hosting Integration)": {
-        "aliases": ["GitHub Integration", "GitLab Integration", "代码托管集成"],
-        "substr": [
-            "github",
-            "gitlab",
-            "bitbucket",
-            "jira",
-            "linear",
-            "代码托管集成",
-        ],
-        "rationale": "对接代码托管/issue 跟踪平台(GitHub/GitLab/Jira/Linear)。",
-    },
-    "私有化部署 (Self-Hosting & On-Premise)": {
-        "aliases": [
-            "Self-Hosting",
-            "Self-Hosted",
-            "On-Premise",
-            "Air-gapped",
-            "私有化部署",
-        ],
-        "substr": [
-            "self-host",
-            "self host",
-            "on-premise",
-            "on-prem",
-            "air-gapped",
-            "air gapped",
-            "single-tenant",
-            "私有化部署",
-        ],
-        "rationale": "自营部署(云内/本地/隔离网),数据不出企业边界。",
-    },
-}
+def _load_feature_aliases() -> dict:
+    """内置默认别名库(references/feature-aliases.json,2026-08-30 外置)。
+
+    单一事实源:gates G8 的统一名覆盖率检查加载同一份文件 —— 历史上
+    两份清单各自维护必然漂移(G8 曾用别名形态当规范名,反向误判)。
+    加载失败返回空 dict(矩阵按原名分组,不崩)。"""
+    import json as _json
+
+    p = Path(__file__).resolve().parent / "references" / "feature-aliases.json"
+    try:
+        return (_json.loads(p.read_text(encoding="utf-8")).get("aliases")) or {}
+    except Exception:
+        return {}
+
+
+_DEFAULT_FEATURE_ALIASES = _load_feature_aliases()
 
 
 def _auto_detect_aliases(competitors):
@@ -2412,7 +1993,10 @@ def _build_canonical_matrix(competitors, canonical_features):
             aliases_lower.append(canon["name_en"].strip().lower())
         if canon.get("name_cn"):
             aliases_lower.append(canon["name_cn"].strip().lower())
-        aliases_lower = list({a for a in aliases_lower if a})
+        # 保序去重(2026-08-30 确定性修复):set 去重会随字符串哈希随机化
+        # 打乱顺序 → 「匹配别名」首命中在 路由/分配 间随机翻转,同一输入
+        # 两次渲染产物不同(实测 10 行漂移)。dict.fromkeys 去重且保序。
+        aliases_lower = list(dict.fromkeys(a for a in aliases_lower if a))
 
         per_vendor: dict = {}
         support_count = 0
@@ -2838,9 +2422,17 @@ def _derive_data_growth(competitors):
             {
                 "signal": f"{n} 近期产品动态 {d} 条",
                 "value": d,
+                # 溯源到动态条目的实际来源页(博客/changelog),而非官网根
+                # —— 此前懒惰 sourcing 用 c.url,读者点进去找不到任何动态
                 "source": next(
-                    (c.get("url") for c in competitors if c["name"] == n), ""
-                ),
+                    (
+                        (c.get("product_momentum") or [{}])[0].get("source", "")
+                        for c in competitors
+                        if c["name"] == n
+                    ),
+                    "",
+                )
+                or next((c.get("url") for c in competitors if c["name"] == n), ""),
             }
             for n, d in sorted(density.items(), key=lambda kv: -kv[1])
             if d
@@ -3859,6 +3451,17 @@ def normalize(data: dict) -> dict:
     )
     data.setdefault("executive_summary", "（无摘要）")
     data.setdefault("market_segments", [])
+    # market_segments schema 归一化(2026-08-31):模板/聚类消费 {label, desc,
+    # players},但 analysis-framework.md 的示例是 dict 形态、旧 fixture 是
+    # {name, competitors} —— Step 3 写什么形态都收,统一转成 canonical。
+    # 此前 {name, competitors} 形态静默渲染成「? · — | 0 家玩家」。
+    for _seg in data["market_segments"]:
+        if not isinstance(_seg, dict):
+            continue
+        _seg.setdefault("label", _seg.get("name", "—"))
+        if not _seg.get("players"):
+            _seg["players"] = _seg.get("competitors") or []
+        _seg.setdefault("desc", "")
     data.setdefault("competitors", [])
     data.setdefault("gaps", [])
     data.setdefault("opportunities", [])
@@ -4541,16 +4144,20 @@ def normalize(data: dict) -> dict:
 
     # 6. 技术栈信号汇总 —— 每个竞品 tech_signals + 全行业聚类
     # 注意:tech_signals 在 Phase 1A 后是 list[{name, source, _ref}],兼容旧 list[str]
+    # 2026-08-31 修复:name 缺失(如 Step 3 写了 signal/quote 等别名键)时,
+    # 空字符串聚成一坨 → §4.2 出现「无信号名 · N 家 · 乱计数」的失真卡。
+    # 空名信号跳过聚类(§4.3 明细仍逐条渲染),不再产出伪聚类。
     tech_clusters: dict = {}
     for c in data["competitors"]:
         for t in c.get("tech_signals", []):
             if isinstance(t, dict):
-                key = t.get("name", "")
+                key = (t.get("name") or "").strip()
                 ref = t.get("_ref", 0)
             else:
-                key = t
+                key = str(t).strip()
                 ref = 0
-            key = key.strip()
+            if not key:
+                continue
             tech_clusters.setdefault(key, {"adopters": [], "ref": ref})
             tech_clusters[key]["adopters"].append(c["name"])
     tech_top = sorted(
