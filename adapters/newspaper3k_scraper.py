@@ -11,6 +11,8 @@ Newspaper3k (github.com/codelucas/newspaper) —— 老牌新闻/文章抽取库
 
 from typing import Optional
 
+from adapters import truncate_md
+
 
 def is_available() -> bool:
     try:
@@ -68,9 +70,7 @@ def scrape(
             article.keywords = []
             article.summary = ""
 
-        text = article.text or ""
-        if len(text) > max_chars:
-            text = text[:max_chars] + "\n\n[... 内容已截断 ...]"
+        text = truncate_md(article.text or "", max_chars)
 
         # 拼成 markdown 风格
         parts = []

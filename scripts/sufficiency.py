@@ -7,7 +7,12 @@
 """
 
 import re
+import sys
+from pathlib import Path
 from typing import Dict, Any, List, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from pricing_tokens import PRICE_TOKEN_RX  # noqa: E402
 
 # ── V2 引擎升级梯(白名单内,排除已用) ──
 _ENGINE_LADDER_EXTRA = {
@@ -83,10 +88,9 @@ def ladder_engines(url_type: str, already_used: List[str]) -> List[str]:
     return out
 
 
-_PRICE_RX = re.compile(
-    r"[$€£¥₹]\s*\d[\d,\.]*|US?\$\s*\d|\d[\d,\.]*\s*(?:usd|eur|€|£|¥|元|rs\.?)",
-    re.I,
-)
+# 价格 token 统一 pricing_tokens(单一事实源;历史三套口径并存导致
+# US$59 截断成 US$5、₹ 漏检等假阴性 —— 2026-08-29 审计修复)
+_PRICE_RX = PRICE_TOKEN_RX
 
 
 def assess_pricing(

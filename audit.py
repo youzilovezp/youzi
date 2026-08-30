@@ -71,7 +71,11 @@ def _is_annual(period: str) -> bool:
 
 
 def audit_page_coverage(comp: dict, manifest: dict) -> dict:
-    """页面类型覆盖:homepage/pricing/features/docs/testimonials。"""
+    """页面类型覆盖:homepage/pricing/features/docs/testimonials。
+
+    kinds 多值:fetched[url]["kinds"](2026-08-29 起 home_as_pricing 的
+    首页同时是 homepage+pricing,不再互相覆盖);兼容旧数据的单 kind 字段。
+    """
     domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
     kinds_got = {}
     for url, ent in (manifest.get("fetched") or {}).items():
@@ -82,8 +86,9 @@ def audit_page_coverage(comp: dict, manifest: dict) -> dict:
             # 第三方证据源(help center/app 市场/集团官网)也算覆盖
             if not any(k in u.netloc for k in (domain.split(".")[0],)):
                 continue
-        k = ent.get("kind")
-        kinds_got.setdefault(k, []).append(url)
+        for k in ent.get("kinds") or [ent.get("kind")] or ["?"]:
+            if k:
+                kinds_got.setdefault(k, []).append(url)
     missing = [k for k in EXPECTED_PAGE_KINDS if k not in kinds_got]
     actions = []
     if "pricing" in missing:

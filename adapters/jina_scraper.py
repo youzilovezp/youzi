@@ -7,10 +7,38 @@ Jina Reader (jina.ai/reader) —— LLM 友好的网页读取器
 GitHub: https://github.com/jina-ai/reader
 
 依赖:requests(已有),无其他额外包
+
+2026-08-29 升级(审计修复):
+  - 全局限速(免 key 档 ~20 RPM):页面级并行后 jina 调用会突发集中,
+    429 概率随并发度上升 —— 模块级节流阀把请求隔开
+  - 429/5xx 指数退避重试 1 次(历史实现 429 即失败,交叉验证丢一票)
+  - 头尾截断(truncate_md):jina 输出头部是 Title/URL Source 元数据、
+    尾部常承载正文/价格表,纯头部截断会砍掉真实内容
 """
 
 import os
+import threading
+import time
+
 import requests
+
+from adapters import truncate_md
+
+# 免 key 档全局限速:两次调用最小间隔(秒)。20 RPM ≈ 3.0s;
+# 取 2.0s 留余量(实测 6 连发通过,但并行页面下突发更猛)。
+_JINA_MIN_INTERVAL_S = 2.0
+_THROTTLE_LOCK = threading.Lock()
+_THROTTLE_LAST = {"t": 0.0}
+
+
+def _throttle() -> None:
+    """全局节流:保证相邻两次 jina 请求间隔 ≥ _JINA_MIN_INTERVAL_S。"""
+    with _THROTTLE_LOCK:
+        now = time.monotonic()
+        wait = _JINA_MIN_INTERVAL_S - (now - _THROTTLE_LAST["t"])
+        if wait > 0:
+            time.sleep(wait)
+        _THROTTLE_LAST["t"] = time.monotonic()
 
 
 def is_available() -> bool:
@@ -50,12 +78,20 @@ def scrape(url: str, max_chars: int = 50000, timeout: float = 45.0, **kwargs) ->
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
+        _throttle()
         resp = requests.get(reader_url, headers=headers, timeout=timeout)
+        attempt = 0
+        while resp.status_code == 429 or resp.status_code >= 500:
+            if attempt >= 1:  # 429/5xx 退避重试 1 次
+                break
+            attempt += 1
+            time.sleep(5.0 * attempt)
+            _throttle()
+            resp = requests.get(reader_url, headers=headers, timeout=timeout)
         resp.raise_for_status()
         markdown = resp.text
 
-        if len(markdown) > max_chars:
-            markdown = markdown[:max_chars] + "\n\n[... 内容已截断 ...]"
+        markdown = truncate_md(markdown, max_chars)
 
         return {
             "success": True,

@@ -274,9 +274,10 @@ mcp__zread__search_doc(repo_name="owner/repo", query="architecture")
 ## 🚀 性能：并行优先
 
 - **Step 1（搜索）**：6+ 个查询全部并行（同 message）
-- **Step 2（爬取）**：firecrawl.crawl 一次抓全站，或每个竞品的 4-5 个页面用 Agent subagent 并行
+- **Step 2（爬取）**：fetch.py 内建两级并行 —— 页面级（homepage 先行供导航发现，其余 6 类页面错峰并发，实测单竞品 40-60s → 15-25s）+ 竞品级（3 并发）；playwright 浏览器进程级复用（常驻事件循环 + 按域 context 缓存，省 1.5-2s/页冷启动）
 - **Step 2.5（视觉/视频/社交）**：全部并行
 - **Step 3（分析）**：每个竞品一个 subagent 并行提取
+- **礼貌性**：页面错峰启动、jina 全局限速（免 key ~20 RPM）+ 429 退避、robots.txt disallow 跳过
 
 ---
 

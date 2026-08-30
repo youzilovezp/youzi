@@ -37,7 +37,7 @@ allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-rea
 - `WebFetch`（内置）：仅作最终 fallback
 
 🔁 **充分性闭环（准 > 快，fetch.py 内建，契约见 `scripts/sufficiency.py`）**：
-- 定价：≥2 独立引擎一致 + 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品）→ 仍不达标回退 ≤14 天已验证缓存 → 全灭时搜索发现官方定价页
+- 定价：≥2 独立引擎一致（价格投票统一 `pricing_tokens.py`，₹/Rs./US$/后缀€ 全覆盖）+ 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品，全页面共享 deadline）→ 仍不达标回退 ≤14 天已验证缓存（`storage/pricing-cache.json`，带每引擎原文，台账标 `from_cache`）→ 全灭时搜索发现官方定价页
 - tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `scripts/deep_link.py` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
 - user_feedback：官网 testimonials 没抓到 → 搜索 G2/Trustpilot 具体评论页（多数被封）→ Reddit JSON 兜底
 - 预算耗尽/通道全封 → 诚实标「未验证」，绝不伪造
@@ -130,10 +130,10 @@ python3 <skill-root>/scripts/fetch.py \
 ```
 
 fetch.py（V2 取证层，职责全部列完）：
-1. **URL 发现** — resolver 猜常规路径（pricing/features/docs/about/testimonials/blog）+ 首页导航链接发现兜底（404 语义）；任意域名直通，不要求先补内置表
-2. **爬取** — scrape_smart 智能路由（5 引擎白名单，按 URL 类型自动选组合；定价页 JS 组 + 静态对照双通道）
-3. **落盘** — `02-raw/<name>.md`（合并视图）+ `02-raw/<name>.engines.json`（每引擎原文独立，verify.py 消费）
-4. **台账** — `claims-manifest.json` 记录每条 URL × 引擎 × 内容哈希 × 时间
+1. **URL 发现** — resolver 猜常规路径（pricing/features/docs/about/testimonials/blog）+ **多引擎**首页导航发现并集（链接证据不依赖单一 primary；同站判定到可注册域，docs 子域可发现）；任意域名直通，不要求先补内置表
+2. **爬取** — scrape_smart 智能路由（5 引擎白名单，按 URL 类型自动选组合；定价页 JS 组 + 静态对照双通道）；**页面级并行**（homepage 先行，其余页面错峰并发）+ **竞品级并行**（3 并发）；robots.txt disallow 的页面诚实跳过
+3. **落盘** — `02-raw/<name>.md`（合并视图）+ `02-raw/<name>.engines.json`（每引擎原文独立，verify.py 消费；头尾截断保正文尾部）
+4. **台账** — `claims-manifest.json` 记录每条 URL × 引擎 × 内容哈希 × 时间；`kinds` 多值（home_as_pricing 时首页同时是 homepage+pricing，不互相覆盖）
 
 **充分性内建**：定价 ≥2 独立引擎看到相同价格才 sufficient；不达标沿升级梯自动换引擎重爬；全灭时搜索发现官方定价页兜底；预算耗尽诚实标 insufficient。
 

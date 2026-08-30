@@ -12,6 +12,8 @@ Trafilatura (github.com/adbar/trafilatura) —— 学术界主流 web 内容抽�
 
 from typing import Optional
 
+from adapters import truncate_md
+
 
 def is_available() -> bool:
     try:
@@ -65,9 +67,7 @@ def scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000) -> di
                 "extracted": None,
             }
 
-        markdown = result
-        if len(markdown) > max_chars:
-            markdown = markdown[:max_chars] + "\n\n[... 内容已截断 ...]"
+        markdown = truncate_md(result, max_chars)
 
         return {
             "success": True,

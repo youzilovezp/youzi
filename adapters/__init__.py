@@ -22,6 +22,9 @@ V2 引擎白名单（2026-08-27 重构，13 → 5，依据 engine-stats n=700+�
 import asyncio
 import hashlib
 import json
+import os
+import threading
+import time as _time_mod
 from typing import Dict, Any, Optional, List
 
 
@@ -135,21 +138,54 @@ _ENGINE_STATS_PATH = (
     / "storage"
     / "engine-stats.json"
 )
+# 桶有效期:窗口外的历史数据按陈旧清除(V1 时代的 firecrawl CLI 402 噪声
+# 曾与现状数据永久混桶 —— ok=0.12 的死通道拉低排序,白名单校准被污染)
+_ENGINE_STATS_WINDOW_DAYS = 90.0
+
+# 进程内缓存 + 锁:页面级并行/竞品级并行后,record/outcome 会从多线程
+# 并发进入。历史实现每次全文件读+全文件写(实测单竞品 25 读 7 写),
+# 既放大 IO 又在并发写时丢失更新(last-write-wins)。
+_STATS_LOCK = threading.RLock()
+_STATS_MEM: Optional[Dict[str, Any]] = None
+
+
+def _prune_stale(stats: Dict[str, Any]) -> Dict[str, Any]:
+    """清除窗口外/无时间戳(legacy)的桶 —— 质量口径变更后的自净迁移。"""
+    cutoff = _time_mod.time() - _ENGINE_STATS_WINDOW_DAYS * 86400
+    out: Dict[str, Any] = {}
+    for eng, types in stats.items():
+        if not isinstance(types, dict):
+            continue
+        for url_type, b in types.items():
+            if not isinstance(b, dict) or "last" not in b:
+                continue  # legacy 桶(2026-08-29 质量分修正前):度量失真,弃
+            if b.get("last", 0) >= cutoff:
+                out.setdefault(eng, {})[url_type] = b
+    return out
 
 
 def _load_engine_stats() -> Dict[str, Any]:
-    try:
-        return json.loads(_ENGINE_STATS_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    global _STATS_MEM
+    with _STATS_LOCK:
+        if _STATS_MEM is not None:
+            return _STATS_MEM
+        try:
+            raw = json.loads(_ENGINE_STATS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            raw = {}
+        _STATS_MEM = _prune_stale(raw if isinstance(raw, dict) else {})
+        return _STATS_MEM
 
 
 def _save_engine_stats(stats: Dict[str, Any]) -> None:
+    """原子写(tmp + os.replace):并发进程/崩溃不留下半截 JSON。"""
     try:
         _ENGINE_STATS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _ENGINE_STATS_PATH.write_text(
+        tmp = _ENGINE_STATS_PATH.with_suffix(".json.tmp")
+        tmp.write_text(
             json.dumps(stats, ensure_ascii=False, indent=1), encoding="utf-8"
         )
+        os.replace(tmp, _ENGINE_STATS_PATH)
     except Exception:
         pass  # 统计写失败不影响爬取
 
@@ -159,16 +195,19 @@ def record_engine_outcome(url_type: str, outcomes: Dict[str, Any]) -> None:
 
     outcomes: {engine_name: {"success": bool, "quality": float 0-1}}
     """
-    stats = _load_engine_stats()
-    for eng, oc in outcomes.items():
-        bucket = stats.setdefault(eng, {}).setdefault(
-            url_type, {"n": 0, "ok": 0, "q_sum": 0.0}
-        )
-        bucket["n"] += 1
-        if oc.get("success"):
-            bucket["ok"] += 1
-        bucket["q_sum"] += float(oc.get("quality") or 0.0)
-    _save_engine_stats(stats)
+    now = _time_mod.time()
+    with _STATS_LOCK:
+        stats = _load_engine_stats()  # RLock 可重入,首记录时从磁盘载入
+        for eng, oc in outcomes.items():
+            bucket = stats.setdefault(eng, {}).setdefault(
+                url_type, {"n": 0, "ok": 0, "q_sum": 0.0, "last": now}
+            )
+            bucket["n"] += 1
+            bucket["last"] = now
+            if oc.get("success"):
+                bucket["ok"] += 1
+            bucket["q_sum"] += float(oc.get("quality") or 0.0)
+        _save_engine_stats(stats)
 
 
 def _engine_stats_score(eng: str, url_type: str) -> Optional[float]:
@@ -438,20 +477,26 @@ _LINK_RX = __import__("re").compile(r"\[([^\]]*)\]\([^)]+\)")
 
 
 def _md_quality(md: str) -> float:
-    """粗估 markdown 质量:代码垃圾/链接密度(导航菜单)越低越好,结构适度加分。"""
+    """粗估 markdown 质量:代码垃圾/链接密度(导航菜单)越低越好,结构适度加分。
+
+    垃圾占比按【字符】加权而非行数 —— YCloud 实测事故:Chakra UI 把
+    151KB styled-components CSS 压成【单行】,行级 junk_ratio=1/380≈0.3%
+    → 质量分虚高 0.62 → CSS 垃圾当选 primary,截断落盘后正文全丢。
+    字符加权后同一样本 junk_ratio≈0.86 → q≈0.05,永无上位资格。
+    """
     if not md:
         return 0.0
     lines = [ln for ln in md.split("\n") if ln.strip()]
     if not lines:
         return 0.0
-    junk = sum(1 for ln in lines if _CODE_JUNK_RX.search(ln))
-    junk_ratio = junk / len(lines)
+    total_chars = max(len(md), 1)
+    junk_chars = sum(len(ln) for ln in lines if _CODE_JUNK_RX.search(ln))
+    junk_ratio = min(junk_chars / total_chars, 1.0)
     structured = sum(
         1 for ln in lines if ln.lstrip().startswith(("#", "- ", "* ", "## "))
     )
     structure_ratio = structured / len(lines)
     # 链接密度:正文里链接字符占比。nav/footer 菜单 >60% 都是链接,定价正文 <25%
-    total_chars = max(len(md), 1)
     link_chars = sum(len(m.group(0)) for m in _LINK_RX.finditer(md))
     link_density = link_chars / total_chars
     # 纯文本长度奖励(对数,防长垃圾)
@@ -464,6 +509,20 @@ def _md_quality(md: str) -> float:
         + length_bonus * 0.2
     )
     return base * max(0.05, 1.0 - link_density * 1.2)
+
+
+def truncate_md(md: str, max_chars: int = 50000, tail_chars: int = 10000) -> str:
+    """头尾截断:保前 (max-tail) + 省略号 + 保尾 tail。
+
+    纯头部截断的历史事故:playwright 完整 markdown = 一行巨型 CSS +
+    后续 23,993 字符正文,[:50000] 把截断点正好落在 CSS 尾部 → 证据库
+    (engines.json)与合并视图只存下 CSS,正文 100% 丢失,G2 quote 回查
+    对该引擎失效。尾部往往承载 pricing 页的套餐表/FAQ,必须保留。
+    """
+    if not md or len(md) <= max_chars:
+        return md
+    head = max_chars - tail_chars
+    return md[:head] + "\n\n[... 中间内容已截断 ...]\n\n" + md[-tail_chars:]
 
 
 def _norm_para(p: str) -> str:
@@ -509,14 +568,14 @@ def _merge_results(
 
     def primary_key(r):
         q = _md_quality(r.get("markdown", ""))
-        # 垃圾占比过高(quality < 0.35)的引擎没有资格当 primary。
-        # 阈值从 0.3 提到 0.35:engine-stats 实测 crawl4ai docs q≈0.05、
-        # feature q≈0.09 的低质输出曾混入 primary 位。
-        # 注意用 max() 选 key:rank 取负 —— _ENGINE_QUALITY 越小越可信,
-        # 取负后 max() 才会优先 firecrawl 等高可信引擎(历史 bug:未取负时
-        # 反而选出"质量达标里最不可信"的引擎当 primary)。
+        # 垃圾占比过高(quality < 0.5)的引擎没有资格当 primary。
+        # 阈值沿革:0.3 → 0.35(crawl4ai docs q≈0.05 混入) → 0.5(YCloud
+        # 实测:playwright CSS 垃圾 q=0.62(行级度量虚高)压过 trafilatura
+        # 真实定价表 q=0.635 —— 引擎排名(-1>-2)在双方过线时直接定胜负)。
+        # 门槛提到 0.5:引擎排名只在"都过线"的高质量带内 tie-break;
+        # 全员 <0.5 时第一维同为 False,回退到质量分+排名的原始序。
         return (
-            q >= 0.35,
+            q >= 0.50,
             -_ENGINE_QUALITY.get(r["scraper"], 99),
             q,
             len(r.get("markdown", "")),
@@ -525,32 +584,34 @@ def _merge_results(
     primary = max(success, key=primary_key)
     used_scrapers = [r["scraper"] for r in success]
 
-    # 主体 = primary 原序;补充 = 其他引擎的独有段落(按质量排序追加)
+    # 主体 = primary 原序;补充 = 其他引擎的独有段落(按质量排序追加)。
+    # 全部证据页 allow_supplements=False → 补充段落循环整段跳过
+    # (历史实现先算完再整体丢弃,纯白算)。
     primary_md = primary.get("markdown", "") or ""
-    seen = {_norm_para(p) for p in primary_md.split("\n\n") if p.strip()}
-    ordered_others = sorted(
-        (r for r in success if r is not primary),
-        key=lambda r: _ENGINE_QUALITY.get(r["scraper"], 99),
-    )
-    supplements = []
-    for r in ordered_others:
-        for p in (r.get("markdown", "") or "").split("\n\n"):
-            p = p.strip()
-            if len(p) <= 40:  # 太短的"独有段落"几乎都是噪音碎片
-                continue
-            key = _norm_para(p)
-            if key in seen:
-                continue
-            seen.add(key)
-            supplements.append(p)
-    supplements = [] if not allow_supplements else supplements
     merged_md = primary_md
-    if allow_supplements and supplements:
-        merged_md += "\n\n<!-- 以下为其他引擎补充段落 -->\n\n" + "\n\n".join(
-            supplements
+    supplements = []
+    if allow_supplements:
+        seen = {_norm_para(p) for p in primary_md.split("\n\n") if p.strip()}
+        ordered_others = sorted(
+            (r for r in success if r is not primary),
+            key=lambda r: _ENGINE_QUALITY.get(r["scraper"], 99),
         )
-    if len(merged_md) > max_chars:
-        merged_md = merged_md[:max_chars] + "\n\n[... 内容已截断 ...]"
+        supplements = []
+        for r in ordered_others:
+            for p in (r.get("markdown", "") or "").split("\n\n"):
+                p = p.strip()
+                if len(p) <= 40:  # 太短的"独有段落"几乎都是噪音碎片
+                    continue
+                key = _norm_para(p)
+                if key in seen:
+                    continue
+                seen.add(key)
+                supplements.append(p)
+        if supplements:
+            merged_md += "\n\n<!-- 以下为其他引擎补充段落 -->\n\n" + "\n\n".join(
+                supplements
+            )
+    merged_md = truncate_md(merged_md, max_chars)
 
     screenshot = None
     for r in success:
@@ -581,7 +642,6 @@ def _merge_results(
             "scrapers_used": used_scrapers,
             "primary_scraper": primary["scraper"],
             "primary_quality": round(_md_quality(primary_md), 2),
-            "merged_paragraphs": len(seen),
             "supplement_paragraphs": len(supplements) if allow_supplements else 0,
         },
         "error": None,
@@ -773,4 +833,5 @@ __all__ = [
     "classify_url",
     "recommend_scrapers",
     "record_engine_outcome",
+    "truncate_md",
 ]
