@@ -215,14 +215,24 @@ def build_analysis_from_evidence(out_dir: Path, topic: str) -> Path:
         "date": "2026-08-30",
         "competitors": comps,
         "market_segments": [{"name": topic, "competitors": [c["name"] for c in comps]}],
-        "gaps": [{"title": f"验收占位 {i}", "detail": "e2e 管线测试"} for i in "AB"],
+        "gaps": [
+            {
+                "gap": f"验收占位 {i}",
+                "evidence": "e2e 管线测试",
+                "severity": "medium",
+            }
+            for i in "AB"
+        ],
         "opportunities": [
             {
                 "title": f"验收机会 {i}",
                 "inspiration": "t",
-                "target_users": "t",
-                "differentiation": "t",
-                "validation": "t",
+                # G8 结构契约:模板逐项迭代的字段必须是数组,differentiators
+                # 用复数键(此前的 str/单数键形态会被 G8 正确 hard 拦下 ——
+                # 第 22 轮重跑发现该 network 测试在 G8 落地后未回归过)
+                "target_users": ["t"],
+                "differentiators": ["t"],
+                "validation": ["t"],
                 "disrupt_score": 8 - i,
             }
             for i in range(3)

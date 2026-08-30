@@ -38,7 +38,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 # 预热(2026-08-30 死锁修复):主线程先 import 重模块链。实测事故
@@ -672,9 +672,18 @@ def load_lessons_hints(domain: str) -> List[str]:
 
 
 def fetch_competitor(
-    name: str, out_dir: Path, budget_s: Optional[float] = None, topic: str = ""
+    name: str,
+    out_dir: Path,
+    budget_s: Optional[float] = None,
+    topic: str = "",
+    extra_urls: Optional[List[Tuple[str, str]]] = None,
 ) -> Dict:
-    """采集单个竞品全部证据页。页面级并行;预算为整竞品共享 deadline。"""
+    """采集单个竞品全部证据页。页面级并行;预算为整竞品共享 deadline。
+
+    extra_urls(2026-08-31):[(kind, url)] 补充取证页 —— Step 2.5 deep_link
+    发现的 docs 子页/roadmap/收费页回灌台账。此前的断层:deep_link 只能
+    打印发现结果,G1/G2 门禁要求 source_url 在台账、quote 在 02-raw 可
+    grep,发现的页面没有通道进证据库 = 白发现。"""
     budget_s = sufficiency.COMPETITOR_BUDGET_SECONDS if budget_s is None else budget_s
     t0 = time.monotonic()
     deadline = t0 + budget_s
@@ -827,7 +836,8 @@ def fetch_competitor(
 
     # robots 检查(页面级):disallow 的页面诚实跳过
     robots_skipped = []
-    for kind, url in list(targets.items()):
+    jobs: List[Tuple[str, str]] = list(targets.items())
+    for kind, url in list(jobs):
         if not _robots_allowed(url):
             robots_skipped.append((kind, url))
             failures.append(
@@ -838,7 +848,24 @@ def fetch_competitor(
                     "error": "robots.txt disallow",
                 }
             )
-            del targets[kind]
+            jobs.remove((kind, url))
+
+    # extra_urls 回灌:去重(不与发现的 targets/base 重复)+ 同样过 robots
+    for pair in extra_urls or []:
+        kind, url = (pair[0], (pair[1] or "").strip())
+        if not url or url == base or any(url == ju for _, ju in jobs):
+            continue
+        if not _robots_allowed(url):
+            failures.append(
+                {
+                    "competitor": cname,
+                    "url": url,
+                    "kind": kind,
+                    "error": "robots.txt disallow",
+                }
+            )
+            continue
+        jobs.append((kind, url))
 
     # ── 页面级并行(错峰启动;每页任务线程内跑 scrape_smart) ──
     async def _gather():
@@ -886,23 +913,31 @@ def fetch_competitor(
                 }
 
         tasks = [
-            runner(i * _PAGE_STAGGER_S, kind, url)
-            for i, (kind, url) in enumerate(targets.items())
+            runner(i * _PAGE_STAGGER_S, kind, url) for i, (kind, url) in enumerate(jobs)
         ]
         return await asyncio.gather(*tasks)
 
-    page_results = list(asyncio.run(_gather())) if targets else []
+    page_results = list(asyncio.run(_gather())) if jobs else []
 
     # ── 顺序组装(确定性落盘顺序,与旧串行版一致) ──
-    by_kind = {t["kind"]: t for t in page_results}
-    for kind in _PAGE_ORDER:
-        task = by_kind.get(kind)
-        if not task:
-            continue
-        pages[kind] = task["pages"]
+    # 同 kind 多页(extra_urls 回灌第二个 docs 子页等)时:sufficiency 的
+    # pages[kind] 取该 kind 首任务,但所有任务的 records/failures 必须
+    # 全部入账 —— 此前 by_kind dict 按 kind 覆盖,同 kind 后续页的证据
+    # 在组装层被静默丢弃(fetched/engines.json 都不会有它)
+    seen_kinds: set = set()
+
+    def _job_order(t: Dict) -> tuple:
+        k = t["kind"]
+        return (_PAGE_ORDER.index(k) if k in _PAGE_ORDER else len(_PAGE_ORDER),)
+
+    for task in sorted(page_results, key=_job_order):
+        k = task["kind"]
+        if k not in seen_kinds:
+            seen_kinds.add(k)
+            pages[k] = task["pages"]
         failures.extend(task["failures"])
-        for u, r, k, fc in task["records"]:
-            _record(u, r, k, from_cache=fc)
+        for u, r, kk, fc in task["records"]:
+            _record(u, r, kk, from_cache=fc)
 
     # ── 落盘 ──
     with _MANIFEST_LOCK:
@@ -981,17 +1016,37 @@ def main() -> int:
         "--budget", type=float, default=None, help="每竞品墙钟预算秒数(默认 300)"
     )
     ap.add_argument("--topic", default="", help="分析主题(写入台账 run.topic)")
+    ap.add_argument(
+        "--extra-urls",
+        action="append",
+        default=[],
+        metavar="NAME,KIND,URL",
+        help="补充取证页回灌台账(deep_link 发现的 docs 子页/roadmap/收费页),"
+        "如 'respond.io,docs,https://docs.respond.io/help/product';可重复传",
+    )
     args = ap.parse_args()
     out_dir = Path(args.out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     names = [x.strip() for x in args.competitors.split(",") if x.strip()]
+
+    # --extra-urls "NAME,KIND,URL" → {name: [(kind, url), ...]}
+    extras: Dict[str, List[Tuple[str, str]]] = {}
+    for spec in args.extra_urls or []:
+        parts = [x.strip() for x in spec.split(",", 2)]
+        if len(parts) != 3 or not all(parts):
+            print(f"⚠ 忽略非法 --extra-urls(需 NAME,KIND,URL): {spec[:120]}")
+            continue
+        _n, _k, _u = parts
+        extras.setdefault(_n.lower(), []).append((_k, _u))
 
     # 竞品级并行:不同域互不干扰;jina 限流/页面错峰在引擎与页面层控制
     # 计时在工作函数内部(历史 bug:在 fut.result() 处记时,先完成的
     # future 会被误记为 0.0s —— 排序在前的慢竞品把等待时间"吃掉"了)
     def _run(n: str):
         started = time.monotonic()
-        r = fetch_competitor(n, out_dir, args.budget, args.topic)
+        r = fetch_competitor(
+            n, out_dir, args.budget, args.topic, extra_urls=extras.get(n.lower())
+        )
         # 返回输入名(而非 r["name"]=resolver 归一名)做排序键:wati→WATI
         # 的映射会让 order.get 落空,输入序恢复失效
         return n, r, time.monotonic() - started

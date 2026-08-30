@@ -7,7 +7,7 @@ youzi · 一站式竞品分析 runner
   Step 2 深度爬取     — 委托 scripts/fetch.py 的 fetch_competitor(预算/升级梯/充分性/台账)
   Step 3 结构化分析   — 读取 03-analysis.json(已含 13 字段提取结果)
   Step 4 渲染 HTML    — 调用 render.py 输出精美报告(内置自检)
-  Step 5 证据硬门禁   — 调用 verify.py 的 verify_analysis(G1-G7),不过 = 不交付
+  Step 5 证据硬门禁   — 调用 verify.py 的 verify_analysis(G1-G8),不过 = 不交付
   Step 6 交付         — 打印报告路径 + 1 段 TL;DR
 
 用法：
@@ -52,6 +52,10 @@ def step2_fetch(competitors, out_dir, topic="", budget_s=None):
 
     from scripts import fetch
 
+    # 死锁防御纵深:CLI 路径在 main() 预热,runner 进程内路径此前漏调 ——
+    # trafilatura/newspaper3k/playwright 仍是 worker 线程冷 import(P0-9 同类)
+    fetch._preheat_engine_imports()
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n📡 Step 2 · 取证爬取 {len(competitors)} 个竞品(fetch.py 统一入口)\n")
@@ -64,7 +68,8 @@ def step2_fetch(competitors, out_dir, topic="", budget_s=None):
 
     collected = []
     with ThreadPoolExecutor(
-        max_workers=min(fetch._COMPETITOR_CONCURRENCY, len(competitors))
+        # max(1, …):空竞品列表时 min(3, 0)=0 会 ValueError(main 串行返回 [])
+        max_workers=max(1, min(fetch._COMPETITOR_CONCURRENCY, len(competitors) or 1))
     ) as ex:
         futs = {ex.submit(_run, comp): comp for comp in competitors}
         for fut in as_completed(futs):
@@ -135,14 +140,14 @@ def step4_render(analysis_path, output_path, template_path=None):
 
 
 def step5_verify(analysis_path, manifest_path, raw_dir, report_path=None):
-    """Step 5: 证据硬门禁 — verify.py 的 G1-G7(直接 import,非 subprocess)。
+    """Step 5: 证据硬门禁 — verify.py 的 G1-G8(直接 import,非 subprocess)。
 
     返回 verify_analysis 的结果 dict;输入缺失/损坏(verify exit 1 语义)
     归一化为 passed=False,由调用方决定不交付。
     """
     from verify import verify_analysis
 
-    print("\n🛡  Step 5 · 证据硬门禁(verify.py G1-G7)\n")
+    print("\n🛡  Step 5 · 证据硬门禁(verify.py G1-G8)\n")
     try:
         result = verify_analysis(
             analysis_path, manifest_path, raw_dir, report_path=report_path
