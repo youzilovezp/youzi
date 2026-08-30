@@ -108,7 +108,7 @@ class TestSkeleton(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(SystemExit) as cm:
                 verify_analysis(
-                    Path(d) / "nope.json", Path(d) / "m.json", Path(d), 
+                    Path(d) / "nope.json", Path(d) / "m.json", Path(d),
                 )
             self.assertEqual(cm.exception.code, 1)
 

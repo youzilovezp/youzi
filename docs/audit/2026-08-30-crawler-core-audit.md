@@ -1,4 +1,4 @@
-# youzi 爬虫核心审计报告(2026-08-30,第 1-12 轮 loop)
+# youzi 爬虫核心审计报告(2026-08-30,第 1-15 轮 loop)
 
 > 定位对照:业界顶尖竞品情报收集 skill。
 > 审计范围:adapters 全部 5 引擎 + fetch.py 编排 + sufficiency/deep_link/resolver + 上层管线接口。
@@ -646,3 +646,502 @@ cursor 定价 verified(2 档);lovable/windsurf 诚实未验证(定价页未交�
 ## 状态
 
 - 十二轮累计:23 项修复 + 1 套验收套件复活;测试 160(离线 159 + 网络 1)
+
+
+---
+
+# 第 13 轮(2026-08-30):官方 runner 全链路使用测试 + 严重 bug 审计(用户指定 5 竞品)
+
+## 测试执行(官方入口,逐步)
+
+| 步骤 | 命令 | 结果 |
+|---|---|---|
+| Step 2 | run_youzi --crawl-only(5 竞品,budget 150) | exit 0,墙钟 57s,23 页,0 failures;lessons 提示正常 |
+| Step 2.5 | audit.py(无 analysis) | exit 0(gap=0);meetbot 正确判 not-published 终态;6 条 next_actions 合理 |
+| Step 3 | 证据落地构建器 | 42 claims 全部预验证通过 |
+| Step 4/5/6 | run_youzi --analysis | **exit 0,双门禁通过**(42 claims,0 硬失败 0 警告),150.9 KB |
+| Step 5 终审 | audit.py --analysis | lessons 3→5 域,runs_seen 自增,**无重复堆积** |
+
+## 严重 bug 审计结论:未发现严重 bug
+
+逐项核查(全部通过):
+- G4 自洽:failed 页全在 failures 清单(0 违例);ok 页引擎全非空
+- from_cache 无泄漏(本轮无缓存回退,标记未误出现)
+- kinds/URL 语义一致(pricing kind 未误挂)
+- 证据库价格保窗:全部定价页每引擎含价格(meetbot 全引擎 0 价 = 询价制事实,非 bug)
+- 哈希独立性:verified 定价页全部 ≥2 不同哈希
+- 全部日志零 Traceback;engine-stats 健康(792 样本)
+
+## 发现并修复 1 个轻微 bug(P3)
+
+- run_youzi Step 5 把 verify-report.json 写到报告同级(默认 CWD),
+  .gitignore 只盖 /report.html → **污染 git status**(本轮实测出现
+  `?? verify-report.json`)。已补 .gitignore(/verify-report.json /
+  /04-audit.json /*-report.html)并清理现场。
+
+## 备注(非 bug 的显示语义)
+
+- audit Step 2.5 模式的 `[月付:N 年付:N priced:0]` 括号是 Step 5 分析
+  派生指标,无 analysis 时恒 N/0 —— 语义正确但易误读,记为可选优化项。
+
+产物:/tmp/youzi-test5/(report.html + 证据包 + verify/audit 报告)
+
+
+---
+
+# 第 14 轮(2026-08-30):Step 2.5 显示语义修正 + 8 竞品并发压力测试
+
+## 14.1 P3 修正(上轮备注项)
+
+audit Step 2.5 模式的 `[月付:N 年付:N priced:0]`(Step 5 派生指标在无
+analysis 时恒 N/0,易误读)→ 无 analysis 时显示 `[tier 结构:待 Step 3 提取]`。
+利用既有的 result["has_analysis"] 标志,实测生效。
+
+## 14.2 8 竞品并发压力测试(此前最多 5)
+
+`fetch.py --competitors "wati,respond.io,ycloud,sleekflow,tidio,manychat,cursor,linear.app" --budget 150`:
+
+- **exit 0,墙钟 85.75s**(8 竞品 3 并发,含 2 家 websearch/domain 解析)
+- 41 页;不充分项均为已知外部因素(Sleekflow testimonials / ManyChat
+  testimonials+blog×2 个 403);**无挂死、无崩溃、无 Traceback**
+- 混合解析路径(builtin×6 + websearch×1 + domain×1)全部成功
+
+## 14.3 状态
+
+- 159 测试全过;ruff 全绿
+- 至此负载谱系:单竞品 / 3 并发 / 5 并发(runner)/ 8 并发(CLI)全部实测;
+  死锁类问题在修复后未再复现
+
+
+---
+
+# 第 15 轮(2026-08-30):Step 3 证据助手(工作流断层的产品化)
+
+## 洞察来源(上一轮真实使用)
+
+手写正式版 03-analysis.json 时,LLM(我)经历了三类实测摩擦:
+①引文改写偏差被预验证拦 6 次(粗体标记/弯引号/大小写)
+②锚点误选首页/定价页被 G7 拦 35 条
+③找引文需十几次手工 grep engines.json
+
+**youzi 的 Step 3(LLM 分析)完全没有工具支撑** —— 这是最后一块工作流断层。
+
+## 交付:scripts/evidence.py(Step 3 证据助手)
+
+- `digest <OUT_DIR>`:每竞品 × 页面 → 锚点分级(✓G7合规 / ⚠域名根 / ⚠定价页)+
+  可读正文(剥 front-matter/链接语法)+ **grep 已验证安全引文**(G2 同款回查)+
+  定价票上下文(交叉验证价 × 含价原文行)
+- `quote <OUT_DIR> <URL> <正则>`:页内搜引文,返回逐字可 grep 原文行
+- 实测(/tmp/youzi-test5,5 竞品):838 行 markdown 摘要,WATI 段的定价票/
+  引文/锚点分级全部正确;quote 命令命中 astra 页 voice/clone 原文行
+
+## 验证
+
+- 单元测试 ×2(safe_quotes 必须过 G2 回查 + front-matter/链接过滤;
+  quote_search 逐字返回)
+- 161 测试全过;ruff/mypy(含新文件)全绿
+- SKILL.md Step 3 已接入使用指引
+
+## 闭环意义
+
+取证(fetch)→ 摘要(evidence)→ 分析(LLM)→ 门禁(verify)的全链路
+每一环现在都有工具支撑;上一轮"手写分析被门禁拦 41 次"的摩擦,
+下一轮使用者用 digest 可在源头避免。
+
+
+---
+
+# 第 16 轮(2026-08-30):4.2.1 功能矩阵准确性事故(用户复核发现)
+
+## 根因(证据链完整)
+
+- **爬取层无责**:两轮 manifest 的 fetched URL 集合 diff = 空(完全一致)
+- 差距全在 Step 3:G7 重锚时我把「锚不到子页的功能条目」删除了 ——
+  而 analysis-framework.md §7.5 明确「**锚不到的留空字符串,gates 允许**」
+  (main 分支正是这么用的:WATI 收件箱 source=''、Meetbot 多条 source='')
+- 教训:**G7 是锚点质量门,不是条目删除令** —— 保留条目+空锚(矩阵 ✓ 无
+  角标)比删条目(整行消失/覆盖失真)诚实得多
+
+## 修复
+
+- 5 家 feature_catalog 全量重写:统一名 6-9 条/家;子页锚点优先
+  (S_BLOG「centralized inbox」/S_ABOUT「VoIP calls」/Y_ABOUT「personalized
+  marketing」等本轮证据真实文本);锚不到的留空
+- feature_overlap 重算为真实覆盖:收件箱 5/5、自动化营销群发 5/5、
+  AI 客服代理 4/5、语音通话 4/5
+- 终检:统一名全部进矩阵(✓ 62 处),双门禁过(86 claims 0 硬失败)
+
+## 待办(下轮)
+
+- G8 结构契约门禁(草稿被模型超时中断,未落盘):渲染前拦截非法
+  billing_period/字符串当数组/统一名覆盖率低 —— 本轮系列事故的
+  系统性防线
+
+
+---
+
+# 第 17 轮(2026-08-30):G8 结构契约门禁落地(第 16 轮待办)
+
+## 交付:G8(render 前拦截「证据真实但结构错」的乱码报告)
+
+- **hard**:billing_period 非法值(如"一次性"→档位消失)/target_users 等
+  字符串当数组(逐字符碎片)/differentiation 单数键
+- **warn**:gaps 旧形态 / opportunities 缺 pitch/moat/evidence_urls /
+  统一功能名覆盖率 <50% / 顶层缺 comparison_matrix
+- **关键设计**:周期归一化复用 render 同款规则(容忍 "/month"/"billed
+  annually" 老数据)—— G8 不得比 render 更严,否则误报(冻结 fixture
+  用 "/month" 曾被误拦,实测修正)
+
+## 验证
+
+- 对抗测试 ×4(非法周期/字符串数组/旧形态+低覆盖/合规通过)
+- **前后对照**:把第 14 轮事故版结构注回 → G8 渲染前拦 5 条;
+  当前正式版 → 0 违规(顺带发现并修正 gaps 旧形态残留)
+- 165 测试全过(含 fixture 回归);文档口径同步(SKILL/run_youzi/
+  scraping-tools/verify 五处 G1-G7→G1-G8)
+
+## 门禁体系终态
+
+G1-G8 + N1:证据真实性(G1-G5)、卫生(G6)、权威性(G7)、
+**结构契约(G8)**、可达性(N1) —— 全部有对抗测试锁定。
+
+
+---
+
+# 第 18 轮(2026-08-30):DRY 漂移修复 + 渲染非确定性 bug(实测发现)
+
+## 1. G8/render 双清单漂移(我第 17 轮引入的隐患,实测确认)
+
+- G8 硬编码 14 个"统一名"与 render 的 36 条规范键 **零交集** —— G8 用的是
+  别名形态,LLM 写规范名"团队收件箱 (Team Inbox)"反而被判未统一(方向反了)
+- 修复:`_DEFAULT_FEATURE_ALIASES`(433 行)外置 → `references/feature-aliases.json`,
+  render 与 G8 加载同一份(单一事实源);**外置前后别名数据 ast.literal_eval
+  逐项比对 0 差异**
+
+## 2. 新发现(pre-existing):渲染非确定性 ⚠️ 三连实测复现
+
+- 同一输入连续渲染,输出 10 行漂移 ——「匹配别名」在 路由/分配 间随机翻转
+- 根因:render.py 别名去重用 `list({...})`,**set 迭代序随字符串哈希随机化**
+  → 模糊匹配"首命中"不稳定
+- 修复:`dict.fromkeys` 保序去重(1 行)→ **三连渲染字节级一致**
+
+## 3. 状态
+
+- 165 测试全过;ruff/mypy 全绿;G8 统一名全集 14→225(规范名+别名全计)
+- 当前正式分析在新 G8 下通过(0 违规)
+- render.py 现为 4470 行(两轮外置共 -1073 行数据即代码)
+
+
+### 第 18 轮补充
+
+- G8 覆盖率度量二次修正:精确相等 + CJK 别名子串(与 render 模糊匹配同
+  口径)→ 当前分析 27%→44%;仍 <50% 触发 warn 属诚实信号(catalog 含
+  CRM 客户档案同步/广告线索自动化等自造名,提示优先用统一名)
+- mypy 补 2 处注解;全部检查绿:165 测试 / ruff / mypy(2 文件)
+- **再提一次:18 轮改动(26+ 项修复、2 个新脚本、2 份数据外置、
+  20+ 对抗/回归测试、审计档案)全部未提交** —— 建议分批提交
+  (修复/测试/文档/数据外置分开,便于回溯),说一声即可执行
+
+
+---
+
+# 第 19 轮(2026-08-30):周期归一化 DRY 收口 + 官方 runner 认证
+
+## DRY 收口(第 18 轮同类问题的最后一处)
+
+- `gates._normalize_period`(第 17 轮我复刻的)与 render 内联归一化是
+  又一对会漂移的副本 → 移到 `pricing_tokens.normalize_billing_period()`
+  (与价格 token 同居「定价语义单一事实源」),两侧 import
+- 验证:165 测试过、render 三连字节级一致、mypy/ruff 绿、verify exit 0
+
+## 官方 runner 认证(全量改进集成态)
+
+run_youzi Step 4/5/6 于当前分析:exit 0,G1-G8 通过(86 claims 0 硬失败
+1 诚实警告),**输出与直接渲染字节级一致**(runner 路径 = 直接路径)。
+G8 覆盖率警告即其设计价值:提示 catalog 中自造名应优先换统一名。
+
+## 十九轮总结陈词
+
+审计覆盖:全部内容板块(适配器/编排/契约/门禁/审计/渲染/安装/文档)。
+修复:26+ 项(每项带实测或对抗验证),含 2 个 P0 级线上故障类
+(并发 import 死锁 400s→50s、中段价格截断随机失效)与 1 个渲染非确定性。
+体系:G1-G8+N1 全对抗测试锁定;165 离线 + 1 网络验收测试;四档负载实测。
+工程健康:ruff/mypy 全绿,数据即代码 -1073 行,单一事实源 ×3
+(price token/功能别名/周期归一化)。
+
+**剩余开放项**(需外部条件,持续):http_core 逐站 A/B、engine-stats
+长期观察、render 派生层拆分(建议独立批次)。
+**待用户决策**:19 轮改动仍未提交。
+
+
+---
+
+# 第 20 轮(2026-08-30):字段完整性检查器(用户三次投诉的系统性闭环)
+
+## 元问题
+
+用户三次「报告信息不全」暴露:**完整性靠用户肉眼发现,而非工具检查**。
+audit.FIELD_MIN 只查 5 字段 —— 投诉缺的 feature_catalog/
+feature_conclusion_points/feature_best_for/product_momentum 全不查。
+
+## 修复
+
+- FIELD_MIN += feature_catalog≥4(计条目数而非 dict 键数,首版即踩此坑)、
+  feature_conclusion_points≥1;字符串字段加 feature_best_for;
+  product_momentum 空给 next_action(聚合板块不 hard)
+- 回归测试 ×2 + 真实数据前后对照:第 20 轮用户所见缺口形态 → 检出
+  feature_catalog 0/4 + conclusion_points 0/1 + best_for ✓
+- **检查器立刻抓到当前分析残余缺口**:core_features 全员 6/12 → 补齐
+  12 条/家(证据支撑);Meetbot strengths/differentiators/tech 保持
+  诚实 partial(无合规锚点)
+
+## 过程事故(自省)
+
+writer 修补脚本两次拼接边界错误(m.end(1) vs m.end(2)),损坏竞品 dict
+头部 —— 靠确定性残余删除 + 头部重建修复。教训:**对生成器脚本做
+regex 手术时,每次替换后立即 ast.parse + 以已知内容断言**,本轮若非
+最终验证层层把关(预验证/audit/render/verify)会带病交付。
+
+## 终态
+
+- 167 测试全过;分析:4/5 家字段完整性 ok,Meetbot 诚实 partial;
+  render+verify 双绿(99 claims);报告 214.7 KB 已交付
+
+
+---
+
+# 第 21 轮(2026-08-30):SKILL.md 通读一致性复查 + 用户文档同步
+
+## 检查结果
+
+- SKILL.md(20 轮演进后首次通读):步骤序列 0/1/2/2.5/3/4/5/6 连续 ✓、
+  引用的全部文件/命令存在 ✓(逐条实测执行)、门禁口径含 G8 ✓、
+  无内部矛盾
+- 用户文档脱节(实测发现):README×1 + 使用手册×3 处仍写 G1-G7 →
+  已同步 G1-G8(含 G8 条目说明)
+- 使用手册新增 §5.0 证据助手(digest/quote 用法)——手册工作流首次
+  覆盖 Step 3 加速器
+
+## 二十一轮终态
+
+167 测试全过、ruff/mypy 全绿。工具面:G1-G8+N1 门禁(对抗锁定)、
+evidence 证据助手、lessons 读写闭环、双赛道全管线实测。
+文档面:SKILL.md/README/使用手册/安装说明/references 全部与实现同步
+(本轮后再无已知 drift)。
+
+
+---
+
+# 第 22 轮(2026-08-31):用户质量反馈复盘(「报告质量不如之前」)→ 9 项修复
+
+## 方法
+
+feature/youzi vs main 全量 diff 审查(gates/fetch/adapters/SKILL/audit
+五路)+ 硬验证:canonical-features-whatsapp.json(32 feature)与
+feature-aliases.json(36 组)逐字段深对比 = 内容零丢失;两个 e2e fixture
+A/B 渲染 = 字节级一致;167 测试全过。结论:渲染层可证无回归,退化感
+来自数据层与门禁层的 6 个真实机制。
+
+## 修复清单
+
+1. **audit._price_tokens_per_engine 域名过滤**(跨竞品污染,真 bug):
+   pricing_urls 是全竞品共享台账构建的全局集合 —— A 家有 /pricing 就
+   让 B 家(docs 定价)永不触发全页回退 → 误判 gap → 闭环补爬不存在
+   的 /pricing 页烧预算。修:构建时按本竞品域名过滤。
+2. **truncate_md 头窗自适应**(素材骤减主因):固定 2K 头窗在「价格少
+   而聚簇」的 111K 页只输出 32K(比无 keep_rx 还少 18K),套餐功能矩阵
+   /FAQ 被砍。修:窗口未用完的预算回流头窗,迭代收敛 + 与头窗重叠的
+   窗口段裁掉。实测 2 价聚簇 32K→49.9K,30/60 价场景不变。
+3. **周期契约对齐**(报告不交付主因):sufficiency 祝福 /user /seat 而
+   G8 hard 拦 → run_youzi exit 2。修:normalize_billing_period 剥离
+   单位限定词(/user /seat /人 /席位,裸值归 "")+ 识别中文周期词
+   (按月/包年…)→ 三通道或无周期,两侧契约同源。
+4. **month+year 双语义**:"monthly billed annually"/"monthly (annual
+   discount)" 此前 month 分支被 year 否决后误入 /yr。修:同现归 billed
+   (年结算月价)。
+5. **resolver 分段精确采纳**:子串匹配让 "hub" 采纳 hubspot.com →
+   整竞品证据来自错误站点。修:token 必须是注册域标签/子域的完整分段。
+6. **runner 死锁防御补齐**:_preheat_engine_imports 只在 CLI main() 调,
+   run_youzi 进程内路径漏调 → worker 线程冷 import(P0-9 同类)。
+7. **空竞品列表**:ThreadPoolExecutor(max_workers=0) ValueError。
+8. **firecrawl keep_rx 接线**:dispatch 按签名探测,firecrawl 不收参数
+   被静默跳过 → engines.json 中段价格丢(与 jina/trafilatura 口径不一)。
+9. **playwright toggle 导航防护**:年付点击/月付回点的选择器含 a,
+   点中 "Annual report"/"Monthly updates" 真链接会整页跳走污染取证。
+   修:锚元素仅允许无 href/#/javascript 的 toggle 形态。
+   另:G8 对字符串形态 feature_catalog 条目从 AttributeError 崩溃改为
+   本门 hard 报告。
+
+## 判定为非退化(有意取舍,不改)
+
+- robots 门真实生效(main 上 SSL 100% 失败 = 静默全允许):合规正确性。
+- Step2 串行→3 并发 + deep_link 预算门:诚实跳过设计,审计 14.2 轮
+  8 竞品压测 0 failures。
+- 定价页 primary「有价优先于洁净」:tidio 事故的修正,_md_quality 对
+  真实定价表(长/链接密)系统性打低分,颠倒会复发。
+
+## 复盘要点(给下一轮自己)
+
+- **「加载失败静默返回空」的容错设计与 git 跟踪状态组合成隐形炸弹**:
+  feature-aliases.json/evidence.py 曾 untracked —— 提交即触发全链路
+  静默降级(别名归并消失/G8 覆盖率失真),无任何报错。数据外置类
+  改动必须同 commit 验证 `git ls-files` 覆盖。
+- **门禁变严的三种用户感知**:拦假数据(好)/ 拦合法变体(坏,本轮
+  G8×sufficiency 冲突)/ 拦到让 agent 删字段变薄(第 16 轮)。设计
+  hard 门禁时要枚举上游祝福过的值域。
+
+## 验证过程(含一次测试自身的事故)
+
+真实网络 e2e 首跑**失败**:G8 hard ×9 —— 但逐条核对后是**测试替身
+自身的契约漂移**,不是修复引入的回归:test_e2e_real.py 的程序化
+Step 3 占位数据写的是 str 形态 target_users/validation + 单数键
+differentiation + 旧形态 gaps,被 G8 正确拦下。该 network 测试在第
+17 轮 G8 落地后从未重跑(manual 标记),又一次印证「不跑的测试必然
+腐烂」(与第 12 轮 V1 契约腐烂同型)。修占位数据后复跑**通过**。
+
+## 终态
+
+- 181 离线测试全过(+14 回归:tests/test_quality_regressions_2026_08_30.py)
+- ruff / mypy(项目口径)全绿
+- 两 e2e fixture 渲染与修复前字节级一致(修复只影响原先会出错的值)
+- 真实网络 e2e 验收通过:wati/respond.io/ycloud 3 竞品全管线
+  (取证爬取 → 证据构建 → 渲染 → G1-G8+N1 全绿)
+
+
+---
+
+# 第 23 轮(2026-08-31):重装后五竞品全管线实测 → 工作流断层修复
+
+## 实测(重装 youzi → ycloud/sleekflow/wati/respond.io/meetbot)
+
+- 爬取 164s/5 竞品,0 failures;补爬 10 页(deep_link 发现)全部入台账
+- 03-analysis.json 由 LLM 逐字段从 02-raw 提取,落盘前 quote 自查
+  (G2 同款归一化 grep)先拦下 6 条:弯引号(’)×3、markdown 粗体(**)×2、
+  粗体前缀 ×1 —— 人工复打引文的字符级漂移比想象中常见,evidence.py
+  digest 的「安全引文」复制粘贴是唯一可靠路径
+- verify 首跑 12 条 G7 hard(锚点在首页/定价页)→ 逐条重锚或换证据 → 0
+- 终态:双门禁全绿(硬失败 0/警告 1),field_completeness 五家全 ✓,
+  0 gap,报告 266KB:功能矩阵 24 行×141 ✓、定价卡月/年双栏+省%徽章
+  (25%/20%/14%)、6 机会卡、33 来源角标、0 模板泄漏
+
+## 本轮修复(工具面)
+
+1. **fetch.py --extra-urls(NAME,KIND,URL,可重复)**:deep_link 发现的
+   docs 子页/roadmap/收费页此前只能打印 stdout,G1/G2 只认台账 ——
+   发现了也用不上(工作流断层)。现在可回灌证据库。
+2. **组装层 by_kind 覆盖 bug**:同 kind 多页(第二个 docs 子页)按 kind
+   建字典互相覆盖,后续页的 records 在组装层被静默丢弃(fetched/
+   engines.json 都不会有它)—— extra-urls 的前置修复。
+
+## 诚实降级记录(终态情报,非缺陷)
+
+- Meetbot 定价:询价制(全引擎 0 价格 token),lessons 已沉淀
+- Meetbot 口碑:仅首页 Anker 案例 → G7 warn(唯一遗留警告)
+- Respond.io 月付价:页面默认年付态,月付需交互后抓取,标 partial
+- YCloud/Meetbot testimonials 通道:G2/Trustpilot 反爬,deep_link 全灭
+
+## 教训
+
+- **「发现」与「入账」必须成对设计**:只做发现不做回灌的工具是半成品
+  (deep_link 断层同 P0-5 deep_link 无法交叉验证的历史同源)
+- e2e fixture 的 404 页(meetbot.com/features)引擎返回 ok:内容层
+  404 检测可作后续增强(当前靠 digest 人工识别)
+
+
+---
+
+# 第 24 轮(2026-08-31):用户报告巡检三问题 → 渲染层修复 + 数据对齐
+
+## 用户反馈(报告巡检)
+
+1. 权限管理:基础功能应五家全有 —— 此前仅 Meetbot 写入 feature_catalog
+2. §4.2 技术栈信号对比:内容缺失/失真/不符
+3. §6 产品数据分析:内容缺失/不可溯源
+
+## 根因(三个,两个工具层一个数据层)
+
+1. **tech_signals schema 错配**:render 契约是 list[{name, source}](4127
+   行注释明示),Step 3 写了 {signal, quote} → name 空 → §4.2 空名聚成
+   一坨(「⚙ | 10 家 | 26」乱数卡),§4.3 只剩裸引文。
+   修:render 跳过空名信号不再产伪聚类 + 数据改用 name 键。
+2. **market_segments schema 错配**:render/模板消费 {label, desc,
+   players},而 analysis-framework.md 示例是 dict 形态、旧 fixture 是
+   {name, competitors} —— 三种口径并存,谁写谁踩。§5.0 渲染成
+   「? · — | 0 家玩家」。
+   修:render 入口统一归一化(name→label / competitors→players 兜底)。
+3. **§5.2 密度卡懒惰溯源**:source 取 c['url'](官网根)而非动态条目
+   的实际来源 —— 读者点进去找不到任何动态。修:取该家首条 momentum
+   的 source。
+
+## 数据修复(同一 03-analysis.json)
+
+- 权限与团队管理 (RBAC) 五家补全,各带证据锚:YCloud→CDP 页
+  (permission management functions)、SleekFlow→about(Manage user
+  and system access)、WATI→docs(channel permissions API)、
+  Respond→定价页证据+空锚(2FA 仅在 pricing,G7 禁锚)、Meetbot→原有
+- momentum 6→14 条(全部逐字可 grep + 真实日期:respond about 时间线
+  2026 融资、WATI 博客 2026-06-17/2025-03-06/2024-06-07、
+  SleekFlow apidoc 2023-04-19;Meetbot 标题从裸日期「2023-11-01」
+  改为「JSON API」页题)
+- 目录名对齐统一名池(电商变现→电商集成 (E-commerce)、客户数据平台→
+  CDP 客户数据平台、行为分析→数据分析 (Analytics) 等 8 项)→
+  G8 统一名覆盖率 48%→80%,warn 清除
+
+## 教训
+
+- **schema 契约三处声明(render 代码/框架文档/fixture)必须同源**,
+  否则 Step 3 按文档写照样翻车 —— 本轮 2/3 事故是「按文档写反而错」
+- 渲染层对缺字段要防御(空名不聚类、别名键归一),而非把垃圾渲染出来
+- evidence.py digest 头部建议的统一名(AI 客服代理)与 gates 统一名池
+  仍有漂移 —— 待第 25 轮统一口径
+
+## 终态
+
+185 测试全过(+4 渲染回归:fixture 变异注入三类缺陷断言修复)、
+ruff/mypy 全绿、报告 276KB 重渲染:权限行 5/5 ✓、§4.2 信号名+聚类
+正常、§5.0 三赛道带玩家、§5.3 时间线 14 条全溯源。
+
+
+---
+
+# 第 25 轮(2026-08-31):「权限管理应家家有」巡检思路的工具化推广
+
+## 方法
+
+把权限管理行(1/5→5/5)的修复路径泛化到全矩阵 23 行:逐行算覆盖 →
+<4/5 的行回 02-raw 逐家 grep 同义证据 → 有据入册(G7 锚或空锚+证据
+位置标注)、无据诚实留空。
+
+## 数据补全(+29 条,全部带证据位置)
+
+- 消息模板 1/5→5/5(WATI docs"broadcast template messages"/Meetbot
+  "WhatsApp 带参模板消息"锚定,其余空锚+定位)
+- 客户分群 3/5→5/5(Respond 案例页"precise segmentation"/SleekFlow
+  blog"customer segment"锚定;统一规范名消除裸名/带括号分裂)
+- Messenger/Instagram/网站聊天/Shopify/移动应用/数据安全/点击聊天
+  广告/数据分析/语音通话(SleekFlow Coming Soon 如实标注)各补 1-4 家
+- 保留真实差异:工单系统(SleekFlow 独有)/移动应用(仅 Respond 有
+  应用商店链接)/JSON API 插件(Meetbot 独有)/CDP(WATI/Meetbot 无
+  该叙事)—— 宁缺毋滥
+
+## 工具化(防复发)
+
+audit.py 新增 common_feature_gaps 检查:能力 ≥75% 厂商入册而个别家
+缺失 → next_action「标配疑点:回 02-raw 按同义关键词复核,确无证据
+留空勿硬凑」。名字归一走 feature-aliases.json 单一事实源(exact 命中,
+不误报独家能力)。实测立刻命中 4 条真实疑点(YCloud 无 Instagram/
+WATI 无数据安全叙事/Meetbot 无语音与 CTWA —— 均已人工核实确无证据)。
+
+## 教训
+
+- 矩阵的「独家能力」要先排除「Step 3 漏扫」的假独家 —— 覆盖率
+  分层(≥75% 标配带/独有带)是漏扫检测器,本次 8 个假独家中 6 个
+  补齐了证据
+- 规范名(带括号双语)与裸名并存时,Step 3 容易写出两种形态 ——
+  数据侧统一用规范名,库侧 alias 兜底合并
+
+## 终态
+
+187 测试全过(+2 标配疑点检查)、ruff/mypy 全绿、报告 285KB:
+矩阵 23 行、权限/消息模板/客户分群/营销群发/自动化/RBAC 全部 5/5,
+双门禁全绿(硬失败 0)。

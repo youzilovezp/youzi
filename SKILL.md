@@ -40,6 +40,7 @@ allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-rea
 - 定价：≥2 独立引擎一致（价格投票统一 `pricing_tokens.py`，₹/Rs./US$/后缀€ 全覆盖）+ 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品，全页面共享 deadline）→ 仍不达标回退 ≤14 天已验证缓存（`storage/pricing-cache.json`，带每引擎原文，台账标 `from_cache`）→ 全灭时搜索发现官方定价页
 - tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `python3 <skill-root>/scripts/deep_link.py tech <域名> "<关键词>"` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
 - user_feedback：官网 testimonials 没抓到 → `python3 <skill-root>/scripts/deep_link.py feedback <产品名>`（G2/Trustpilot 具体评论页，多数被封 → Reddit JSON 兜底）
+- **deep_link 发现的 URL 必须回灌台账才可用**（G1/G2 门禁只认 manifest.fetched + engines.json）：重跑 fetch 带 `--extra-urls "NAME,KIND,URL"`（可重复传），例如把 deep_link tech 发现的 docs 子页、roadmap 站、help center 收费页补进证据库；同 kind 多页会全部入账
 - 预算耗尽/通道全封 → 诚实标「未验证」，绝不伪造
 
 **3️⃣ 视觉理解（zai MCP 套件）**
@@ -167,6 +168,13 @@ python3 <skill-root>/audit.py \
 
 **这一步是 LLM（你）的工作，不是脚本的**：fetch.py 只取证（V2 已删除全部脚本侧语义提取），你必须**逐字段从 02-raw 证据中提取、并核对原文**。
 
+**证据助手（强烈建议先用）**：
+```bash
+python3 <skill-root>/scripts/evidence.py digest "$OUT_DIR"          # 每竞品摘要:锚点分级(G7)+可读正文+grep已验证引文+定价票上下文
+python3 <skill-root>/scripts/evidence.py quote "$OUT_DIR" <URL> "<正则>"   # 页内搜引文,返回逐字可 grep 的原文行
+```
+digest 把三类高频坑提前排掉：①改写偏差（引文先经 G2 同款验证）②markdown 粗体/弯引号不可逐字匹配 ③锚点选到域名根/定价页被 G7 拦（每页标注 ✓/⚠ 分级）。**写 analysis 时优先复制 digest 的「安全引文」原文**。
+
 按 references/analysis-framework.md 提取 13 个字段。**铁律：**
 
 1. **每个字段必须带证据三元组**：`{值, source_url, quote}`（quote = 原文逐字引文，≤100 字）
@@ -258,7 +266,7 @@ python3 <skill-root>/verify.py \
 ```
 
 - exit 2 → 读 verify-report.json 的 `{gate, field, hint}`，修 03-analysis.json 或重爬，再验 —— **修复回路，不是绕过**
-- 离线门禁（必跑，<1s）：G1 来源可回溯 / G2 quote 回查 / G3 定价独立性+TTL / G4 缺失诚实 / G5 反伪造 / G6 URL 卫生 / G7 溯源权威性
+- 离线门禁（必跑，<1s）：G1 来源可回溯 / G2 quote 回查 / G3 定价独立性+TTL / G4 缺失诚实 / G5 反伪造 / G6 URL 卫生 / G7 溯源权威性 / G8 结构契约
 - 网络复核（可选，慢）：加 `--network --sample 10`（N1 死链硬失败 / N2 quote 漂移警告）
 - 新发现的坏数据形状 → 冻结成离线 fixture 进 tests/（延续 test_pricing_extract.py 模式）
 

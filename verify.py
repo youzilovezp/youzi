@@ -11,6 +11,7 @@
     G4 缺失诚实     失败页有记录;缺失字段不断言来源
     G5 反伪造       历史黑名单引文 / Python repr 泄漏 / 占位符
     G6 URL 卫生     URL 格式合法;指向其他竞品域 = 警告(警告级)
+    G8 结构契约    billing_period 三通道/opportunities 数组字段/统一功能名(渲染前拦乱码)
     G7 溯源权威性   功能/技术/差异化证据锚定定价页/域名根 = 硬失败(豁免:定价语义 quote;
                      strengths/weaknesses 同规 —— 价格陈述锚 pricing 合理,功能语义弱锚拦截)
   Layer 2 网络门禁(--network opt-in):
