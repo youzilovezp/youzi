@@ -164,6 +164,29 @@ def discover_urls(home_md: str, base_url: str) -> Dict[str, str]:
     return found
 
 
+# 真实定价页的路径特征:末段就是 pricing/plans/price 等短路径。
+# Sleekflow 事故(重装后 5 竞品实测复发):首页链接指向涨价 webinar LP
+# (/lp/meta-raises-service-message-...-pricing-...-roi,长 slug 营销页),
+# 导航发现按 "pricing" 关键词把它当成定价页,还压过了内置表正确的
+# /pricing —— 0 价格 token + 升级梯空转。与 audit._has_genuine_pricing_url
+# 同一判定,fetch 侧前置设防。
+_GENUINE_PRICING_LAST_SEGS = (
+    "pricing",
+    "plans",
+    "plan",
+    "price",
+    "prices",
+    "定价",
+    "价格",
+    "套餐",
+)
+
+
+def _is_genuine_pricing_url(url: str) -> bool:
+    segs = [s.lower() for s in urlparse(url or "").path.split("/") if s]
+    return not segs or segs[-1] in _GENUINE_PRICING_LAST_SEGS
+
+
 def discover_from_results(all_results: List[Dict], base_url: str) -> Dict[str, str]:
     """多引擎导航发现:对每个成功引擎的原文分别发现,取并集。
 
@@ -690,7 +713,17 @@ def fetch_competitor(
     nav = discover_from_results(home.get("all_results") or [], base)
     candidates: Dict[str, Optional[str]] = {}
     for kind in _PAGE_ORDER:
-        candidates[kind] = nav.get(kind) or guessed.get(kind)
+        nav_url, guessed_url = nav.get(kind), guessed.get(kind)
+        if kind == "pricing" and guessed_url and nav_url:
+            # 定价页:真实短路径(/pricing、/plans)优先于长 slug 营销页
+            # (Sleekflow 事故:webinar LP 链接含 "pricing" 关键词,
+            # 导航发现压过了内置表正确的 /pricing)
+            if _is_genuine_pricing_url(guessed_url) and not _is_genuine_pricing_url(
+                nav_url
+            ):
+                candidates[kind] = guessed_url
+                continue
+        candidates[kind] = nav_url or guessed_url
     targets: Dict[str, str] = {k: v for k, v in candidates.items() if v and v != base}
 
     # robots 检查(页面级):disallow 的页面诚实跳过
@@ -810,16 +843,15 @@ def main() -> int:
     results: List[tuple] = []
 
     # 竞品级并行:不同域互不干扰;jina 限流/页面错峰在引擎与页面层控制
+    # 计时在工作函数内部(历史 bug:在 fut.result() 处记时,先完成的
+    # future 会被误记为 0.0s —— 排序在前的慢竞品把等待时间"吃掉"了)
+    def _run(n: str):
+        started = time.monotonic()
+        r = fetch_competitor(n, out_dir, args.budget, args.topic)
+        return r, time.monotonic() - started
+
     with ThreadPoolExecutor(max_workers=min(_COMPETITOR_CONCURRENCY, len(names))) as ex:
-        futs = {
-            ex.submit(fetch_competitor, n, out_dir, args.budget, args.topic): n
-            for n in names
-        }
-        for fut in futs:
-            t0 = time.time()
-            r = fut.result()
-            elapsed = time.time() - t0
-            results.append((r, elapsed))
+        results = list(ex.map(_run, names))
 
     ok = True
     for r, elapsed in results:

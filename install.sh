@@ -92,6 +92,8 @@ RUNTIME_PIECES=(
     verify.py
     gates.py
     network_gates.py
+    audit.py
+    pricing_tokens.py
 )
 
 # 平台 → 安装目录映射。探测目录（或其父目录）存在才算该平台在用。

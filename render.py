@@ -226,6 +226,37 @@ def _derive_inspiration_points(competitors):
             r"api.*优先|开发者|developer",
             "API-first + 开发者文档中心,让技术买家成为内部推动者",
         ),
+        # ── 产品实践型(2026-08-30 补:此前只有 GTM 型 hints,产品功能型
+        # strengths 全被过滤 → §2.2 整节空转"缺失信息"。功能优势同样有
+        # 「可借鉴的 做法」,不只认证/融资/渠道才算实践) ──
+        (
+            r"llms\.txt|openapi|机器可读|api.*文档|sdk",
+            "把文档当产品做:机器可读(llms.txt/OpenAPI/全页 .md 输出)—— AI Agent 选型时代的新获客面",
+        ),
+        (
+            r"语音|voice|克隆",
+            "语音+文字同线程服务(通话自动摘要回写 CRM)—— 高触达场景的体验差异点",
+        ),
+        (
+            r"量化|案例.*%|首响|[0-9]+x|客户案例",
+            "客户案例全部带量化指标(首响时间/线索倍数/营收增长)—— 营销素材即选型证据",
+        ),
+        (
+            r"ai agent|三端|全链路|ai.*代理",
+            "AI Agent 覆盖完整旅程(质检/推荐/排期/CRM 回写),而非单点问答机器人",
+        ),
+        (
+            r"双号|共存|coexistence",
+            "支持 App/API 双号共存降低迁移摩擦 —— 团队保留既有习惯,平台获得 API 能力",
+        ),
+        (
+            r"cdp|客户数据平台|画像",
+            "CDP 实时画像驱动个性化(收集-分析-营销-反馈闭环)",
+        ),
+        (
+            r"24/7|全天候|sla",
+            "人+AI 混合 7×24 支持,SLA 化承诺写进套餐",
+        ),
     ]
     result: dict = {}
     for c in competitors:
@@ -235,10 +266,17 @@ def _derive_inspiration_points(competitors):
             point = s.get("point", "")
             if not point:
                 continue
+            # 硬性溯源需求(2026-08-30):§2.2 每一处必须可溯源 ——
+            # 无来源锚点的条目不渲染(比"标注未锚定"更强:拿不出
+            # 证据就不进报告)。Meetbot 类只有根域/定价页可锚的
+            # 竞品,§2.2 如实空置并显示待收集提示。
+            # _ref = normalize 已注册;source = 直调场景未注册但已锚定
+            if not (s.get("_ref") or s.get("source")):
+                continue
             if _FACTUAL_RX.search(point) and not re.search(
-                r"认证|iso|bsp|partner|meta", point, re.I
+                r"认证|iso|bsp|partner|meta|量化|[0-9]+%|[0-9]+x|llms", point, re.I
             ):
-                continue  # 纯数字事实不进启发点
+                continue  # 纯数字事实不进启发点(量化效果/认证例外)
             hint = next(
                 (h for rx, h in _ACTION_HINTS if re.search(rx, point, re.I)),
                 None,
@@ -267,6 +305,9 @@ def _derive_opportunity_points(competitors):
                 continue  # 占位符不能变成"差异化机会"
             point = w.get("point", "")
             if not point:
+                continue
+            # 硬性溯源:与 §2.2 同规 —— 无锚点(且非矩阵推导补位)不渲染
+            if not (w.get("_ref") or w.get("source")):
                 continue
             angle = _classify_angle(point)
             result.setdefault(angle, []).append(
@@ -338,6 +379,20 @@ def _derive_opportunity_points(competitors):
         )
         for c in competitors
     }
+    # 已检查页面的来源角标(feature_catalog 注册阶段已生成 _ref,派生
+    # 在其后执行可直接复用)—— 补位条目可追溯到真实检查过的证据页。
+    # 兜底:catalog 全无锚点的竞品(Meetbot 型),用其已注册的 meta 来源
+    # (tagline/pricing 所在页 = 本轮实际抓过的页面),不再裸奔
+    checked_refs = {}
+    for c in competitors:
+        refs = [
+            f["_ref"]
+            for f in c.get("feature_catalog", {}).get(c["name"], [])
+            if f.get("source") and f.get("_ref")
+        ][:3]
+        if not refs:
+            refs = [r for r in (c.get("_refs") or {}).values() if r][:3]
+        checked_refs[c["name"]] = refs
     for c in competitors:
         mine = [
             it
@@ -364,16 +419,112 @@ def _derive_opportunity_points(competitors):
                         "已检查本轮抓取页面: "
                         + (
                             ", ".join(checked_pages.get(c["name"], [])[:3])
-                            or "官网主页/功能/定价页"
+                            or "官网主页/功能/文档页"
                         )
                         + " —— 未命中 ≠ 不支持,选型时建议向厂商确认"
                     ),
                     "opportunity": f"把「{feat_name[k]}」做成默认能力并在官网清晰披露,选型对比时即可占优",
                     "_ref": 0,
+                    "_refs": checked_refs.get(c["name"], []),
                 }
             )
             added += 1
     return result
+
+
+def _build_feature_conclusions(competitors):
+    """§2.4 各家功能结论:从 feature_catalog 推导每家功能画像。
+
+    三要素全部数据驱动(不做厂商能力判定,只描述公开材料):
+      - 覆盖度:该家具备多少「行业常见能力」(≥60% 家 catalog 命中)
+      - 独家:仅此家公开披露的能力
+      - 未提及:常见能力中该家 catalog 未命中(≠ 不支持)
+    结论徽章按覆盖度分档:覆盖最全 / 覆盖均衡 / 公开信息有限。
+    """
+    import re as _re
+
+    def _tokens(s: str):
+        return {w for w in _re.split(r"[^a-z0-9一-鿿]+", s.lower()) if len(w) >= 4}
+
+    catalog_text: dict = {}
+    feat_name: dict = {}
+    for c in competitors:
+        feats = c.get("feature_catalog", {}).get(c["name"], [])
+        catalog_text[c["name"]] = " ".join(
+            (f.get("name") or "") + " " + (f.get("desc") or "") for f in feats
+        ).lower()
+        for f in feats:
+            key = (f.get("name") or "").strip().lower()
+            if len(key) >= 4:
+                feat_name.setdefault(key, f.get("name") or "")
+
+    comp_tokens = {
+        c["name"]: _tokens(catalog_text.get(c["name"], ""))
+        | _tokens(
+            " ".join(
+                f.get("name", "")
+                for f in c.get("feature_catalog", {}).get(c["name"], [])
+            )
+        )
+        for c in competitors
+    }
+
+    def _holders(key: str) -> list:
+        toks = _tokens(key)
+        if not toks:
+            return []
+        return [n for n, t in comp_tokens.items() if toks <= t]
+
+    threshold = max(2, round(len(competitors) * 0.6))
+    holder_map = {k: _holders(k) for k in feat_name}
+    common = [k for k in feat_name if len(holder_map[k]) >= threshold]
+    common.sort(key=lambda k: -len(holder_map[k]))
+
+    out = []
+    for c in competitors:
+        name = c["name"]
+        held = [k for k in common if name in holder_map[k]]
+        missing = [feat_name[k] for k in common if name not in holder_map[k]]
+        exclusive = [feat_name[k] for k, hs in holder_map.items() if hs == [name]]
+        total = len(common)
+        ratio = len(held) / total if total else 0.0
+        if total == 0:
+            verdict, tone = "功能信息不足", "mute"
+        elif ratio >= 0.99 and exclusive:
+            verdict, tone = "覆盖最全 · 有独家能力", "good"
+        elif ratio >= 0.99:
+            verdict, tone = "覆盖最全", "good"
+        elif ratio >= 0.6:
+            verdict, tone = (
+                "覆盖均衡" + (" · 有独家能力" if exclusive else ""),
+                "accent",
+            )
+        else:
+            verdict, tone = "公开功能信息有限", "mute"
+        out.append(
+            {
+                "name": name,
+                "verdict": verdict,
+                "tone": tone,
+                "held": len(held),
+                "total": total,
+                "ratio": round(ratio * 100),
+                "exclusive": exclusive[:4],
+                "missing": missing[:3],
+                # 文字结论(Step 3 LLM 基于证据撰写,render 只透传):
+                # conclusion_points = [{text, source|matrix_derived}] 逐句溯源
+                "conclusion": c.get("feature_conclusion", ""),
+                "conclusion_points": [
+                    cp
+                    for cp in (c.get("feature_conclusion_points") or [])
+                    if isinstance(cp, dict) and cp.get("text")
+                ],
+                "best_for": c.get("feature_best_for", ""),
+                "score": (c.get("scores") or {}).get("feature_richness"),
+            }
+        )
+    out.sort(key=lambda x: -x["ratio"])
+    return out
 
 
 def _group_inspiration_by_competitor(inspiration_points, competitors):
@@ -413,6 +564,7 @@ def _group_opportunity_by_competitor(opportunity_points, competitors):
                         "evidence": it.get("evidence", ""),
                         "opportunity": it["opportunity"],
                         "_ref": it.get("_ref", 0),
+                        "_refs": it.get("_refs", []),
                     }
                 )
     return result
@@ -3303,6 +3455,11 @@ def _render_sources_html(sources_by_kind):
         "opportunity": "💡",
         "opportunity_validation": "📊",
         "other_competitor": "📦",
+        "tech_signal": "🔧",
+        "differentiator": "🎯",
+        "user_feedback": "💬",
+        "feature_conclusion": "📝",
+        "opportunity_evidence": "🔗",
     }
     kind_label = {
         "narrative": "背景叙事",
@@ -3315,6 +3472,11 @@ def _render_sources_html(sources_by_kind):
         "opportunity": "颠覆机会",
         "opportunity_validation": "机会验证",
         "other_competitor": "其他竞品",
+        "tech_signal": "技术信号",
+        "differentiator": "差异化",
+        "user_feedback": "用户反馈",
+        "feature_conclusion": "功能结论",
+        "opportunity_evidence": "机会证据基础",
     }
     parts = []
     for group in sources_by_kind:
@@ -3333,6 +3495,19 @@ def _render_sources_html(sources_by_kind):
                 if s.get("competitor")
                 else ""
             )
+            # 聚合论断:同一 URL 被多个论断引用时,首论断可见 +
+            # "+N" 徽章,悬停 title 列出全部(角标号稳定不重复)
+            claims = s.get("claims") or ([s.get("claim", "")] if s.get("claim") else [])
+            claims = [c for c in claims if c]
+            claim_main = html.escape(claims[0] if claims else "")
+            extra = ""
+            if len(claims) > 1:
+                all_c = html.escape(" ｜ ".join(claims), quote=True)
+                extra = (
+                    f'<span style="background:var(--accent-soft); color:var(--accent);'
+                    f"border-radius:8px; padding:0 0.4rem; font-size:0.68rem;"
+                    f'margin-left:0.35rem;" title="{all_c}">+{len(claims) - 1} 处引用</span>'
+                )
             # 来源类型徽章:渲染时未做实际可达性检测,绝不标"可访问"冒充已验证
             kind_tag = "👤 用户社区" if s.get("verified") == "user" else "🤖 官方页面"
             url = _safe_url(s.get("url", ""))
@@ -3345,7 +3520,7 @@ def _render_sources_html(sources_by_kind):
             parts.append(
                 f'<div class="source-item" id="src-{_ref_num(s["idx"])}">'
                 f'<span class="src-num">{_ref_num(s["idx"])}</span>'
-                f'<span class="src-claim">{comp_part}{html.escape(s.get("claim", ""))}</span>'
+                f'<span class="src-claim">{comp_part}{claim_main}{extra}</span>'
                 f'<div class="src-meta">'
                 f"{link_html}"
                 f'<span style="background:var(--bg-soft); color:var(--fg-mute); padding:0.05rem 0.4rem; border-radius:3px; font-size:0.7rem; margin-left:0.5rem;">{kind_tag}</span>'
@@ -4298,26 +4473,33 @@ def normalize(data: dict) -> dict:
     def _add_source(url: str, kind: str, claim: str, competitor: str = "") -> int:
         """注册来源,返回角标号。
 
-        去重键 = (url, claim, competitor) —— 而非裸 URL。
-        历史缺陷:同一 URL(官网首页)被 tagline/founded/GTM/护城河 等
-        多个不同论断复用同一个角标,来源区却只显示第一次注册的 claim
-        ("X · tagline")。读者点「Meta 官方伙伴」旁的 [1] 落地却是
-        "tagline" 条目 = 角标定位全部错位的观感。
-        现在每个论断一个条目,点击落地即所见。
+        去重键 = url(2026-08-30 改;历史键 = (url, claim, competitor))。
+        历史 v1 缺陷:裸 URL 去重时多个论断共用一个角标,来源区只显示
+        第一次的 claim,点击落地错位。历史 v2 缺陷(用户实测反馈):按
+        (url,claim) 去重后同一 URL 被注册成十几个不同角标号 —— [29]
+        [30] [31] 点开全是同一页面,角标"看似重复实则混乱",来源区
+        膨胀到 120+ 条。
+        现方案 = URL 级去重 + 论断聚合:同一 URL 一个稳定角标;来源区
+        该条目聚合列出全部引用论断(claims),点击落地既稳定又可读。
         """
         url = _safe_url(url)  # 防御纵深:javascript: 等协议绝不进来源区
         if not url:
             return 0
-        key = (url, (claim or "")[:80], competitor)
-        if key in source_idx:
-            return source_idx[key]
-        source_idx[key] = len(sources) + 1
+        c0 = (claim or "").strip()[:80]
+        if url in source_idx:
+            idx = source_idx[url]
+            ent = sources[idx - 1]
+            if c0 and c0 not in ent["claims"]:
+                ent["claims"].append(c0)  # 聚合引用论断(落地可读)
+            return idx
+        source_idx[url] = len(sources) + 1
         sources.append(
             {
                 "idx": len(sources) + 1,
                 "url": url,
                 "kind": kind,
-                "claim": claim[:80] if claim else "",
+                "claim": c0,
+                "claims": [c0] if c0 else [],
                 "competitor": competitor,
                 "verified": (
                     "user"
@@ -4326,7 +4508,7 @@ def normalize(data: dict) -> dict:
                 ),
             }
         )
-        return source_idx[key]
+        return source_idx[url]
 
     # 1. background / executive_summary 等顶层 source 列表
     for src_list_key in ["background_sources", "executive_summary_sources"]:
@@ -4364,6 +4546,16 @@ def normalize(data: dict) -> dict:
             if url:
                 idx = _add_source(url, "strength", st.get("point", ""), comp)
                 st["_ref"] = idx
+        # §2.4 功能结论逐句溯源(硬性需求):每句判词注册进来源清单,
+        # 模板渲染 [N] 角标;矩阵推导句由数据显式标 matrix_derived
+        for cp in c.get("feature_conclusion_points") or []:
+            if isinstance(cp, dict) and cp.get("source"):
+                cp["_ref"] = _add_source(
+                    cp["source"],
+                    "feature_conclusion",
+                    (cp.get("text") or "")[:60],
+                    comp,
+                )
         for w in c.get("weaknesses", []):
             url = w.get("source", "")
             ev = w.get("evidence", "")
@@ -4425,6 +4617,14 @@ def normalize(data: dict) -> dict:
             o["_ref"] = idx
         for vs in o.get("validation_sources", []):
             _add_source(vs, "opportunity_validation", o.get("title", ""), "")
+        # 证据基础(2026-08-30 可追溯需求):机会的灵感来自哪些本轮实抓
+        # 页面 —— 逐个注册进来源清单,§2.5 渲染 [N] 角标可跳转
+        o["_refs"] = []
+        for eu in o.get("evidence_urls", [])[:6]:
+            if eu:
+                o["_refs"].append(
+                    _add_source(eu, "opportunity_evidence", o.get("title", "")[:40], "")
+                )
 
     # 7. other_competitors
     for oc in data.get("other_competitors", []):
@@ -4563,6 +4763,8 @@ def normalize(data: dict) -> dict:
     # ===== 派生：飞书模板所需字段 =====
     data["inspiration_points"] = _derive_inspiration_points(data["competitors"])
     data["opportunity_points"] = _derive_opportunity_points(data["competitors"])
+    # §2.4 各家功能结论(数据驱动:覆盖度/独家/未提及)
+    data["feature_conclusions"] = _build_feature_conclusions(data["competitors"])
     # 同时按竞品分组,供 §2.4 / §2.5 按厂商查阅
     data["inspiration_by_competitor"] = _group_inspiration_by_competitor(
         data["inspiration_points"], data["competitors"]
@@ -5083,16 +5285,19 @@ def normalize(data: dict) -> dict:
         )
     data["evidence_warnings"] = evidence_warnings
 
-    # 8. Top 3 机会卡片 —— disrupt_score 排序
-    sorted_opps = sorted(
-        [
-            o
-            for o in data["opportunities"]
-            if isinstance(o.get("disrupt_score"), (int, float))
-        ],
-        key=lambda o: o["disrupt_score"],
-        reverse=True,
-    )
+    # 8. Top 3 机会卡片 —— disrupt_score 排序;无评分时回退输入序。
+    # (2026-08-30 全链路实测:opportunities 无 disrupt_score 字段时
+    # 过滤后为空 → §2.5 整段静默消失 —— 输入 5 条报告 0 条,违背
+    # 诚实展示。框架规范本就要求「按颠覆性降序」输出,输入序即排序。)
+    scored = [
+        o
+        for o in data["opportunities"]
+        if isinstance(o.get("disrupt_score"), (int, float))
+    ]
+    if scored:
+        sorted_opps = sorted(scored, key=lambda o: o["disrupt_score"], reverse=True)
+    else:
+        sorted_opps = list(data["opportunities"])
     data["top_opportunities"] = sorted_opps[:3]
 
     # 9. 竞品分段 + 每段平均分
@@ -5200,6 +5405,11 @@ def self_check(data, html_str):
             data.get("source_count", 0) > 0,
         ),
         (
+            "来源 URL 唯一(同一页面一个稳定角标)",
+            len({s.get("url") for s in data.get("sources") or []})
+            == len(data.get("sources") or []),
+        ),
+        (
             "§5.2.1 功能矩阵非空(行 ≥ 1)",
             sum(
                 len(cat.get("features", []))
@@ -5212,6 +5422,22 @@ def self_check(data, html_str):
         (
             "无 Python repr 泄漏(乱码回归)",
             "{&#39;" not in html_str and "['" not in html_str and "{'" not in html_str,
+        ),
+        (
+            "§2.2 启发点全部可溯源(硬性需求:无未锚定条目)",
+            all(
+                it.get("_ref")
+                for group in (data.get("inspiration_by_competitor") or {}).values()
+                for it in group
+            ),
+        ),
+        (
+            "§2.4 功能结论逐句可溯源(硬性需求:_ref 或显式矩阵推导标记)",
+            all(
+                cp.get("_ref") or cp.get("matrix_derived")
+                for fc in data.get("feature_conclusions") or []
+                for cp in fc.get("conclusion_points") or []
+            ),
         ),
         (
             "无占位符混入启发/机会派生板块",

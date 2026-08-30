@@ -39,6 +39,12 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.sufficiency import _PRICE_RX, is_free_tier, is_custom_tier  # noqa: E402
 
+# quote 回查的两级归一化(与 verify G2 / gates._quote_grep 同口径):
+# 历史不同步事故(2026-08-30):G2 有 markdown 链接剥离(链接形式原文
+# `[Omnichannel Team Inbox](/team-inbox)` → 剥成纯文本后命中),audit
+# 只做空白折叠 → 同一条 quote G2 过、audit 误报 gap
+from gates import _norm_md_stripped as _norm_md_links_stripped  # noqa: E402
+
 # ── 常量 ──
 EXPECTED_PAGE_KINDS = ["homepage", "pricing", "features", "docs", "testimonials"]
 PRICE_TOKEN_RX = _PRICE_RX
@@ -353,7 +359,14 @@ def audit_price_votes(comp: dict, raw_index: dict) -> dict:
 
 
 def audit_quote_accuracy(comp: dict, raw_index: dict, sample: int = 8) -> dict:
-    """quote 逐字回查(抽样;全量由 verify.py G2 把关)。"""
+    """quote 逐字回查(抽样;全量由 verify.py G2 把关)。
+
+    strengths/weaknesses 的 evidence 是「官网原文: "quote"」包装形态
+    (G2 的 _STRENGTH_QUOTE_RX 契约)——回查前先剥出引号内主体,
+    否则整个 evidence 字符串(含前缀)永远 grep 不到(2026-08-30
+    全链路实测暴露:G2 全过而本层 4 竞品误报 gap)。
+    """
+    _wrapped_rx = re.compile(r'官网原文:\s*"(.+?)"\s*"?$')
     quotes = []
     for key in (
         "strengths",
@@ -366,13 +379,20 @@ def audit_quote_accuracy(comp: dict, raw_index: dict, sample: int = 8) -> dict:
             if not isinstance(item, dict):
                 continue
             q = item.get("quote") or item.get("evidence") or ""
+            m = _wrapped_rx.search(q)
+            if m:
+                q = m.group(1)  # 剥出引号内主体(与 G2 同口径)
             src = item.get("source") or item.get("source_url") or ""
             if q and src:
                 quotes.append((key, src, q))
     checked, failed = 0, []
     for key, src, q in quotes[:sample]:
         engines = raw_index.get(src) or {}
-        hit = any(_norm(q) in _norm(md or "") for md in engines.values())
+        qn = _norm(q)
+        hit = any(
+            qn in _norm(md or "") or qn in _norm_md_links_stripped(md or "")
+            for md in engines.values()
+        )
         checked += 1
         if not hit:
             failed.append(f"{key}: {q[:40]}…")

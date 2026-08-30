@@ -706,3 +706,397 @@ def test_discover_urls_ignores_images_and_cdn_assets():
     )
     found = fetch_mod.discover_urls(md, "https://linear.app")
     assert found.get("features") == "https://linear.app/features", f"实测 {found}"
+
+
+def test_pricing_target_prefers_genuine_short_path(tmp_path, monkeypatch):
+    """Sleekflow 事故(重装后 5 竞品实测复发):首页链接指向涨价 webinar
+    LP(长 slug 含 pricing 关键词),导航发现把它当定价页,压过内置表
+    正确的 /pricing → 0 价格 token + 升级梯空转 + ladder failure。"""
+    fake_home = {
+        "success": True,
+        "scraper": "pw",
+        "markdown": "[Read about pricing changes](https://sleekflow.io/lp/meta-raises-service-message-pricing-roi)",
+        "all_results": [
+            {
+                "scraper": "playwright",
+                "success": True,
+                "markdown": "[Read about pricing changes](https://sleekflow.io/lp/meta-raises-service-message-pricing-roi)",
+            }
+        ],
+        "stats": {"successful": 1},
+    }
+    scraped = []
+
+    def fake_scrape(url, **kw):
+        scraped.append(url)
+        return (
+            fake_home
+            if url == "https://sleekflow.io"
+            else {
+                "success": True,
+                "scraper": "pw",
+                "markdown": "Growth $79/mo " + "x " * 100,
+                "all_results": [
+                    {
+                        "scraper": "playwright",
+                        "success": True,
+                        "markdown": "Growth $79/mo",
+                    },
+                    {
+                        "scraper": "trafilatura",
+                        "success": True,
+                        "markdown": "Growth: $79/mo",
+                    },
+                ],
+                "stats": {"successful": 2},
+            }
+        )
+
+    monkeypatch.setattr(fetch_mod, "scrape_smart", fake_scrape)
+    monkeypatch.setattr(
+        fetch_mod,
+        "resolve_competitor",
+        lambda n: {
+            "name": "Sleekflow",
+            "canonical_name": "Sleekflow",
+            "url": "https://sleekflow.io",
+            "pricing_url": "https://sleekflow.io/pricing",
+            "features_url": None,
+            "docs_url": None,
+        },
+    )
+    monkeypatch.setattr(fetch_mod, "_cache_put", lambda *a, **kw: None)
+
+    r = fetch_mod.fetch_competitor("sleekflow", tmp_path, budget_s=10)
+    assert r["pages"]["pricing"]["url"] == "https://sleekflow.io/pricing", (
+        f"内置表正确 /pricing 应胜过长 slug LP,实测 {r['pages']['pricing']['url']}"
+    )
+    lp_hits = [u for u in scraped if "/lp/" in u]
+    assert not lp_hits, f"webinar LP 不应被抓取: {lp_hits}"
+
+
+# ═══════════ 硬性溯源(2026-08-30):§2.2 无锚定不渲染 + §2.4 逐句锚定 ═══════════
+
+
+def test_inspiration_entries_without_ref_are_dropped():
+    """§2.2 硬性需求:无来源锚点的 strengths 不派生启发点(拿不出
+    证据就不进报告,而非渲染后标「未锚定」)。"""
+    competitors = [
+        {
+            "name": "A",
+            "strengths": [
+                {
+                    "point": "API-first + 开发者文档中心,让技术买家成为内部推动者",
+                    "source": "https://a.com/docs",
+                    "evidence": "",
+                    "score": 8,
+                },
+                {
+                    "point": "尽早拿下 Meta 官方 BSP/Partner 身份",
+                    "source": "",
+                    "evidence": "",
+                    "score": 7,
+                },  # 无锚点
+            ],
+        }
+    ]
+    import render as render_mod
+
+    pts = render_mod._derive_inspiration_points(competitors)
+    entries = [it for items in pts.values() for it in items]
+    assert len(entries) == 1, f"仅锚定条目应保留,实测 {len(entries)}"
+    assert entries[0]["competitor"] == "A"
+    assert entries[0]["_ref"] == 0  # 派生时尚未注册,_ref 从 strengths 透传
+
+
+def test_weakness_entries_without_ref_are_dropped():
+    """§2.3 同规:无锚点弱点不渲染(有锚点的照常)。"""
+    import render as render_mod
+
+    competitors = [
+        {
+            "name": "A",
+            "feature_catalog": {"A": []},
+            "weaknesses": [
+                {
+                    "point": "聊天机器人 API 仅 Pro 开放",
+                    "source": "https://a.com/docs",
+                    "evidence": "",
+                    "score": 5,
+                },
+                {"point": "信息架构割裂", "source": "", "evidence": "", "score": 6},
+            ],
+        }
+    ]
+    pts = render_mod._derive_opportunity_points(competitors)
+    entries = [it for items in pts.values() for it in items]
+    assert len(entries) == 1 and "Pro" in entries[0]["weakness"]
+
+
+def test_gates_cover_feature_conclusion_points(monkeypatch):
+    """G1:feature_conclusion_points 的 source 必须在 manifest;
+    G7:功能语义句锚定价页 = 硬失败,定价语义句豁免。"""
+    import gates as gates_mod
+    from verify import Report
+
+    analysis = {
+        "competitors": [
+            {
+                "name": "A",
+                "url": "https://a.com",
+                "feature_conclusion_points": [
+                    {"text": "机器人 API 仅 Pro 开放;", "source": "https://a.com/docs"},
+                    {
+                        "text": "订阅价格三档不公示价格数字;",
+                        "source": "https://a.com/pricing",
+                    },
+                    {
+                        "text": "协作颗粒度浅;",
+                        "source": "https://a.com/pricing",
+                    },  # 功能语义+定价锚 → G7
+                    {"text": "无锚点句", "source": ""},
+                ],
+            }
+        ]
+    }
+    manifest = {
+        "fetched": {
+            "https://a.com/docs": {"status": "ok", "kinds": ["docs"], "engines": {}},
+            "https://a.com/pricing": {
+                "status": "ok",
+                "kinds": ["pricing"],
+                "engines": {},
+            },
+        }
+    }
+    rep = Report()
+    gates_mod.run_all(analysis, manifest, {}, rep)
+    details = [v["detail"] for v in rep.violations]
+    assert any("定价页路径" in d for d in details), (
+        f"功能语义句锚 pricing 应 G7 硬失败: {details}"
+    )
+    pricing_ok = not any("订阅价格三档" in v["field"] for v in rep.violations)
+    assert pricing_ok, "定价语义句锚 pricing 应豁免"
+    # 无锚点句不进 G1(空 source 不 yield)——由 render 自检保证不渲染
+
+
+def test_self_check_requires_traceable_conclusions():
+    """render 自检:§2.2 未锚定条目 / §2.4 无标记句 = 检查失败。"""
+    import render as render_mod
+
+    # 构造最小 data 触发自检分支
+    bad = {
+        "competitors": [],
+        "opportunities": [],
+        "inspiration_by_competitor": {"A": [{"good": "x", "_ref": 0}]},
+        "feature_conclusions": [{"name": "A", "conclusion_points": [{"text": "句"}]}],
+    }
+    good = {
+        "competitors": [],
+        "opportunities": [{"t": 1}, {"t": 2}, {"t": 3}],
+        "inspiration_by_competitor": {"A": [{"good": "x", "_ref": 3}]},
+        "feature_conclusions": [
+            {
+                "name": "A",
+                "conclusion_points": [
+                    {"text": "句", "_ref": 1},
+                    {"text": "推导", "matrix_derived": True},
+                ],
+            }
+        ],
+    }
+    import io
+    import contextlib
+
+    def _run(data):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                render_mod.self_check(data, "<html></html>")
+            except SystemExit:
+                pass
+        return buf.getvalue()
+
+    assert "无未锚定条目" in _run(bad) and "✗" in _run(bad)
+    out_good = _run(good)
+    assert "✓ §2.2 启发点全部可溯源" in out_good
+    assert "✓ §2.4 功能结论逐句可溯源" in out_good
+
+
+def test_g2_checks_tech_signal_and_catalog_quotes():
+    """G2 补覆盖:tech_signals/feature_catalog 带 quote 的条目必须逐字
+    回查(事故:quote "Omnichannel Team Inbox" 实为 Sleekflow 首页文本
+    张冠李戴锚到 respond.io/features,G2 不查该字段漏网)。"""
+    import gates as gates_mod
+    from verify import Report
+
+    analysis = {
+        "competitors": [
+            {
+                "name": "A",
+                "url": "https://a.com",
+                "tech_signals": [
+                    {
+                        "name": "语音 API",
+                        "source": "https://a.com/features",
+                        "quote": "WhatsApp Business Calling API",
+                    },
+                    {"name": "无 quote 的信号不查", "source": "https://a.com/features"},
+                ],
+                "feature_catalog": {
+                    "A": [
+                        {
+                            "name": "语音通话",
+                            "category": "渠道接入",
+                            "source": "https://a.com/features",
+                            "quote": "真实存在的能力句",
+                        },
+                        {
+                            "name": "无 quote 不查",
+                            "category": "x",
+                            "source": "https://a.com/features",
+                        },
+                    ]
+                },
+            }
+        ]
+    }
+    manifest = {
+        "fetched": {
+            "https://a.com/features": {
+                "status": "ok",
+                "kinds": ["features"],
+                "engines": {},
+            }
+        }
+    }
+    engine_index = {
+        "https://a.com/features": {
+            "playwright": "页面内容包含 WhatsApp Business Calling API 与其他文字",
+            "trafilatura": "另引擎没有目标句",
+        }
+    }
+    rep = Report()
+    gates_mod.run_all(analysis, manifest, engine_index, rep)
+    assert not any("tech_signals[0]" in v["field"] for v in rep.violations), (
+        "真实 quote 应命中"
+    )
+    assert any(
+        "feature_catalog" in v["field"] and "quote" in v["field"]
+        for v in rep.violations
+    ), "catalog 的假 quote 应被 G2 抓住"
+
+    # 张冠李戴场景:quote 不在该 URL 原文 → 硬失败
+    bad = {
+        "competitors": [
+            {
+                "name": "A",
+                "url": "https://a.com",
+                "tech_signals": [
+                    {
+                        "name": "x",
+                        "source": "https://a.com/features",
+                        "quote": "不在原文的句子",
+                    }
+                ],
+            }
+        ]
+    }
+    rep2 = Report()
+    gates_mod.run_all(bad, manifest, engine_index, rep2)
+    assert any("tech_signals[0].quote" in v["field"] for v in rep2.violations), (
+        "张冠李戴 quote 必须硬失败"
+    )
+
+
+def test_backfill_refs_fallback_to_registered_meta():
+    """§2.3 补位条目角标兜底:catalog 全无锚点的竞品(Meetbot 型),
+    用其已注册 meta 来源(pricing/tagline 所在页 = 实际检查过的页面),
+    修复前 Meetbot 3 条弱点零角标。"""
+    import render as render_mod
+
+    competitors = [
+        {
+            "name": "M",
+            "url": "https://m.com",
+            "pricing_source": "https://m.com/pricing",
+            "tagline_source": "https://m.com",
+            "_refs": {"pricing": 7, "tagline": 2},
+            "weaknesses": [],
+            "feature_catalog": {
+                "M": [{"name": "客户分层运营", "category": "x", "source": ""}]
+            },
+        },
+        {
+            "name": "N",
+            "url": "https://n.com",
+            "weaknesses": [],
+            "feature_catalog": {
+                "N": [
+                    {
+                        "name": "自动化营销群发",
+                        "category": "x",
+                        "source": "https://n.com/f",
+                        "_ref": 9,
+                    }
+                ]
+            },
+        },
+        {
+            "name": "O",
+            "url": "https://o.com",
+            "weaknesses": [],
+            "feature_catalog": {
+                "O": [
+                    {
+                        "name": "自动化营销群发",
+                        "category": "x",
+                        "source": "https://o.com/f",
+                        "_ref": 11,
+                    }
+                ]
+            },
+        },
+    ]
+    pts = render_mod._derive_opportunity_points(competitors)
+    m_entries = [
+        it for items in pts.values() for it in items if it["competitor"] == "M"
+    ]
+    assert m_entries, "M 应有补位条目"
+    for it in m_entries:
+        assert it.get("_refs") == [7, 2], f"M 补位应带 meta refs,实测 {it.get('_refs')}"
+    n_entries = [
+        it for items in pts.values() for it in items if it["competitor"] == "N"
+    ]
+    for it in n_entries:
+        assert it.get("_refs") == [9], "N 用 catalog 自身 refs"
+
+
+def test_self_check_source_url_uniqueness():
+    """自检:来源清单 URL 必须唯一(同一页面一个稳定角标;历史按
+    (url,claim) 去重导致同 URL 十几个编号,用户反馈'角标重复')。"""
+    import io
+    import contextlib
+    import render as render_mod
+
+    def _run(sources):
+        data = {
+            "competitors": [],
+            "opportunities": [{"t": 1}, {"t": 2}, {"t": 3}],
+            "inspiration_by_competitor": {},
+            "feature_conclusions": [],
+            "sources": sources,
+            "source_count": len(sources),
+        }
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            try:
+                render_mod.self_check(data, "<html></html>")
+            except SystemExit:
+                pass
+        return buf.getvalue()
+
+    out_dup = _run([{"url": "https://a.com/x"}, {"url": "https://a.com/x"}])
+    assert "✗ 来源 URL 唯一" in out_dup, "重复 URL 应触发自检失败"
+    out_ok = _run([{"url": "https://a.com/x"}, {"url": "https://a.com/y"}])
+    assert "✓ 来源 URL 唯一" in out_ok

@@ -50,6 +50,11 @@ def _evidence_fields(competitor: dict):
             ).strip()
             if u:
                 yield f"competitors[{name}].{key}[{i}].source", u
+    # §2.4 功能结论逐句溯源(2026-08-30 硬性需求):G1/G6 消费同一条流
+    for i, cp in enumerate(competitor.get("feature_conclusion_points") or []):
+        u = (cp.get("source") or "").strip() if isinstance(cp, dict) else ""
+        if u:
+            yield f"competitors[{name}].feature_conclusion_points[{i}].source", u
     for key in ("gtm_evidence", "moat_evidence"):
         for i, ev in enumerate(competitor.get(key) or []):
             u = (ev.get("source") or "").strip() if isinstance(ev, dict) else ""
@@ -201,6 +206,30 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                         d["quote"],
                     )
                 )
+        # tech_signals / feature_catalog 带 quote 的条目同样回查
+        # (2026-08-30 事故:tech_signal quote "Omnichannel Team Inbox"
+        # 实为 Sleekflow 首页导航文本,张冠李戴锚到 respond.io/features
+        # —— G2 不查该字段,靠 audit 抽样层才抓到。补上闭环)
+        for i, t in enumerate(competitor.get("tech_signals") or []):
+            if isinstance(t, dict) and t.get("quote"):
+                checks.append(
+                    (
+                        f"competitors[{name}].tech_signals[{i}].quote",
+                        (t.get("source") or t.get("source_url") or "").strip(),
+                        t["quote"],
+                    )
+                )
+        fc_q = competitor.get("feature_catalog") or {}
+        for cname, feats in fc_q.items():
+            for i, f in enumerate(feats or []):
+                if isinstance(f, dict) and f.get("quote"):
+                    checks.append(
+                        (
+                            f"competitors[{name}].feature_catalog[{cname}][{i}].quote",
+                            (f.get("source") or "").strip(),
+                            f["quote"],
+                        )
+                    )
         # product_momentum:title 必须在该 source 页任一引擎原文中逐字命中
         # (§6 时间线的数据增强与 5.2.3 独家功能同一条 quote 铁律)
         for i, pm in enumerate(competitor.get("product_momentum") or []):
@@ -574,6 +603,20 @@ def g7_source_authority(analysis, manifest, engine_index, rep: Report):
                                 True,
                             )
                         )
+        # §2.4 功能结论句:功能语义锚定价页/域名根 = 硬失败(与
+        # feature_catalog 同规;定价陈述句豁免)
+        for i, cp in enumerate(competitor.get("feature_conclusion_points") or []):
+            if isinstance(cp, dict):
+                u = (cp.get("source") or "").strip()
+                if u:
+                    checks.append(
+                        (
+                            f"competitors[{name}].feature_conclusion_points[{i}]",
+                            u,
+                            cp.get("text") or "",
+                            True,
+                        )
+                    )
         for field, url, quote, hard in checks:
             weak = _weak_anchor(url)
             if not weak or _is_pricing_semantic(quote):
