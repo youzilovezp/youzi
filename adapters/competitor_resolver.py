@@ -2,9 +2,11 @@
 """
 Competitor Resolver — 竞品名称 → URL + 爬取路径解析
 
-支持两种模式:
-1. 内置映射表（最可靠，无需网络）
+三级解析(2026-08-30 起):
+1. 内置映射表（最可靠，无需网络,confidence 0.95）
 2. 域名直通（名称形如域名/URL 时构造 base/features|pricing|docs 猜测路径，confidence 0.4 —— 输出端需提示人工核对）
+3. websearch 发现（纯产品名 → deep_link 免 key 搜索通道发现官网,confidence 0.6
+   —— 此前 docstring 声称支持但从未实现,非内置名直接 not_found）
 
 输入: 竞品名称字符串 ("ycloud", "wati", "Sleekflow" 等,大小写不敏感)
 输出: {
@@ -14,13 +16,14 @@ Competitor Resolver — 竞品名称 → URL + 爬取路径解析
     "features_url": str,            # 功能页
     "pricing_url": str,             # 定价页
     "docs_url": Optional[str],      # 文档/API 文档
-    "source": str,                  # 解析来源 ("builtin" / "websearch")
+    "source": str,                  # 解析来源 ("builtin" / "domain-guess" / "websearch")
     "confidence": float,            # 0-1,可信度
 }
 """
 
 import re
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 
 # 内置竞品库 — 主流 WhatsApp / 客服 / 营销 SaaS
@@ -190,10 +193,76 @@ def _normalize(name: str) -> str:
     return n
 
 
+def _websearch_resolve(name: str) -> Optional[Dict]:
+    """websearch 兜底:纯产品名(非内置、非域名)→ 搜索发现官网。
+
+    2026-08-30 落地(P0-6):docstring 一直声称 source 含 "websearch" 但从未
+    实现 —— 非内置名直接 not_found,与「任意赛道竞品情报」的定位错配。
+    复用 deep_link 的免 key 搜索通道(Jina Reader + DDG);域名必须含产品
+    名 token 才采纳(防搜索结果张冠李戴)。搜索全灭返回 None(诚实
+    not_found,不拖慢主路径)。
+    """
+    token = re.sub(r"[^a-z0-9]", "", (name or "").lower().split()[0] if name else "")
+    if len(token) < 3:
+        return None
+    try:
+        from scripts.deep_link import search_web
+    except Exception:
+        return None
+    for q in (f"{name} official website", f"{name} pricing plans"):
+        try:
+            hits = search_web(q, n=5) or []
+        except Exception:
+            hits = []
+        for h in hits:
+            url = (h.get("url") or "").strip()
+            host = urlparse(url).netloc.lower().replace("www.", "")
+            if not host or not url.startswith("http"):
+                continue
+            # 采纳条件:可注册域标签(或子域)含产品名 token —— 防搜索
+            # 结果张冠李戴;再排除评测站/媒体/应用市场域
+            reg = ".".join(host.split(".")[-2:]) if "." in host else host
+            label = reg.split(".")[0]
+            sub = host.split(".")[0] if "." in host else ""
+            if token not in (label + " " + sub).lower():
+                continue
+            if any(
+                x in host
+                for x in (
+                    "g2.com",
+                    "capterra",
+                    "producthunt",
+                    "reddit.com",
+                    "medium.com",
+                    "wikipedia.org",
+                    "youtube.com",
+                    "linkedin.com",
+                    "github.com",
+                    "trustpilot",
+                )
+            ):
+                continue
+            base = f"https://{host}"
+            return {
+                "name": name,
+                "canonical_name": name,
+                "url": url if url.startswith("https") else base,
+                "features_url": f"{base}/features",
+                "pricing_url": f"{base}/pricing",
+                "docs_url": f"{base}/docs",
+                "source": "websearch",
+                "confidence": 0.6,
+                "note": "websearch 发现的官网:pricing/features/docs 为路径猜测,"
+                "404 时由导航发现兜底;建议核对首页后人工确认",
+            }
+    return None
+
+
 def resolve_competitor(name: str) -> Optional[Dict]:
     """解析单个竞品名 → URL 配置。
 
-    Returns None if not found in builtin.
+    三级:内置表(0.95) → 域名直通(0.4) → websearch 发现(0.6,2026-08-30)。
+    Returns None if 全部失败。
     """
     norm = _normalize(name)
     for key, info in _BUILTIN_COMPETITORS.items():
@@ -211,9 +280,11 @@ def resolve_competitor(name: str) -> Optional[Dict]:
     # 域名/URL 直通:非内置竞品按域名构造(历史缺陷:AI编程助手等主题
     # 全部不在内置表 → 整个脚本路径 exit(1),被迫走手工爬取的 buggy 路径)
     n = name.strip()
-    looks_like_domain = bool(
-        re.match(r"^(https?://)?[\w-]+(\.[\w-]+)+(/.*)?$", n)
-    ) and "." in n and " " not in n
+    looks_like_domain = (
+        bool(re.match(r"^(https?://)?[\w-]+(\.[\w-]+)+(/.*)?$", n))
+        and "." in n
+        and " " not in n
+    )
     if looks_like_domain:
         url = n if n.startswith("http") else f"https://{n}"
         domain = re.sub(r"^https?://", "", url).split("/")[0]
@@ -229,7 +300,8 @@ def resolve_competitor(name: str) -> Optional[Dict]:
             "confidence": 0.4,
             "note": "非内置竞品:pricing/features/docs 为常规路径猜测,404 时由导航发现兜底",
         }
-    return None
+    # websearch 兜底(三级,2026-08-30):纯产品名走搜索发现官网
+    return _websearch_resolve(name)
 
 
 def resolve_competitors(names: List[str]) -> Dict[str, Dict]:

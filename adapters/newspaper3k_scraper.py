@@ -28,6 +28,8 @@ def scrape(
     prompt: Optional[str] = None,
     max_chars: int = 50000,
     timeout: float = 30.0,
+    keep_rx=None,
+    **kw,
 ) -> dict:
     """用 Newspaper3k 抓取 URL 的文章正文。
 
@@ -38,6 +40,7 @@ def scrape(
         timeout: HTTP 下载超时(秒)。C4 修复:原 article.download() 内部
                  requests 无超时,目标站慢连接时线程永久挂起,拖死
                  scrape_smart 的并行组。改为显式 requests.get 带超时。
+        keep_rx: 关键 token 保窗正则(定价页 PRICE_TOKEN_RX,截断保窗)
 
     Returns:
         {"success": bool, "markdown": str, "extracted": dict, "error": str|None, "url": str}
@@ -70,7 +73,7 @@ def scrape(
             article.keywords = []
             article.summary = ""
 
-        text = truncate_md(article.text or "", max_chars)
+        text = truncate_md(article.text or "", max_chars, keep_rx=keep_rx)
 
         # 拼成 markdown 风格
         parts = []

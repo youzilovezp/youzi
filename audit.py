@@ -83,7 +83,7 @@ def audit_page_coverage(comp: dict, manifest: dict) -> dict:
     首页同时是 homepage+pricing,不再互相覆盖);兼容旧数据的单 kind 字段。
     """
     domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
-    kinds_got = {}
+    kinds_got: dict = {}
     for url, ent in (manifest.get("fetched") or {}).items():
         if ent.get("status") != "ok":
             continue
@@ -116,18 +116,46 @@ def audit_page_coverage(comp: dict, manifest: dict) -> dict:
     }
 
 
-def _price_tokens_per_engine(comp: dict, raw_index: dict) -> Dict[str, int]:
-    """该竞品所有官方域页面里,每引擎看到的价格 token 数。"""
+def _price_tokens_per_engine(
+    comp: dict, raw_index: dict, manifest: Optional[dict] = None
+) -> Dict[str, int]:
+    """该竞品官方域页面里,每引擎看到的价格 token 数。
+
+    2026-08-30 修复:存在定价语义页(kind 含 pricing,kinds 多值兼容
+    home_as_pricing)时只统计这些页 —— docs/blog 页的 shell 示例($1/$2/
+    RS 485)会虚增 engines_with_price,把定价页 0 token 的真实 gap 掩盖
+    成 partial。一个定价页都没有时退回全页统计(定价藏在 docs 的竞品
+    —— 如按量计费文档 —— 仍可被发现)。"""
     domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
+    pricing_urls = set()
+    if manifest:
+        for url, ent in (manifest.get("fetched") or {}).items():
+            kinds = set(
+                ent.get("kinds") or ([ent.get("kind")] if ent.get("kind") else [])
+            )
+            if "pricing" in kinds:
+                pricing_urls.add(url)
     counts: Dict[str, int] = {}
     for url, engines in raw_index.items():
         u = urlparse(url)
         if domain and domain not in u.netloc.replace("www.", ""):
             continue
+        if pricing_urls and url not in pricing_urls:
+            continue
         for eng, md in engines.items():
             n = len(PRICE_TOKEN_RX.findall(md or ""))
             counts[eng] = counts.get(eng, 0) + n
     return counts
+
+
+def _entry_kinds(ent: dict) -> list:
+    """台账条目的 kinds 多值(兼容旧数据的单 kind 字段)。
+
+    2026-08-30 修复:fetch 已多值化(home_as_pricing 的首页同时是
+    homepage+pricing),_has_genuine_pricing_url/probes 仍读单值 kind →
+    home_as_pricing 场景漏判定价语义。
+    """
+    return ent.get("kinds") or ([ent.get("kind")] if ent.get("kind") else [])
 
 
 def _has_genuine_pricing_url(comp: dict, manifest: dict) -> bool:
@@ -139,7 +167,7 @@ def _has_genuine_pricing_url(comp: dict, manifest: dict) -> bool:
     """
     domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
     for url, ent in (manifest.get("fetched") or {}).items():
-        if (ent.get("kind") or "") != "pricing":
+        if "pricing" not in _entry_kinds(ent):
             continue
         u = urlparse(url)
         if domain and domain not in u.netloc.replace("www.", ""):
@@ -161,7 +189,7 @@ def audit_pricing_depth(comp: dict, manifest: dict, raw_index: dict) -> dict:
       Step 5(带 analysis): 在 token 覆盖之上评套餐结构(月/年配对、Free/Custom)
     """
     tiers = comp.get("pricing_tiers") or []
-    token_engines = _price_tokens_per_engine(comp, raw_index)
+    token_engines = _price_tokens_per_engine(comp, raw_index, manifest)
     engines_with_price = {e: n for e, n in token_engines.items() if n > 0}
     findings, actions = [], []
 
@@ -187,7 +215,7 @@ def audit_pricing_depth(comp: dict, manifest: dict, raw_index: dict) -> dict:
             if urlparse(u).netloc.replace("www.", "")
             != urlparse(comp.get("url") or "").netloc.replace("www.", "")
             and any(
-                k in ((manifest["fetched"][u].get("kind")) or "")
+                k in _entry_kinds(manifest["fetched"][u])
                 for k in ("pricing", "docs", "about")
             )
         ]

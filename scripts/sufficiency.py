@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """字段级充分性契约 + 引擎升级梯 —— 准 > 快 的核心闭环。
 
-每类信息定义「什么算抓准了」,`_crawl_page` 爬完立即评估;不达标 →
-沿引擎升级梯换引擎重爬 → 仍不达标 → 交给 deep_link 搜索定位具体页。
+每类信息定义「什么算抓准了」;fetch._fetch_page 爬完立即评估(定价
+token 覆盖 + 升级梯);tech_signals/user_feedback 的 deep_link 定位
+(locate_tech/locate_feedback)与 assess_* 评估是 Step 2.5 补爬时
+LLM 手动调用的工具,尚未接进 fetch 自动闭环。
 预算:每竞品 5 分钟墙钟,超时诚实标「未验证」(绝不伪造)。
 """
 

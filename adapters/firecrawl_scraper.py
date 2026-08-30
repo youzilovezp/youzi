@@ -13,6 +13,8 @@ import shutil
 import subprocess
 from typing import Optional
 
+from adapters import truncate_md
+
 
 def is_available() -> bool:
     """V2:仅 FIRECRAWL_API_KEY 存在时启用(无 key 的 CLI 通道曾长期 402 欠费,
@@ -36,9 +38,10 @@ def _screenshot_to_b64(screenshot_url: str) -> str:
 
 
 def _truncate(markdown: str, max_chars: int) -> str:
-    if len(markdown) > max_chars:
-        return markdown[:max_chars] + "\n\n[... 内容已截断 ...]"
-    return markdown
+    """头尾截断(2026-08-30 修复):原先纯头部截断,50K+ 页面的页尾套餐表
+    /FAQ 全丢 —— 与 adapters.truncate_md 修复的同类事故,firecrawl 未同步。
+    """
+    return truncate_md(markdown, max_chars)
 
 
 def _scrape_cli(

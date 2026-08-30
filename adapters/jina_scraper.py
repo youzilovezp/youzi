@@ -56,7 +56,9 @@ def is_available() -> bool:
         return False
 
 
-def scrape(url: str, max_chars: int = 50000, timeout: float = 45.0, **kwargs) -> dict:
+def scrape(
+    url: str, max_chars: int = 50000, timeout: float = 45.0, keep_rx=None, **kwargs
+) -> dict:
     """用 Jina Reader 抓取 URL(返回 LLM 友好的 markdown)。
 
     免费层:无 API key 时可限流使用(建议加 API key 提高限额)。
@@ -66,6 +68,9 @@ def scrape(url: str, max_chars: int = 50000, timeout: float = 45.0, **kwargs) ->
         max_chars: 返回内容最大字符数
         timeout: HTTP 超时(秒)。C4 修复:原硬编码 45s,改为调用方可下发
                  (scrape_smart 会把单引擎 timeout 传进来);默认值保持原行为。
+        keep_rx: 关键 token 保窗正则(定价页传 PRICE_TOKEN_RX)—— tidio
+                 实测:价格在长页中段,引擎级 50K 截断把价格全切掉,
+                 交叉验证随机失败。
     """
     try:
         # r.jina.ai 是公开的 reader 入口,加 X-Return-Format 头
@@ -91,7 +96,7 @@ def scrape(url: str, max_chars: int = 50000, timeout: float = 45.0, **kwargs) ->
         resp.raise_for_status()
         markdown = resp.text
 
-        markdown = truncate_md(markdown, max_chars)
+        markdown = truncate_md(markdown, max_chars, keep_rx=keep_rx)
 
         return {
             "success": True,

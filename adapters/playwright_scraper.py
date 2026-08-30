@@ -315,7 +315,14 @@ async def _scrape_core(
         # 提取内容前:定价页尝试点击「年付/Annually」计费切换,捕获
         # 两种计费态的价格(YCloud 事故:默认渲染 Monthly,年付 $468
         # 在 toggle 后面 —— 只抓默认态 = 年价全丢)。
+        #
+        # 2026-08-30 修复(cursor.com 实测):DOM 提取原先在 toggle 之后
+        # → markdown 只剩年付态($16/$32),静态引擎渲染的是默认月付态
+        # ($20/$40)→ 两引擎永远凑不到相同 token,交叉验证在一切可切换
+        # 定价页上随机失败。现改为:先取默认态 DOM(与静态引擎同视角),
+        # 再点 toggle 追加年付变体 → 双态齐备,跨引擎可归票。
         _annual_extra = ""
+        _monthly_text = ""
         if _is_pricing_url(url):
             try:
                 _monthly_text = await page.evaluate("() => document.body.innerText")
@@ -379,9 +386,40 @@ async def _scrape_core(
         except Exception:
             pass  # 清洗失败继续,交给行级二道防线
 
-        # 提取内容
+        # 提取内容:toggle 改的是同一 DOM —— 已切换时先尝试 JS 回点
+        # 「月付」还原默认态(与静态引擎同视角);还原失败由下方
+        # _monthly_text 兜底(证据优先保默认态,年付态已存 _annual_extra)
+        if _annual_extra:
+            try:
+                await page.evaluate(
+                    """() => {
+                      const rx = /monthly|month|月付|每月/i;
+                      const els = Array.from(document.querySelectorAll(
+                        "button, [role='tab'], label, a, span, div, li"
+                      ));
+                      for (const e of els) {
+                        const t = (e.innerText || '').trim();
+                        if (t && t.length <= 22 && rx.test(t)
+                            && !/year|annual|年付|按年/i.test(t)) {
+                          e.click();
+                          return t;
+                        }
+                      }
+                      return null;
+                    }"""
+                )
+                await page.wait_for_timeout(1200)
+            except Exception:
+                pass  # 还原失败:正文以 _monthly_text 兜底(下方 text 赋值)
         html = await page.content()
+        # 默认态渲染文本:toggle 未点 = 现场 innerText;点了且还原失败 =
+        # 用 toggle 前捕获的 _monthly_text(证据优先保默认态)
         text = await page.evaluate("() => document.body.innerText")
+        if _annual_extra and _monthly_text:
+            _p_now = set(_PRICE_RX.findall(text or ""))
+            _p_def = set(_PRICE_RX.findall(_monthly_text))
+            if _p_def - _p_now:  # 还原失败,默认态价格缺失 → 用捕获的默认态
+                text = _monthly_text
         # 重定向落点要在 page 关闭前取(报告链接用,跳板路径不再误人)
         final_url = page.url
         # 转 markdown(与其他 adapter 一致)— 用 markdownify 降级
@@ -658,25 +696,8 @@ def is_available() -> bool:
         return False
 
 
-# ============================================================
-# MCP server 模式（让 Claude Code 通过 MCP 调用）
-# ============================================================
-MCP_CONFIG = {
-    "mcpServers": {
-        "playwright": {
-            "command": "npx",
-            "args": ["-y", "@playwright/mcp@latest"],
-            "env": {},
-        }
-    }
-}
-
-
-def print_mcp_setup():
-    """打印 MCP 配置（让用户加到 ~/.claude/settings.json）。"""
-    print("# 把以下内容加到 ~/.claude/settings.json 的 mcpServers 中：")
-    print(json.dumps(MCP_CONFIG, indent=2))
-
+# 2026-08-30 清理:删除 MCP server 配置块(MCP_CONFIG/print_mcp_setup)——
+# MCP 集成由 skill 层的 allowed-tools 声明,此处的打印配置零调用方。
 
 if __name__ == "__main__":
     if is_available():
@@ -691,6 +712,3 @@ if __name__ == "__main__":
     else:
         print("✗ Playwright 未安装")
         print("安装: pip install playwright && playwright install chromium")
-    print()
-    print("MCP server 模式：")
-    print_mcp_setup()

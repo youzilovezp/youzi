@@ -24,13 +24,16 @@ def is_available() -> bool:
         return False
 
 
-def scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000) -> dict:
+def scrape(
+    url: str, prompt: Optional[str] = None, max_chars: int = 50000, keep_rx=None, **kw
+) -> dict:
     """用 Trafilatura 抓取 URL 的正文。
 
     Args:
         url: 目标 URL
         prompt: （trafilatura 不支持 LLM 提取，保留参数兼容性）
         max_chars: 返回内容最大字符数
+        keep_rx: 关键 token 保窗正则(定价页 PRICE_TOKEN_RX,截断保窗)
 
     Returns:
         {"success": bool, "markdown": str, "extracted": None, "error": str|None, "url": str}
@@ -67,7 +70,7 @@ def scrape(url: str, prompt: Optional[str] = None, max_chars: int = 50000) -> di
                 "extracted": None,
             }
 
-        markdown = truncate_md(result, max_chars)
+        markdown = truncate_md(result, max_chars, keep_rx=keep_rx)
 
         return {
             "success": True,

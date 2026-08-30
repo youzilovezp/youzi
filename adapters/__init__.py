@@ -13,10 +13,15 @@ V2 引擎白名单（2026-08-27 重构，13 → 5，依据 engine-stats n=700+�
     1. firecrawl         —— 96% 网页覆盖 + JS 重度 + 截图（业界最强）
 
   🆓 开源（本地运行）：
-    2. playwright        —— JS 页王者（pricing q=0.50 / homepage q=0.42）
-    3. trafilatura       —— 静态正文王者（docs q=0.57）
-    4. newspaper3k       —— 文章型（blog/customer q=0.67）
+    2. playwright        —— JS 页引擎（定价页价格覆盖最稳）
+    3. trafilatura       —— 静态正文抽取（docs 主力）
+    4. newspaper3k       —— 文章型（blog/customer）
     5. jina              —— 轻量 URL→Markdown，第三方渲染交叉验证票
+
+  ⚠ 质量分快照会腐烂:engine-stats.json 才是唯一事实源(2026-08-30 实测:
+  playwright pricing q=0.38 / trafilatura 0.59 / newspaper3k 0.84-n3 仅
+  幸存样本;562B 空壳可拿 q=0.76 —— q 度量洁净度不度量完整性,详见
+  _merge_results 的定价页内容完整性维度)。引用历史数字必须带日期。
 """
 
 import asyncio
@@ -344,6 +349,7 @@ async def _scrape_parallel(
     need_login: bool = False,
     timeout: float = 60.0,
     enabled_scrapers: Optional[List[str]] = None,
+    keep_rx=None,
 ) -> List[Dict[str, Any]]:
     """并行调用所有启用的 scraper。
 
@@ -356,6 +362,9 @@ async def _scrape_parallel(
         timeout: 单个 scraper 超时（秒）
         enabled_scrapers: 指定启用的 scraper（如 ['firecrawl', 'trafilatura']）
                          None 表示全部（按注册表顺序）
+        keep_rx: 关键 token 保窗正则(定价页 PRICE_TOKEN_RX)—— 引擎级
+                 截断时匹配窗口强制保留(tidio 实测:价格在长页中段,
+                 引擎级 50K 截断把价格全切掉 → 交叉验证随机失败)
     """
     registry = _build_adapter_registry()
     enabled = enabled_scrapers or list(registry.keys())
@@ -372,7 +381,7 @@ async def _scrape_parallel(
         if need_login and not supports_login:
             continue
 
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
         # max_chars —— 仅对接受的 scraper 传
         if name not in ("playwright",):
             kwargs["max_chars"] = max_chars
@@ -392,6 +401,9 @@ async def _scrape_parallel(
             # C4 修复:timeout 原先只传给 playwright,jina/firecrawl/
             # newspaper3k 用各自硬编码值。签名接受的引擎统一下发(秒)。
             kwargs["timeout"] = timeout
+        if keep_rx is not None and _accepts_kwarg(module.scrape, "keep_rx"):
+            # 定价页关键 token 保窗:引擎级截断不再随机切掉中段价格表
+            kwargs["keep_rx"] = keep_rx
 
         tasks.append((name, _scrape_one(name, module.scrape, url, **kwargs)))
 
@@ -511,18 +523,68 @@ def _md_quality(md: str) -> float:
     return base * max(0.05, 1.0 - link_density * 1.2)
 
 
-def truncate_md(md: str, max_chars: int = 50000, tail_chars: int = 10000) -> str:
+def truncate_md(
+    md: str, max_chars: int = 50000, tail_chars: int = 10000, keep_rx=None
+) -> str:
     """头尾截断:保前 (max-tail) + 省略号 + 保尾 tail。
 
     纯头部截断的历史事故:playwright 完整 markdown = 一行巨型 CSS +
     后续 23,993 字符正文,[:50000] 把截断点正好落在 CSS 尾部 → 证据库
     (engines.json)与合并视图只存下 CSS,正文 100% 丢失,G2 quote 回查
     对该引擎失效。尾部往往承载 pricing 页的套餐表/FAQ,必须保留。
+
+    keep_rx(2026-08-30,tidio 实测):关键 token 保窗正则(定价页传
+    PRICE_TOKEN_RX)。tidio 定价页 5 个价格全在 111K 页面的 65K-95K
+    【中段】—— 头(40K)尾(10K)截断后 5 价全丢:合并视图无价、证据库
+    无价、jina 引擎级截断无价 → 交叉验证随机失败。带 keep_rx 时匹配
+    ±context 字符窗口强制保留,预算按窗口数均分,超量窗口诚实标注丢弃。
     """
     if not md or len(md) <= max_chars:
         return md
-    head = max_chars - tail_chars
-    return md[:head] + "\n\n[... 中间内容已截断 ...]\n\n" + md[-tail_chars:]
+    if keep_rx is None:
+        head = max_chars - tail_chars
+        return md[:head] + "\n\n[... 中间内容已截断 ...]\n\n" + md[-tail_chars:]
+
+    # ── 保窗截断:头 stub + 关键窗口(重叠合并) + 尾 ──
+    matches = list(keep_rx.finditer(md))
+    if not matches:
+        head = max_chars - tail_chars
+        return md[:head] + "\n\n[... 中间内容已截断 ...]\n\n" + md[-tail_chars:]
+
+    head_stub = 2000
+    budget_windows = max(max_chars - tail_chars - head_stub, len(matches) * 260)
+    match_chars = sum(m.end() - m.start() for m in matches)
+    ctx = max(120, (budget_windows - match_chars) // (2 * len(matches)))
+    # 窗口超预算(价格极多的页):保留前 N 个窗口,其余诚实标注
+    spans: list = []
+    kept, dropped = 0, 0
+    for m in matches:
+        if sum(e - s for s, e in spans) + (m.end() - m.start()) + 2 * ctx > (
+            budget_windows + len(spans) * 64
+        ):
+            dropped += 1
+            continue
+        s, e = max(0, m.start() - ctx), min(len(md), m.end() + ctx)
+        if spans and s <= spans[-1][1] + 64:
+            spans[-1] = (spans[-1][0], max(spans[-1][1], e))
+        else:
+            spans.append((s, e))
+        kept += 1
+
+    parts = [md[:head_stub], "\n\n[... 截断:以下为关键内容保窗 ...]\n\n"]
+    prev_end = None
+    for s, e in spans:
+        if prev_end is not None:
+            parts.append("\n\n[... 中间内容已截断 ...]\n\n")
+        parts.append(md[s:e])
+        prev_end = e
+    parts.append("\n\n[... 中间内容已截断 ...]\n\n")
+    if dropped:
+        parts.append(
+            f"[... 另有 {dropped} 个关键 token 窗口超出保留预算被丢弃 ...]\n\n"
+        )
+    parts.append(md[-tail_chars:])
+    return "".join(parts)
 
 
 def _norm_para(p: str) -> str:
@@ -534,11 +596,13 @@ def _merge_results(
     results: List[Dict[str, Any]],
     max_chars: int = 50000,
     allow_supplements: bool = False,
+    url_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """智能合并多个 scraper 的结果。
 
     策略(顺序敏感 —— 乱序会破坏 "套餐名 ↔ 价格" 的对应关系):
-    - primary:按引擎质量优先级选,垃圾占比高的一票否决;长度只做 tie-break
+    - primary:定价页按"内容完整性优先"(有价格 token 才有资格),其余
+      按引擎质量优先级,垃圾占比高的一票否决;长度只做 tie-break
     - primary markdown 原序保留为文档主体
     - allow_supplements 默认 False(全部证据页禁拼接 —— 跨引擎拼正文
       = 张冠李戴的温床,拼接段落无法归属引擎)。每个引擎的完整原文
@@ -567,7 +631,21 @@ def _merge_results(
         }
 
     def primary_key(r):
-        q = _md_quality(r.get("markdown", ""))
+        md = r.get("markdown", "")
+        q = _md_quality(md)
+        # 定价页内容完整性维度(2026-08-30 修复,tidio 实测):_md_quality
+        # 度量的是洁净度,562B 空壳能拿 q=0.76、111KB 全量价格表只有
+        # q=0.34 —— 零价格的高洁净正文当选 primary 后,合并视图丢失
+        # 全部价格(仅靠各引擎原文 + vote_detail 兜底)。定价页第一维
+        # 改为"是否含价格 token";全员无价时回退通用规则。
+        has_content = True
+        if url_type == "pricing":
+            try:
+                from pricing_tokens import PRICE_TOKEN_RX as _PTX
+            except ImportError:
+                _PTX = None
+            if _PTX is not None:
+                has_content = bool(_PTX.search(md))
         # 垃圾占比过高(quality < 0.5)的引擎没有资格当 primary。
         # 阈值沿革:0.3 → 0.35(crawl4ai docs q≈0.05 混入) → 0.5(YCloud
         # 实测:playwright CSS 垃圾 q=0.62(行级度量虚高)压过 trafilatura
@@ -575,10 +653,11 @@ def _merge_results(
         # 门槛提到 0.5:引擎排名只在"都过线"的高质量带内 tie-break;
         # 全员 <0.5 时第一维同为 False,回退到质量分+排名的原始序。
         return (
+            has_content,
             q >= 0.50,
             -_ENGINE_QUALITY.get(r["scraper"], 99),
             q,
-            len(r.get("markdown", "")),
+            len(md),
         )
 
     primary = max(success, key=primary_key)
@@ -589,14 +668,13 @@ def _merge_results(
     # (历史实现先算完再整体丢弃,纯白算)。
     primary_md = primary.get("markdown", "") or ""
     merged_md = primary_md
-    supplements = []
+    supplements: List[str] = []
     if allow_supplements:
         seen = {_norm_para(p) for p in primary_md.split("\n\n") if p.strip()}
         ordered_others = sorted(
             (r for r in success if r is not primary),
             key=lambda r: _ENGINE_QUALITY.get(r["scraper"], 99),
         )
-        supplements = []
         for r in ordered_others:
             for p in (r.get("markdown", "") or "").split("\n\n"):
                 p = p.strip()
@@ -611,7 +689,16 @@ def _merge_results(
             merged_md += "\n\n<!-- 以下为其他引擎补充段落 -->\n\n" + "\n\n".join(
                 supplements
             )
-    merged_md = truncate_md(merged_md, max_chars)
+    # 定价页截断带价格保窗(tidio 实测:价格表在长页中段,头尾截断全丢)
+    _keep_rx = None
+    if url_type == "pricing":
+        try:
+            from pricing_tokens import PRICE_TOKEN_RX
+
+            _keep_rx = PRICE_TOKEN_RX
+        except ImportError:
+            _keep_rx = None
+    merged_md = truncate_md(merged_md, max_chars, keep_rx=_keep_rx)
 
     screenshot = None
     for r in success:
@@ -619,7 +706,7 @@ def _merge_results(
             screenshot = r["screenshot"]
             break
 
-    extracted = {}
+    extracted: Dict[str, Any] = {}
     for r in success:
         if r.get("extracted") and isinstance(r["extracted"], dict):
             for k, v in r["extracted"].items():
@@ -670,13 +757,7 @@ async def _scrape_smart_async(
 
     其他策略:
     - "parallel": 全部可用引擎并行(覆盖最大,只用于 auto 失败后的兜底)
-    - "fallback": 旧版串行 fallback(兼容保留)
     """
-    if strategy == "fallback":
-        from adapters import scrape_with_fallback as old_fallback
-
-        return old_fallback(url, prompt, max_chars, need_screenshot, need_login)
-
     # ── 智能路由 ──
     url_type = classify_url(url)
     if enabled_scrapers is None and strategy != "all":
@@ -684,6 +765,16 @@ async def _scrape_smart_async(
         if strategy == "auto":
             enabled_scrapers = recommend_scrapers(url, need_login=need_login)
         # 否则(parallel)用全开模式,保证覆盖
+
+    # 定价页:引擎级 + 合并级截断都带价格保窗(关键 token 不落中段截断)
+    _keep_rx = None
+    if url_type == "pricing":
+        try:
+            from pricing_tokens import PRICE_TOKEN_RX
+
+            _keep_rx = PRICE_TOKEN_RX
+        except ImportError:
+            _keep_rx = None
 
     results = await _scrape_parallel(
         url,
@@ -693,11 +784,13 @@ async def _scrape_smart_async(
         need_login,
         timeout,
         enabled_scrapers=enabled_scrapers,
+        keep_rx=_keep_rx,
     )
     merged = _merge_results(
         results,
         max_chars,
         allow_supplements=url_type not in _NO_SUPPLEMENT_TYPES,
+        url_type=url_type,
     )
     merged["url_type"] = url_type
 
@@ -779,55 +872,13 @@ def list_scrapers() -> Dict[str, bool]:
     return {name: mod.is_available() for name, (mod, *_) in registry.items()}
 
 
-# ============================================================
-# 兼容：保留旧的 fallback 函数（不推荐，仅紧急回退用）
-# ============================================================
-def scrape_with_fallback(
-    url: str,
-    prompt: Optional[str] = None,
-    max_chars: int = 50000,
-    need_screenshot: bool = False,
-    need_login: bool = False,
-) -> Dict[str, Any]:
-    """⚠️ 旧版串行 fallback（保留以兼容）。新版请用 scrape_smart()。"""
-    from adapters import firecrawl_scraper, playwright_scraper
-
-    last_error = None
-    if firecrawl_scraper.is_available():
-        result = firecrawl_scraper.scrape(
-            url, max_chars=max_chars, screenshot=need_screenshot
-        )
-        if result["success"]:
-            result["scraper"] = "firecrawl"
-            return result
-        last_error = result.get("error", "firecrawl failed")
-    # C-bug 修复:原为 `need_login or playwright_scraper.is_available()`,
-    # playwright 未安装时 need_login=True 也会硬调 → 必炸。是否可调用
-    # 只取决于 is_available();need_login 只影响路由选择,不构成调用资格。
-    if playwright_scraper.is_available():
-        screenshot_path = f"/tmp/youzi_{url_hash(url)}.png" if need_screenshot else None
-        result = playwright_scraper.scrape(
-            url, screenshot_path=screenshot_path, extract_prompt=prompt, timeout=30000
-        )
-        if result["success"]:
-            result["scraper"] = "playwright"
-            return result
-        last_error = result.get("error", "playwright failed")
-    return {
-        "success": False,
-        "scraper": "none",
-        "markdown": "",
-        "html": "",
-        "text": "",
-        "screenshot": None,
-        "extracted": None,
-        "error": last_error or "no scraper available",
-    }
-
+# 2026-08-30 清理:scrape_with_fallback(旧版串行回退)与 strategy="fallback"
+# 分支删除 —— 全库零调用方(grep 证实),保留只会让维护面虚增。
+# 历史注记:C-bug 修复时确立的「调用资格只取决于 is_available()」原则
+# 已被 scrape_smart 路由继承。
 
 __all__ = [
     "scrape_smart",
-    "scrape_with_fallback",
     "list_scrapers",
     "url_hash",
     "classify_url",

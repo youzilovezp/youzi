@@ -36,10 +36,20 @@ import re
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
+
+# 预热(2026-08-30 死锁修复):主线程先 import 重模块链。实测事故
+# (faulthandler 栈转储定位):cursor+lovable+windsurf 三竞品并发时,
+# websearch/domain 路径在 worker 线程里首次并发执行 `import requests`
+# (deep_link/jina/newspaper 的函数级/延迟 import)→ Python 3.13 的
+# per-module import 锁竞争 → 三线程全部卡死在 _get_module_lock,
+# >400s 无进展。单跑正常(无竞争)、builtin 名单正常(不走 websearch)
+# —— 与复现条件完全吻合。主线程预热后 worker 内的 import 全部命中
+# sys.modules 缓存,不再触锁。
+import requests  # noqa: F401,E402  (硬依赖:deep_link/jina/newspaper3k)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -90,6 +100,18 @@ _PRICING_CACHE_TTL_DAYS = 14.0
 
 # ── robots.txt 轻量检查(进程内缓存;拉取失败按允许处理) ──
 _ROBOTS_CACHE: Dict[str, List[str]] = {}
+
+# python.org 官方构建不带系统 CA,裸 urllib SSL 必失败(与 network_gates
+# 同款修复;2026-08-30 审计实测:本机 robots 拉取 100% SSL 失败 → 合规门
+# 静默失效,所有站点按允许处理)
+_SSL_CTX: "Optional[Any]" = None
+try:
+    import certifi
+    import ssl as _ssl
+
+    _SSL_CTX = _ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    pass
 
 
 def _content_hash(md: str) -> str:
@@ -208,19 +230,27 @@ def discover_from_results(all_results: List[Dict], base_url: str) -> Dict[str, s
 
 
 def _robots_disallows(domain_url: str) -> List[str]:
-    """拉取该站 robots.txt 的 User-agent:* Disallow 前缀;失败返回空(允许)。"""
+    """拉取该站 robots.txt 的 User-agent:* Disallow 前缀;失败返回空(允许)。
+
+    2026-08-30 修复:①失败分支原先缓存到 domain_url(完整 URL)而命中查询
+    用 origin → 失败永不缓存,每 URL 重拉;②urlopen 补 certifi SSL context。
+    """
+    p = urlparse(domain_url)
+    origin = f"{p.scheme}://{p.netloc}"
+    if origin in _ROBOTS_CACHE:
+        return _ROBOTS_CACHE[origin]
     try:
-        p = urlparse(domain_url)
-        origin = f"{p.scheme}://{p.netloc}"
-        if origin in _ROBOTS_CACHE:
-            return _ROBOTS_CACHE[origin]
         import urllib.request
 
         req = urllib.request.Request(
             f"{origin}/robots.txt",
             headers={"User-Agent": "Mozilla/5.0 (Macintosh) youzi-intel/2.0"},
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        if _SSL_CTX is not None:
+            resp_ctx = urllib.request.urlopen(req, timeout=5, context=_SSL_CTX)
+        else:
+            resp_ctx = urllib.request.urlopen(req, timeout=5)
+        with resp_ctx as resp:
             body = resp.read(100000).decode("utf-8", "ignore")
         disallows, in_star = [], False
         for ln in body.splitlines():
@@ -234,7 +264,8 @@ def _robots_disallows(domain_url: str) -> List[str]:
         _ROBOTS_CACHE[origin] = disallows
         return disallows
     except Exception:
-        _ROBOTS_CACHE.setdefault(domain_url, [])
+        # 失败也缓存到 origin(fail-open + 不重拉;拉取失败 ≠ 禁止)
+        _ROBOTS_CACHE[origin] = []
         return []
 
 
@@ -379,9 +410,10 @@ def _fetch_page(
     """
     records: List[tuple] = []
     failures: List[Dict] = []
+    from_cache = False  # 四级回退命中时置 True(台账 from_cache 消费方:G2 豁免判定)
 
-    def rec(u: str, r: Dict, k: str) -> None:
-        records.append((u, r, k))
+    def rec(u: str, r: Dict, k: str, fc: bool = False) -> None:
+        records.append((u, r, k, fc))
 
     if time.monotonic() > deadline:
         failures.append(
@@ -457,30 +489,59 @@ def _fetch_page(
                 if r.get("success")
             ]
 
-        # 全灭(页面壳都拿不到) → deep_link 搜索发现官方定价页
-        if not _merged_ok(result):
+        # 全灭(页面壳都拿不到) → deep_link 搜索发现官方定价页。
+        # 2026-08-30 修复:deep_link 最坏路径 ≈360s(2 查询×4 候选×45s),
+        # 全部落在竞品预算之外(deadline 只在步骤间检查)—— 并发组合实测
+        # 因此 >500s 超时。剩余预算不足时诚实跳过,充足时把剩余量传下去
+        # 作为 deep_link 的总预算。
+        # 门槛只需防"零时间启动搜索"——步内时长由 budget_s 约束
+        _remaining = deadline - time.monotonic()
+        if not _merged_ok(result) and _remaining < 10:
+            failures.append(
+                {
+                    "competitor": cname,
+                    "url": url,
+                    "kind": kind,
+                    "error": (
+                        f"预算剩余 {_remaining:.0f}s 不足以搜索发现定价页,诚实跳过"
+                    ),
+                }
+            )
+        if not _merged_ok(result) and _remaining >= 10:
             try:
                 from scripts import deep_link
 
                 alt = deep_link.locate_pricing_page(
-                    urlparse(base).netloc.replace("www.", "")
+                    urlparse(base).netloc.replace("www.", ""),
+                    budget_s=_remaining,
                 )
                 if alt and alt.get("url"):
                     rec(url, result, kind)  # 原失败留痕
                     url = alt["url"]
+                    # 2026-08-30 修复:deep_link 现透传各引擎原文(scrape_smart
+                    # 内部本就按定价组合跑了多引擎)—— 单引擎合成条目会让
+                    # 交叉验证(≥2 独立引擎)注定失败,该级回退形同虚设
+                    alt_results = [
+                        x
+                        for x in (alt.get("all_results") or [])
+                        if x.get("scraper") and x.get("markdown")
+                    ] or [
+                        {
+                            "success": True,
+                            "scraper": "deep_link",
+                            "markdown": alt.get("markdown") or "",
+                        }
+                    ]
                     result = {
                         "success": True,
-                        "scraper": "deep_link+search",
+                        "scraper": "+".join(
+                            ["deep_link+search"] + [x["scraper"] for x in alt_results]
+                        ),
                         "markdown": alt.get("markdown") or "",
-                        "all_results": [
-                            {
-                                "success": True,
-                                "scraper": "deep_link",
-                                "markdown": alt.get("markdown") or "",
-                            }
-                        ],
-                        "stats": {"successful": 1},
+                        "all_results": alt_results,
+                        "stats": {"successful": len(alt_results)},
                     }
+                    used = used + [x["scraper"] for x in alt_results]
             except Exception:
                 pass
 
@@ -504,8 +565,8 @@ def _fetch_page(
                 home_as_pricing = True
 
         # 四级回退:≤14 天已验证缓存(反爬全灭时保持证据链可用;
-        # manifest 记 engines=cache,LLM Step 3 置 pricing_from_cache)
-        from_cache = False
+        # manifest 记 engines=cache + from_cache,LLM Step 3 置
+        # pricing_from_cache → G2 对该竞品豁免 vote 行回查)
         if not _merged_ok(result):
             cached = _cache_get(urlparse(base).netloc.replace("www.", ""))
             if cached and cached.get("url"):
@@ -574,7 +635,7 @@ def _fetch_page(
             "problems": problems,
         }
 
-    rec(url, result, kind)
+    rec(url, result, kind, from_cache)
     return {
         "kind": kind,
         "url": url,
@@ -583,6 +644,31 @@ def _fetch_page(
         "records": records,
         "failures": failures,
     }
+
+
+# ── 跨会话经验(audit 沉淀,只读):同域名历史教训先行 ──
+_INTEL_LESSONS_PATH = ROOT / "storage" / "intel-lessons.json"
+
+
+def load_lessons_hints(domain: str) -> List[str]:
+    """该域名的历史经验 hint(SKILL.md 承诺的「下次运行先读 lessons」)。
+
+    2026-08-30 接线:intel-lessons.json 此前只写不读(audit 写,无读者)
+    —— 现在 fetch 启动时读出,进返回值 + CLI 输出,LLM Step 3 可见。
+    只读、失败容忍(无文件/损坏 → 空)。"""
+    d = (domain or "").lower().replace("www.", "")
+    if not d:
+        return []
+    try:
+        data = json.loads(_INTEL_LESSONS_PATH.read_text(encoding="utf-8"))
+        ent = data.get(d) or {}
+        return [
+            (lesson.get("hint") or "").strip()
+            for lesson in (ent.get("lessons") or [])
+            if (lesson.get("hint") or "").strip()
+        ][:3]
+    except Exception:
+        return []
 
 
 def fetch_competitor(
@@ -644,13 +730,18 @@ def fetch_competitor(
     engines_doc: Dict[str, Dict[str, str]] = {}
     raw_sections: List[str] = []
 
-    def _record(url: str, result: Dict, kind: str):
+    def _record(url: str, result: Dict, kind: str, from_cache: bool = False):
         engines_md, engines_meta = {}, {}
+        # 定价语义页的证据库截断带价格保窗(tidio 实测:价格表在长页
+        # 中段,头尾截断后证据库无价 → G2 引文回查/vote 全部失据)
+        _keep = _PRICE_TOKEN_RX if "pricing" in (kind or "") else None
         for x in result.get("all_results") or []:
             if x.get("scraper") and x.get("success") and x.get("markdown"):
                 # 头尾截断:头部截断的历史事故 —— playwright 单行 CSS 垃圾
                 # 占满前 50K,正文 100% 被砍,证据库失去 grep 能力
-                engines_md[x["scraper"]] = truncate_md(x["markdown"], 50000)
+                engines_md[x["scraper"]] = truncate_md(
+                    x["markdown"], 50000, keep_rx=_keep
+                )
                 engines_meta[x["scraper"]] = {
                     "ok": True,
                     "chars": len(x["markdown"]),
@@ -658,13 +749,19 @@ def fetch_competitor(
                 }
         engines_doc[url] = engines_md
         ok = _merged_ok(result)
-        entry = {
+        entry: Dict = {
             "status": "ok" if ok else "failed",
             "kind": kind,
             "kinds": [kind],
             "engines": engines_meta,
             "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
         }
+        if ok and from_cache:
+            # 台账级缓存标记(2026-08-30 落地):Step 3 LLM 据此置
+            # pricing_from_cache → G2 豁免该竞品 vote 行回查(缓存证据
+            # 的原文不在本轮引擎输出里,grep 必然失败 —— 豁免语义早就
+            # 存在,但此前标记从未落台账,豁免分支实际不可达)
+            entry["from_cache"] = True
         if url in fetched:
             # 同 URL 多 kind(如 home_as_pricing 的首页):kind 多值化保留
             # 两个语义(历史 bug:后者覆盖前者 → audit 误判 homepage 缺失)
@@ -679,6 +776,8 @@ def fetch_competitor(
             else:
                 for eng, meta in engines_meta.items():
                     ent.setdefault("engines", {})[eng] = meta
+            if ok and from_cache:
+                ent["from_cache"] = True
         else:
             fetched[url] = entry
         if not ok:
@@ -745,16 +844,46 @@ def fetch_competitor(
     async def _gather():
         async def runner(delay: float, kind: str, url: str):
             await asyncio.sleep(delay)
-            return await asyncio.to_thread(
-                _fetch_page,
-                kind,
-                url,
-                base=base,
-                cname=cname,
-                home=home,
-                home_md=home_md,
-                deadline=deadline,
-            )
+            try:
+                return await asyncio.to_thread(
+                    _fetch_page,
+                    kind,
+                    url,
+                    base=base,
+                    cname=cname,
+                    home=home,
+                    home_md=home_md,
+                    deadline=deadline,
+                )
+            except Exception as e:
+                # 2026-08-30 修复:单页内部异常不再炸掉整批页面(gather 无
+                # return_exceptions 时一个异常取消全部兄弟任务,且 fetch_
+                # competitor 整体上抛 → main 的 ex.map 击穿整个运行)。
+                # 降级为诚实失败留痕,其余页面照常。
+                return {
+                    "kind": kind,
+                    "url": url,
+                    "result": _empty_result(),
+                    "pages": {
+                        "url": url,
+                        "engines": [],
+                        "sufficient": False,
+                        "problems": [
+                            f"页面任务内部异常: {type(e).__name__}: {e}"[:200]
+                        ],
+                    },
+                    "records": [(url, _empty_result(), kind, False)],
+                    "failures": [
+                        {
+                            "competitor": cname,
+                            "url": url,
+                            "kind": kind,
+                            "error": f"page task crashed: {type(e).__name__}: {e}"[
+                                :200
+                            ],
+                        }
+                    ],
+                }
 
         tasks = [
             runner(i * _PAGE_STAGGER_S, kind, url)
@@ -772,8 +901,8 @@ def fetch_competitor(
             continue
         pages[kind] = task["pages"]
         failures.extend(task["failures"])
-        for u, r, k in task["records"]:
-            _record(u, r, k)
+        for u, r, k, fc in task["records"]:
+            _record(u, r, k, from_cache=fc)
 
     # ── 落盘 ──
     with _MANIFEST_LOCK:
@@ -784,7 +913,7 @@ def fetch_competitor(
             "\n\n---\n\n".join(raw_sections), encoding="utf-8"
         )
         manifest_path = out_dir / "claims-manifest.json"
-        manifest = {
+        manifest: Dict = {
             "run": {
                 "topic": topic,
                 "started_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
@@ -823,10 +952,26 @@ def fetch_competitor(
         "url": base,
         "pages": pages,
         "failures": failures,
+        # 同域名历史经验(audit 沉淀):Step 3 消费,跳过已确认的死路
+        "lessons_hints": load_lessons_hints(urlparse(base).netloc),
     }
 
 
+def _preheat_engine_imports() -> None:
+    """并发开始前在主线程预热重依赖(死锁防御纵深)。
+
+    P0-9(requests 链死锁)修的是已爆点;trafilatura/newspaper3k/playwright/
+    markdownify 同样是 worker 线程内的函数级延迟 import —— 同类风险。
+    可选依赖逐个 try,缺席静默跳过(is_available 语义不受影响)。"""
+    for mod in ("trafilatura", "newspaper", "playwright", "markdownify", "bs4"):
+        try:
+            __import__(mod)
+        except Exception:
+            pass
+
+
 def main() -> int:
+    _preheat_engine_imports()
     ap = argparse.ArgumentParser(description="youzi V2 取证采集器(无语义提取)")
     ap.add_argument(
         "--competitors", required=True, help="逗号分隔的竞品名或域名,如 wati,respond.io"
@@ -840,7 +985,6 @@ def main() -> int:
     out_dir = Path(args.out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     names = [x.strip() for x in args.competitors.split(",") if x.strip()]
-    results: List[tuple] = []
 
     # 竞品级并行:不同域互不干扰;jina 限流/页面错峰在引擎与页面层控制
     # 计时在工作函数内部(历史 bug:在 fut.result() 处记时,先完成的
@@ -848,19 +992,54 @@ def main() -> int:
     def _run(n: str):
         started = time.monotonic()
         r = fetch_competitor(n, out_dir, args.budget, args.topic)
-        return r, time.monotonic() - started
+        # 返回输入名(而非 r["name"]=resolver 归一名)做排序键:wati→WATI
+        # 的映射会让 order.get 落空,输入序恢复失效
+        return n, r, time.monotonic() - started
 
+    # 2026-08-30 修复:ex.map 迭代时单竞品异常击穿整个运行(map 惰性传播,
+    # 已完成竞品的打印/台账汇总全部丢失)。改 submit + as_completed,单竞品
+    # 崩溃降级为诚实失败条目,其余竞品照常。
+    results: List[tuple] = []
     with ThreadPoolExecutor(max_workers=min(_COMPETITOR_CONCURRENCY, len(names))) as ex:
-        results = list(ex.map(_run, names))
+        futs = {ex.submit(_run, n): n for n in names}
+        for fut in as_completed(futs):
+            name = futs[fut]
+            try:
+                results.append(fut.result())
+            except Exception as e:
+                results.append(
+                    (
+                        name,
+                        {
+                            "name": name,
+                            "url": "",
+                            "pages": {},
+                            "failures": [
+                                {
+                                    "competitor": name,
+                                    "url": "",
+                                    "kind": "crash",
+                                    "error": f"{type(e).__name__}: {e}"[:200],
+                                }
+                            ],
+                        },
+                        0.0,
+                    )
+                )
+    # 保持命令行顺序稳定(as_completed 完成序乱序)
+    order = {n: i for i, n in enumerate(names)}
+    results.sort(key=lambda t: order.get(t[0], len(names)))
 
     ok = True
-    for r, elapsed in results:
+    for _, r, elapsed in results:
         insuff = [k for k, v in r["pages"].items() if not v["sufficient"]]
         print(
             f"[{'✓' if r['pages'] else '✗'} {r['name']}] {elapsed:5.1f}s | "
             f"{len(r['pages'])} pages | 不充分: {','.join(insuff) or '无'} | "
             f"failures: {len(r['failures'])}"
         )
+        for hint in (r.get("lessons_hints") or [])[:2]:
+            print(f"    💡 lesson: {hint[:96]}")
         if not r["pages"]:
             ok = False
     print(f"\n台账: {out_dir / 'claims-manifest.json'}")

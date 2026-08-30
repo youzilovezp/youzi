@@ -2,8 +2,8 @@
 #
 # 工程结构:
 #   render.py                                                 渲染主入口
-#   adapters/{__init__,crawl4ai,firecrawl,playwright}.py      爬虫 adapter
-#   templates/*.html                                          自研 {% %} 模板
+#   adapters/*.py                                            爬虫 adapter(5 引擎白名单)
+#   templates/*.html                                          Jinja2 模板(render.py Template 封装,autoescape)
 #   examples/*.{html,json}                                    样例 (含生成输出)
 #   references/*.md, README.md, SKILL.md, 快速/进阶/小白入门.md  文档
 #   scripts/*.py                                              本地 hook 辅助脚本
@@ -72,7 +72,7 @@ repos:
       - id: mypy
         name: mypy
         description: Static type-check Python sources.
-        entry: mypy --python-version 3.11 --no-incremental render.py adapters
+        entry: mypy --python-version 3.11 --no-incremental --ignore-missing-imports render.py audit.py gates.py verify.py network_gates.py pricing_tokens.py scripts adapters
         language: system
         types: [python]
         pass_filenames: false

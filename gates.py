@@ -7,7 +7,7 @@ import re
 
 from verify import Report, norm_ws
 
-_GATES = []
+_GATES: list = []  # register() 装载的 gate 函数(签名统一)
 
 
 def register(fn):
@@ -243,20 +243,24 @@ def g2_quote_grep(analysis, manifest, engine_index, rep: Report):
                 )
         # 定价来自缓存回退(反爬 starved)时,vote 行是上一轮成功运行的证据,
         # 本轮引擎原文天然不包含 —— 无法也不应 grep(新鲜度由 G3 TTL 保证,
-        # 报告端有 pricing_crawl_note 如实标注)
-        if competitor.get("pricing_from_cache"):
-            continue
-        for i, v in enumerate(competitor.get("pricing_vote_detail") or []):
-            if isinstance(v, dict) and (v.get("raw_line") or v.get("line")):
-                checks.append(
-                    (
-                        f"competitors[{name}].pricing_vote_detail[{i}].line",
-                        (competitor.get("pricing_source") or "").strip(),
-                        # raw_line = 引擎逐字原文;line 可能是套餐名前缀融合的
-                        # 合成串(不可 grep)—— 优先 raw_line,旧数据回退 line
-                        v.get("raw_line") or v.get("line"),
+        # 报告端有 pricing_crawl_note 如实标注)。
+        # 2026-08-30 修复:此处曾用 continue 跳到下一竞品,把上方已积累的
+        # strengths/gtm/moat/differentiators/tech_signals/feature_catalog/
+        # product_momentum 检查整批丢弃 —— 定价走缓存的竞品伪造引文全部
+        # 免检(对抗测试复现:同句伪造引文,flag=True → 0 hard,False → 2)。
+        # 正确语义:只跳过 vote 行回查,其余检查照常消费。
+        if not competitor.get("pricing_from_cache"):
+            for i, v in enumerate(competitor.get("pricing_vote_detail") or []):
+                if isinstance(v, dict) and (v.get("raw_line") or v.get("line")):
+                    checks.append(
+                        (
+                            f"competitors[{name}].pricing_vote_detail[{i}].line",
+                            (competitor.get("pricing_source") or "").strip(),
+                            # raw_line = 引擎逐字原文;line 可能是套餐名前缀融合的
+                            # 合成串(不可 grep)—— 优先 raw_line,旧数据回退 line
+                            v.get("raw_line") or v.get("line"),
+                        )
                     )
-                )
         for field, url, quote in checks:
             if not url:
                 continue  # 无来源的引文归 G1/G4

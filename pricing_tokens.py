@@ -15,7 +15,6 @@ playwright(价格等待) 四处共用同一正则,消灭三套口径并存的历
 """
 
 import re
-from typing import Optional
 
 # 货币符号(单字符,无需词边界)
 _SYM = r"[$€£¥₹]"
@@ -23,11 +22,14 @@ _SYM = r"[$€£¥₹]"
 _CODE = r"(?:USD|EUR|GBP|INR|CNY|CAD|AUD)"
 
 # 统一价格 token 正则:
-#   前缀路: (?<![.\d]) 防 "1.5$" 里截出 "5$";US$/S$ 整体优先于裸 $
+#   前缀路: (?<![.\d]) 防 "1.5$" 里截出 "5$";US$/S$ 整体优先于裸 $;
+#           数字允许无前导零小数($.012/$.99 —— PAYG 计费页写法,
+#           2026-08-30 审计:原正则漏检,而 gates._PRICING_SEMANTICS_RX
+#           显式支持 \.\d+,两套口径不一致)
 #   后缀路: 欧陆 "39 €" / "1.068 €" / "39 元";代码结尾要求非字母数字
 PRICE_TOKEN_RX = re.compile(
     rf"(?<![.\d])(?:\bUS\$|\bS\$|{_SYM}|\b{_CODE}\b|\bRs\.?)\s?"
-    rf"\d[\d,]*(?:\.\d+)?"
+    rf"(?:\d[\d,]*(?:\.\d+)?|\.\d+)"
     rf"|\d[\d,]*(?:\.\d+)?\s?(?:{_SYM}|\b{_CODE}\b|元)",
     re.I,
 )
@@ -80,6 +82,5 @@ def price_vote_key(token: str) -> str:
     return f"{cur}|{dig}" if dig else ""
 
 
-def is_price_like(text: str) -> Optional[re.Match]:
-    """文本是否含价格 token(语义糖,兼做 fullmatch 场景的入口)。"""
-    return PRICE_TOKEN_RX.search(text or "")
+# 2026-08-30 清理:删除 is_price_like(语义糖)—— 全库零调用方(grep 证实),
+# 调用方一律直接用 PRICE_TOKEN_RX.search()。

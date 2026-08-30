@@ -9,7 +9,6 @@ pricing → 官方定价页(全候选 404 时的搜索发现)。
 关键词才可作为 source —— 杜绝"看起来像的 URL"当出处。
 """
 
-import base64
 import re
 import sys
 import time
@@ -28,21 +27,8 @@ _UA = (
 )
 _SEARCH_CACHE: Dict[str, List[Dict[str, str]]] = {}
 
-
-def _bing_unwrap(url: str) -> str:
-    """Bing 结果链接是 bing.com/ck/a?...&u=a1<base64> 跳板,解出真实 URL。"""
-    if "bing.com/ck/" not in url:
-        return url
-    q = parse_qs(urlparse(url).query).get("u")
-    if q and q[0].startswith("a1"):
-        try:
-            pad = q[0][2:] + "=" * (-len(q[0][2:]) % 4)
-            dec = base64.b64decode(pad).decode("utf-8", "ignore")
-            if dec.startswith("http"):
-                return dec
-        except Exception:
-            pass
-    return url
+# 2026-08-30 清理:删除 _bing_unwrap(Bing 跳板解包)—— 搜索通道只有
+# Jina Reader(DDG lite)与 DDG html POST 两条,全库零调用方(grep 证实)。
 
 
 def _ddg_redirect_url(href: str) -> str:
@@ -140,7 +126,12 @@ def search_web(query: str, n: int = 6) -> List[Dict[str, str]]:
 
 
 def _scrape_and_verify(url: str, keyword: str, timeout: int = 30) -> Optional[Dict]:
-    """爬 URL 并验证内容含关键词 —— 深链必须爬出真实内容才能当 source。"""
+    """爬 URL 并验证内容含关键词 —— 深链必须爬出真实内容才能当 source。
+
+    2026-08-30 修复:透传 all_results(各引擎原文)。scrape_smart 内部本来就
+    按 URL 类型跑了多引擎组合,历史实现只保留单引擎标签 + 合并文本 →
+    fetch 四级回退第三级拿到的天然是"单引擎",定价交叉验证(≥2 独立引擎)
+    注定凑不齐。各引擎原文传回后,该级回退恢复交叉验证能力。"""
     try:
         r = scrape_smart(url, max_chars=30000, timeout=timeout)
     except Exception:
@@ -152,11 +143,21 @@ def _scrape_and_verify(url: str, keyword: str, timeout: int = 30) -> Optional[Di
         kw = keyword.lower().split("(")[0].strip()
         if kw and kw not in md.lower():
             return None
+    all_results = [
+        {
+            "success": True,
+            "scraper": x.get("scraper"),
+            "markdown": x.get("markdown") or "",
+        }
+        for x in (r.get("all_results") or [])
+        if x.get("success") and x.get("markdown")
+    ]
     return {
         "url": url,
         "markdown": md,
         "engine": (r.get("stats") or {}).get("primary_scraper", ""),
         "fetched_at": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+        "all_results": all_results,
     }
 
 
@@ -319,13 +320,27 @@ def locate_feedback(product: str, timeout: int = 30) -> Optional[Dict]:
     return _reddit_feedback(prod, timeout)
 
 
-def locate_pricing_page(domain: str, timeout: int = 30) -> Optional[Dict]:
-    """官方定价页发现(全部候选 URL 404/反爬时)。"""
+def locate_pricing_page(
+    domain: str, timeout: int = 30, budget_s: Optional[float] = None
+) -> Optional[Dict]:
+    """官方定价页发现(全部候选 URL 404/反爬时)。
+
+    budget_s(2026-08-30):总预算秒数。并发组合实测事故:3 竞品并发时
+    资源竞争导致某定价页全引擎失败 → deep_link 被触发,而 2 查询 ×
+    4 候选 × 每次 scrape_smart 整体上限 45s 的最坏路径 ≈ 360s,全部
+    落在 fetch 的 150s 竞品预算之外(deadline 只在步骤间检查,不约束
+    步内执行)→ 整个运行 >500s 超时。预算耗尽诚实返回 None。
+    """
+    deadline = (time.monotonic() + budget_s) if budget_s else None
     for q in (
         f"site:{domain} pricing",
         f"{domain} pricing plans",
     ):
+        if deadline and time.monotonic() > deadline:
+            return None
         for hit in search_web(q, n=4):
+            if deadline and time.monotonic() > deadline:
+                return None
             host = urlparse(hit["url"]).netloc.lower().replace("www.", "")
             if domain.lower().replace("www.", "") not in host:
                 continue
@@ -333,3 +348,34 @@ def locate_pricing_page(domain: str, timeout: int = 30) -> Optional[Dict]:
             if r:
                 return r
     return None
+
+
+# ============================================================
+# CLI 入口 —— SKILL.md Step 2.5 补爬工作流的可执行化
+# (2026-08-30:SKILL.md:41-42 一直指示"用 deep_link 定位 tech/feedback
+# 具体页",但本模块没有 CLI,LLM 只能 python -c 拼函数调用)
+# ============================================================
+if __name__ == "__main__":
+    import argparse
+    import json as _json
+
+    ap = argparse.ArgumentParser(
+        description="deep_link · 搜索深链定位(Step 2.5 补爬工具,免 key)"
+    )
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p_tech = sub.add_parser("tech", help="技术信号 → 官方 docs 具体子页")
+    p_tech.add_argument("domain", help="竞品域名,如 wati.io")
+    p_tech.add_argument("keyword", help="技术关键词,如 'WhatsApp Cloud API'")
+    p_fb = sub.add_parser("feedback", help="用户反馈 → G2/Trustpilot/Reddit 具体页")
+    p_fb.add_argument("product", help="产品名,如 WATI")
+    p_pr = sub.add_parser("pricing", help="官方定价页发现(候选全灭时)")
+    p_pr.add_argument("domain", help="竞品域名")
+    a = ap.parse_args()
+
+    if a.cmd == "tech":
+        out = locate_tech(a.domain, a.keyword)
+    elif a.cmd == "feedback":
+        out = locate_feedback(a.product)
+    else:
+        out = locate_pricing_page(a.domain)
+    print(_json.dumps(out, ensure_ascii=False, indent=1) if out else "null")

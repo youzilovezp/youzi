@@ -38,8 +38,8 @@ allowed-tools: WebSearch, WebFetch, Bash, Read, Write, Edit, Agent, mcp__web-rea
 
 🔁 **充分性闭环（准 > 快，fetch.py 内建，契约见 `scripts/sufficiency.py`）**：
 - 定价：≥2 独立引擎一致（价格投票统一 `pricing_tokens.py`，₹/Rs./US$/后缀€ 全覆盖）+ 周期/货币完整 + Free/Custom 档无周期 + 月/年配对 → 不达标沿**引擎升级梯**换未用引擎重爬（预算 5 分钟/竞品，全页面共享 deadline）→ 仍不达标回退 ≤14 天已验证缓存（`storage/pricing-cache.json`，带每引擎原文，台账标 `from_cache`）→ 全灭时搜索发现官方定价页
-- tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `scripts/deep_link.py` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
-- user_feedback：官网 testimonials 没抓到 → 搜索 G2/Trustpilot 具体评论页（多数被封）→ Reddit JSON 兜底
+- tech_signals：必须锚定 docs **具体子页**（非栏目首页）→ `python3 <skill-root>/scripts/deep_link.py tech <域名> "<关键词>"` 用 site: 搜索定位具体文档页 + 附原文 quote（搜索通道：Jina Reader + DDG lite，免 key）
+- user_feedback：官网 testimonials 没抓到 → `python3 <skill-root>/scripts/deep_link.py feedback <产品名>`（G2/Trustpilot 具体评论页，多数被封 → Reddit JSON 兜底）
 - 预算耗尽/通道全封 → 诚实标「未验证」，绝不伪造
 
 **3️⃣ 视觉理解（zai MCP 套件）**
@@ -160,7 +160,7 @@ python3 <skill-root>/audit.py \
 - exit 1（存在 gap）→ 按 next_actions 补爬（同会话）→ 重跑 audit，直到 gap 清零或转为 not-published/partial
 - audit 自动读写 `storage/intel-lessons.json`（按域名沉淀：不公示结论、单引擎定价、替代证据源、深挖抓手）——**下次运行同域名竞品时先读 lessons，跳过已确认的死路，把预算让给真正的缺口**（自我进化）
 - 定价数据必须区分**月付/年付**两个周期（pricing_tiers 用 `billing_period: "/mo" | "billed"(年付结算月价) | "/yr"` 三通道，render 自动配对双栏展示）；只有单周期时如实标注，audit 会标 partial 并给深挖动作
-- **定价 toggle 交互取证**：官网只有单周期价时，用 playwright 真实点击「Monthly/Yearly」切换抓另一态（`toggle_crawl.py` 模式：伪引擎键 playwright_toggle_monthly/yearly 写入 engines.json 保持证据链）；引用帮助中心页脚等**死链线索**（如 meetbot.com/charge 404）也算穷尽探测的证据
+- **定价 toggle 交互取证**：官网只有单周期价时，playwright 抓定价页会自动尝试点击「Monthly/Yearly」切换并把另一态价格以 `<!-- annual-billing variant (toggled) -->` 段附加进该引擎原文（playwright_scraper 内建，无需单独脚本）；引用帮助中心页脚等**死链线索**（如 meetbot.com/charge 404）也算穷尽探测的证据
 - **隐藏入口挖掘**：定价/产品数据抓不到时，依次试 help center 页脚链接、web 搜索 `site:` 定位 changelog/roadmap 独立站（canny 类）、第三方报道（带日期的上线新闻可作 momentum 证据）
 
 ### Step 3 · 结构化分析（LLM 基于证据提取 —— 每字段可追溯）
@@ -258,7 +258,7 @@ python3 <skill-root>/verify.py \
 ```
 
 - exit 2 → 读 verify-report.json 的 `{gate, field, hint}`，修 03-analysis.json 或重爬，再验 —— **修复回路，不是绕过**
-- 离线门禁（必跑，<1s）：G1 来源可回溯 / G2 quote 回查 / G3 定价独立性+TTL / G4 缺失诚实 / G5 反伪造 / G6 URL 卫生
+- 离线门禁（必跑，<1s）：G1 来源可回溯 / G2 quote 回查 / G3 定价独立性+TTL / G4 缺失诚实 / G5 反伪造 / G6 URL 卫生 / G7 溯源权威性
 - 网络复核（可选，慢）：加 `--network --sample 10`（N1 死链硬失败 / N2 quote 漂移警告）
 - 新发现的坏数据形状 → 冻结成离线 fixture 进 tests/（延续 test_pricing_extract.py 模式）
 
@@ -280,7 +280,7 @@ python3 <skill-root>/audit.py \
    - 你分析了 X 个竞品
    - 报告路径
    - **一句话点出最大机会**（取 opportunities[0]）
-3. 提示用户：**如果想换主题 / 加竞品 / 调整 focus，直接说就行，重跑只要 30 秒**（因为 Step 1-2 的结果可以缓存到 OUT_DIR/02-raw/）
+3. 提示用户：**如果想换主题 / 加竞品 / 调整 focus，直接说就行**；只重渲染（复用已有 03-analysis.json）是秒级，重爬默认全量（每竞品 ≤300s 预算，定价命中 ≤14 天已验证缓存时更快）
 
 ## 重要原则
 
@@ -290,7 +290,7 @@ python3 <skill-root>/audit.py \
 - **不重复造轮子**：模板/CSS/可视化都参考 graphify（知识图谱可视化）、ai-radar（仪表盘）、artifact-design（HTML 美学）、dataviz（图表配色）这些已有 skill 的成熟方案。
 - **诚实**：strengths / weaknesses / scores 必须基于实际抓到的证据（带 URL + 引文片段），不写"AMAZING" / "BEST" 这种空话。
 - **§5.2 功能矩阵**：默认 vendor 模式（行 = 本次实爬功能并集，每行必有 ✓，全部可溯源）；`_CANONICAL_FEATURES_WHATSAPP`（28 项 × 10 类）为人工参考清单，仅在 analysis.json 显式 `feature_canonical.enabled=true` 时启用（? 刻 = 实爬未命中，不代表厂商不支持）。可用 `feature_canonical.evidence_notes` 手动覆盖自动判定。
-- **可重入**：`OUT_DIR/02-raw/` 是 cache，重跑时 Step 2 跳过已抓的；`OUT_DIR/03-analysis.json` 存在时 `render.py` 直接渲染。
+- **可重入（准确语义）**：`OUT_DIR/03-analysis.json` 存在时 `render.py` 直接渲染（秒级）；`02-raw/` 是证据缓存 —— manifest 会增量合并、定价有 ≤14 天已验证缓存回退，但**页面默认全量重爬**（证据新鲜度优先）。只重渲染不重爬 = 跳过 Step 2 直接给 `--analysis`。
 - **不强制联网**：用户给了本地 JSON 时跳过 Step 1-3。
 - **双门禁交付**：render.py exit 0 且 verify.py exit 0 才算交付；verify-report.json 是修复回路的输入，不是可选日志。
 

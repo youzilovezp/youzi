@@ -43,26 +43,65 @@ def step2_fetch(competitors, out_dir, topic="", budget_s=None):
 
     fetch 侧内建:URL 发现 + 引擎路由 + 定价交叉验证升级梯 + 预算控制 +
     充分性判断 + claims-manifest.json 台账(fetched 带 kind)+ 引擎原文。
+
+    2026-08-30 修复:竞品级并行(与 fetch.py CLI 同款 3 并发)。历史实现
+    串行 for 循环 —— SKILL.md 宣称的竞品级并行在 runner 主路径上不存在
+    (5 竞品实测 150s+ → 并行后 ~60s)。单竞品崩溃降级为诚实失败条目。
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     from scripts import fetch
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    results = []
     print(f"\n📡 Step 2 · 取证爬取 {len(competitors)} 个竞品(fetch.py 统一入口)\n")
-    for comp in competitors:
+
+    def _run(comp):
         t0 = time.time()
         r = fetch.fetch_competitor(comp, out_dir, budget_s=budget_s, topic=topic)
-        dt = time.time() - t0
-        insuff = [k for k, v in r["pages"].items() if not v["sufficient"]]
-        ok = bool(r["pages"])
-        print(
-            f"  [{'✓' if ok else '✗'} {r['name']}] {dt:5.1f}s | "
-            f"{len(r['pages'])} pages | 不充分: {','.join(insuff) or '无'} | "
-            f"failures: {len(r['failures'])}"
-        )
-        results.append(r)
-    return results
+        # 返回输入名做排序键(resolver 归一名与输入名不一致时排序会失效)
+        return comp, r, time.time() - t0
+
+    collected = []
+    with ThreadPoolExecutor(
+        max_workers=min(fetch._COMPETITOR_CONCURRENCY, len(competitors))
+    ) as ex:
+        futs = {ex.submit(_run, comp): comp for comp in competitors}
+        for fut in as_completed(futs):
+            comp = futs[fut]
+            try:
+                _, r, dt = fut.result()
+            except Exception as e:
+                r, dt = (
+                    {
+                        "name": comp,
+                        "url": "",
+                        "pages": {},
+                        "failures": [
+                            {
+                                "competitor": comp,
+                                "url": "",
+                                "kind": "crash",
+                                "error": f"{type(e).__name__}: {e}"[:200],
+                            }
+                        ],
+                    },
+                    0.0,
+                )
+            insuff = [k for k, v in r["pages"].items() if not v["sufficient"]]
+            ok = bool(r["pages"])
+            print(
+                f"  [{'✓' if ok else '✗'} {r['name']}] {dt:5.1f}s | "
+                f"{len(r['pages'])} pages | 不充分: {','.join(insuff) or '无'} | "
+                f"failures: {len(r['failures'])}"
+            )
+            for hint in (r.get("lessons_hints") or [])[:2]:
+                print(f"    💡 lesson: {hint[:96]}")
+            collected.append((comp, r))
+    # 保持输入顺序(打印是完成序,返回值按输入序)
+    order = {c: i for i, c in enumerate(competitors)}
+    collected.sort(key=lambda t: order.get(t[0], len(competitors)))
+    return [r for _, r in collected]
 
 
 def step4_render(analysis_path, output_path, template_path=None):
@@ -191,8 +230,8 @@ def main():
         default=None,
         help="每竞品墙钟预算秒数（默认 300,由 fetch.py 管理）",
     )
-    ap.add_argument("--max-chars", type=int, default=20000, help="单页最大字符数")
-    ap.add_argument("--timeout", type=int, default=60, help="单爬虫超时秒")
+    # 2026-08-30 清理:删除 --max-chars/--timeout —— 解析后从未被消费
+    # (grep 证实),留着只会误导使用者以为能调引擎行为。
     args = ap.parse_args()
 
     print(f"\n{'=' * 60}")
