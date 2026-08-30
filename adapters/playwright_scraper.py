@@ -336,6 +336,13 @@ async def _scrape_core(
                         const t = (e.innerText || '').trim();
                         if (t && t.length <= 22 && rx.test(t)
                             && !/month|月付|每月|billed/i.test(t)) {
+                          // 导航防护(2026-08-30):真链接(如 "Annual report"
+                          // 的 <a>)点击会整页跳走,后续 content() 取到错页。
+                          // 只允许无 href/#/javascript 的锚 —— toggle 锚常态。
+                          const href = e.tagName === 'A'
+                            ? (e.getAttribute('href') || '').trim() : '';
+                          if (href && href !== '#'
+                              && !href.startsWith('javascript')) continue;
                           e.click();
                           return t;
                         }
@@ -401,6 +408,12 @@ async def _scrape_core(
                         const t = (e.innerText || '').trim();
                         if (t && t.length <= 22 && rx.test(t)
                             && !/year|annual|年付|按年/i.test(t)) {
+                          // 导航防护:同年付点击 —— "Monthly updates" 类真
+                          // 链接会导航走,回点只针对 toggle 元素
+                          const href = e.tagName === 'A'
+                            ? (e.getAttribute('href') || '').trim() : '';
+                          if (href && href !== '#'
+                              && !href.startsWith('javascript')) continue;
                           e.click();
                           return t;
                         }

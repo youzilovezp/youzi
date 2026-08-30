@@ -84,3 +84,48 @@ def price_vote_key(token: str) -> str:
 
 # 2026-08-30 清理:删除 is_price_like(语义糖)—— 全库零调用方(grep 证实),
 # 调用方一律直接用 PRICE_TOKEN_RX.search()。
+
+
+# ── 计费周期归一化(gates G8 与 render 共用的单一事实源) ──
+# 历史:render 内联归一化容忍老数据("month"/"billed annually"),G8 第 17 轮
+# 复刻了一份 —— 两处规则必然漂移(G8 曾比 render 严而误拦 "/month")。
+# 第 19 轮收口:逻辑移到本模块,两侧 import。
+#
+# 2026-08-30 契约对齐修复(用户反馈「报告质量不如之前」复盘):
+#   - 单位限定词(/user /seat /人 /席位)不是周期 —— sufficiency 对
+#     free/custom 档容忍 "/user"/"/seat",但归一化原样放行 → G8 hard
+#     → run_youzi 不交付。剥离后再匹配,裸 "/user" 归 "" 恰好落入
+#     无周期通道,两侧契约对齐。
+#   - 中文周期词(按月/月付/每年/包年…)此前原样放行 → 同样被 G8 拦死。
+#   - month+year 同现("monthly billed annually"/"monthly (annual
+#     discount)")是年结算月价 → billed 通道(此前 month 分支被 year
+#     否决后误入 /yr,定价卡通道错位)。
+
+_PERIOD_UNIT_RX = re.compile(
+    r"\s*(?:/\s*|per\s+)(?:users?|seats?|人|席位|坐席)(?![a-z])", re.I
+)
+_PERIOD_MONTH_RX = re.compile(r"month|/mo|月付|按月|每月|包月|月度", re.I)
+_PERIOD_YEAR_RX = re.compile(r"year|\byr\b|annual|/yr|年付|按年|每年|包年|年度", re.I)
+_PERIOD_BILLED_RX = re.compile(r"billed|结算|discount|折扣|打折|优惠", re.I)
+VALID_PERIODS = ("/mo", "billed", "/yr", "—", "")
+
+
+def normalize_billing_period(per: str) -> str:
+    """把原始周期文本归一到三通道+无周期;未知值原样返回(由 G8 拦截)。
+
+    单位限定词先剥离:"$19/user/mo"→"/mo"、"/user"→""。
+    "/month"/"Monthly"/"按月" → "/mo";"billed annually"/"按月年结算" → "billed";
+    "per year"/"/yr"/"包年" → "/yr";"—"/"" → 原样;其他(如"一次性") → 原样。
+    """
+    per = _PERIOD_UNIT_RX.sub("", (per or "")).strip()
+    has_m = bool(_PERIOD_MONTH_RX.search(per))
+    has_y = bool(_PERIOD_YEAR_RX.search(per))
+    if has_m and has_y:
+        return "billed"  # 月价 × 年语义 = 年结算月价
+    if has_m:
+        return "/mo"
+    if _PERIOD_BILLED_RX.search(per):
+        return "billed"
+    if has_y:
+        return "/yr"
+    return per

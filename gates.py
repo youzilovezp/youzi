@@ -641,3 +641,159 @@ def g7_source_authority(analysis, manifest, engine_index, rep: Report):
                     field,
                     f"用户反馈锚定在域名根 —— 优先改锚 customers/testimonials 具体页: {url}",
                 )
+
+
+# ── G8 结构契约(2026-08-30):渲染前拦截「证据真实但结构错」的乱码报告 ──
+
+# 周期归一化:pricing_tokens.normalize_billing_period(单一事实源,
+# render 同源 —— G8 不得比 render 严,否则误拦 "/month" 类老数据)
+from pricing_tokens import VALID_PERIODS, normalize_billing_period  # noqa: E402
+
+_normalize_period = normalize_billing_period
+
+
+# 跨厂商统一功能名全集:references/feature-aliases.json(与 render 矩阵
+# 对齐同一份数据,单一事实源)。历史教训:G8 曾硬编码 14 名清单,与
+# render 的 36 条规范键漂移 —— 写规范名反而被误判未统一(第 18 轮实测)。
+# 加载失败退化为最小兜底(仅保 G8 可运行,覆盖率指标失真)。
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+try:
+    _ALIASES_DOC = _json.loads(
+        (
+            _Path(__file__).resolve().parent / "references" / "feature-aliases.json"
+        ).read_text(encoding="utf-8")
+    )
+except Exception:
+    _ALIASES_DOC = {}
+
+_UNIFIED_FEATURES = frozenset(
+    a
+    for _canon, ent in (_ALIASES_DOC.get("aliases") or {}).items()
+    for a in [_canon] + list((ent or {}).get("aliases") or [])
+) or frozenset(
+    {
+        "团队共享收件箱",
+        "AI 客服代理",
+        "聊天机器人",
+        "REST API",
+        "自动化营销群发",
+        "语音通话能力",
+        "客户数据平台",
+        "电商变现",
+    }
+)
+
+
+@register
+def g8_structure_contract(analysis, manifest, engine_index, rep: Report):
+    """G8: 03-analysis.json 的结构契约(render 消费格式)预检。
+
+    起因(2026-08-30 两次真实事故):G1-G7 保证证据真实,但结构错误
+    (billing_period 非法值 / 字符串当数组 / 自造功能名)要到渲染后
+    才显形 —— 用户看到的就是乱码报告。本门在渲染前拦:
+
+    hard(必然产生乱码/丢数据):
+      - pricing_tiers.billing_period 归一化后 ∉ {/mo, billed, /yr, 无周期}
+        (单位限定词 /user /seat 与中文周期词已被 normalize_billing_period
+        自动剥离/归一 —— 2026-08-30 契约对齐,此前这些值会整份报告拦死)
+      - opportunities.target_users/differentiators/validation 非数组
+      - differentiators 误写单数键 differentiation
+    warn(信息降级,提示不拦):
+      - gaps 旧形态 {title,detail}(render 读 {gap,evidence,severity})
+      - opportunities 缺 pitch/moat/evidence_urls(6.5 卡区块消失)
+      - feature_catalog 统一名覆盖率 <50%(4.2.1 矩阵对齐差)
+      - 顶层缺 comparison_matrix/feature_overlap(render 兜底派生)
+    """
+    comps = analysis.get("competitors") or []
+    for c in comps:
+        name = c.get("name", "?")
+        for i, t in enumerate(c.get("pricing_tiers") or []):
+            per = (t.get("billing_period") or "").strip()
+            if _normalize_period(per) not in VALID_PERIODS:
+                rep.hard(
+                    "G8",
+                    f"competitors[{name}].pricing_tiers[{i}].billing_period",
+                    t.get("source_url", ""),
+                    f"非法周期 “{per}”(只允许 /mo · billed · /yr · 无周期)—— "
+                    "该档位会从定价卡直接消失",
+                    "改用三通道;Free/买断/定制档不写周期(price=$0/免费→Free 档,"
+                    "其余→联系销售档)",
+                )
+    for i, o in enumerate(analysis.get("opportunities") or []):
+        for fld in ("target_users", "differentiators", "validation"):
+            v = o.get(fld)
+            if v is not None and not isinstance(v, list):
+                rep.hard(
+                    "G8",
+                    f"opportunities[{i}].{fld}",
+                    "",
+                    f"{fld} 必须是数组(模板逐项迭代),当前是 "
+                    f"{type(v).__name__} —— 会被逐字符渲染成碎片",
+                    f'改为列表,如 {fld}: ["…", "…"]',
+                )
+        if "differentiation" in o and "differentiators" not in o:
+            rep.hard(
+                "G8",
+                f"opportunities[{i}].differentiation",
+                "",
+                "单数键 differentiation(模板读复数 differentiators 数组)",
+                '改为 differentiators: ["…"]',
+            )
+        for fld in ("pitch", "moat", "evidence_urls"):
+            if not o.get(fld):
+                rep.warn(
+                    "G8",
+                    f"opportunities[{i}].{fld}",
+                    f"缺 {fld}(6.5 机会卡对应区块会降级消失)",
+                )
+    for i, g in enumerate(analysis.get("gaps") or []):
+        if "gap" not in g:
+            rep.warn(
+                "G8",
+                f"gaps[{i}]",
+                "旧形态 {title,detail}(render 读 {gap,evidence,severity})",
+            )
+    names: list = []
+    for c in comps:
+        for cat, feats in (c.get("feature_catalog") or {}).items():
+            for f in feats or []:
+                if isinstance(f, dict):
+                    names.append(f.get("name", ""))
+                else:
+                    # 字符串当条目:此前 f.get 直接 AttributeError 炸掉
+                    # verify(无门禁报告)—— 本门「字符串当数组」是自己的
+                    # hard 类别,该拦而不是崩
+                    rep.hard(
+                        "G8",
+                        f"competitors[{c.get('name', '?')}].feature_catalog.{cat}",
+                        "",
+                        f"feature_catalog 条目必须是对象(name/category/source),"
+                        f"当前是 {type(f).__name__}",
+                        '改为对象列表,如 [{"name": "…", "category": "…", "source": ""}]',
+                    )
+    if names:
+        # 与 render 矩阵对齐的真实行为对齐:render 按别名+词边界模糊匹配,
+        # 精确相等只是最高置信 —— 覆盖率度量同口径(别名 ⊇2 字 CJK 子串
+        # 也算),否则比 render 更严会误报(第 18 轮实测:27% vs 实际对齐良好)
+        _alias_pool = [
+            a for a in _UNIFIED_FEATURES if len(a) >= 2 and re.search(r"[一-鿿]", a)
+        ]
+        unified = sum(
+            1
+            for n in names
+            if n in _UNIFIED_FEATURES or any(a in n for a in _alias_pool)
+        )
+        if unified / len(names) < 0.5:
+            rep.warn(
+                "G8",
+                "feature_catalog",
+                f"统一功能名覆盖率 {unified / len(names):.0%}"
+                f"({unified}/{len(names)}) —— 4.2.1 矩阵跨厂商对齐差;"
+                "优先用统一名(团队共享收件箱/AI 客服代理/REST API 等),"
+                "锚不到子页的条目保留但 source 留空(gates 允许)",
+            )
+    for fld in ("comparison_matrix", "feature_overlap"):
+        if not analysis.get(fld):
+            rep.warn("G8", fld, f"顶层缺 {fld}(render 兜底派生,信息降级)")

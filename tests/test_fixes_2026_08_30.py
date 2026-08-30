@@ -524,3 +524,113 @@ def test_scrape_with_fallback_removed():
 
     assert not hasattr(adapters, "scrape_with_fallback")
     assert "scrape_with_fallback" not in adapters.__all__
+
+
+# ═══════════ 第 15 轮:Step 3 证据助手 ═══════════
+
+
+def test_evidence_safe_quotes_are_grep_verified(tmp_path):
+    """safe_quotes 返回的每条引文必须通过 G2 同款回查(产品化上次手工摩擦)。"""
+    import json as _json
+
+    from gates import _quote_grep
+    from scripts import evidence
+
+    out = tmp_path
+    (out / "02-raw").mkdir(parents=True)
+    url = "https://x.io/features"
+    (out / "claims-manifest.json").write_text(
+        _json.dumps(
+            {
+                "fetched": {
+                    url: {"status": "ok", "kind": "features", "kinds": ["features"]}
+                }
+            }
+        )
+    )
+    md = "title: X\n---\n# Features\nBuild agents that qualify leads fast.\n[Link](https://x.io)\navoid 中文Englishespañol Português switcher line content\n"
+    (out / "02-raw" / "X.engines.json").write_text(
+        _json.dumps({url: {"trafilatura": md}})
+    )
+    _, idx = evidence.load_evidence(out)
+    qs = evidence.safe_quotes(url, idx, n=3)
+    assert qs, "应至少产出 1 条安全引文"
+    for q in qs:
+        assert _quote_grep(q, url, idx), f"引文未过 G2 回查: {q}"
+        assert "title:" not in q and "http" not in q, "front-matter/链接行必须被过滤"
+
+
+def test_evidence_quote_search_returns_verbatim(tmp_path):
+    import json as _json
+
+    from gates import _quote_grep
+    from scripts import evidence
+
+    out = tmp_path
+    (out / "02-raw").mkdir(parents=True)
+    url = "https://x.io/docs"
+    (out / "claims-manifest.json").write_text(
+        _json.dumps({"fetched": {url: {"status": "ok", "kind": "docs"}}})
+    )
+    md = "# API\nThe API is organized around REST principles.\nOther unrelated line here.\n"
+    (out / "02-raw" / "X.engines.json").write_text(
+        _json.dumps({url: {"trafilatura": md}})
+    )
+    hits = evidence.quote_search(out, url, "REST").strip().strip("`").split("\n")
+    assert any(
+        "REST" in h
+        and _quote_grep(
+            h,
+            url,
+            {"x": {url: {"trafilatura": md}}}.get("x") or {url: {"trafilatura": md}},
+        )
+        for h in hits
+    )
+
+
+# ═══════════ 第 20 轮:audit 字段完整性覆盖(用户三次投诉的字段) ═══════════
+
+
+def test_audit_field_completeness_catches_render_block_gaps():
+    """第 20 轮教训:feature_catalog/feature_conclusion_points/feature_best_for
+    缺失 = 渲染板块整块消失,但 FIELD_MIN 旧表全不查 —— 完整性靠用户
+    肉眼发现。现在必须检查器兜住。"""
+    from audit import audit_field_completeness
+
+    incomplete = {
+        "tagline": "x",
+        "pricing": "y",
+        "core_features": ["a"] * 12,
+        "strengths": ["s"] * 3,
+        "weaknesses": ["w"],
+        "differentiators": ["d"],
+        "tech_signals": ["t"],
+        # 缺:feature_catalog / feature_conclusion_points / feature_best_for
+    }
+    r = audit_field_completeness(incomplete)
+    joined = " ".join(r["missing"])
+    assert "feature_catalog" in joined, "矩阵整列空必须检出"
+    assert "feature_conclusion_points" in joined, "§2.4 整块消失必须检出"
+    assert "feature_best_for" in joined, "竞品卡标签缺失必须检出"
+    assert r["status"] == "partial"
+    # momentum 为聚合板块:只给 next_action,不算 missing
+    assert any("product_momentum" in a for a in r["next_actions"])
+
+
+def test_audit_field_completeness_passes_full():
+    from audit import audit_field_completeness
+
+    full = {
+        "tagline": "x",
+        "pricing": "y",
+        "feature_best_for": "z",
+        "core_features": ["a"] * 12,
+        "strengths": ["s"] * 3,
+        "weaknesses": ["w"],
+        "differentiators": ["d"],
+        "tech_signals": ["t"],
+        "feature_catalog": {"C": [{"name": "n", "category": "c", "source": ""}] * 4},
+        "feature_conclusion_points": [{"text": "t", "source": "https://x.io/f"}],
+    }
+    r = audit_field_completeness(full)
+    assert r["status"] == "ok", r["missing"]

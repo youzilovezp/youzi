@@ -1,0 +1,504 @@
+{
+ "_meta": {
+  "what": "跨厂商功能别名库(统一名 → 同义别名)",
+  "usage": "render 矩阵对齐合并 + gates G8 统一名覆盖率的单一事实源",
+  "fields": {
+   "<规范名>": {
+    "aliases": [
+     "同义名..."
+    ],
+    "desc": "说明(可选)"
+   }
+  },
+  "source": "自 render.py _DEFAULT_FEATURE_ALIASES 外置(2026-08-30 第 18 轮,消灭 gates/render 双清单漂移)"
+ },
+ "aliases": {
+  "团队收件箱 (Team Inbox)": {
+   "aliases": [
+    "团队收件箱",
+    "团队共享收件箱",
+    "Team Inbox",
+    "Shared Inbox",
+    "Unified Inbox",
+    "协作收件箱",
+    "Agent Inbox",
+    "Multi-Agent Inbox",
+    "Inbox"
+   ],
+   "substr": [
+    "team inbox",
+    "shared inbox",
+    "unified inbox",
+    "collaborative inbox",
+    "agent inbox",
+    "agent console",
+    "inbox",
+    "收件箱"
+   ],
+   "rationale": "本质都是「多坐席共享同一个对话列表」,各家产品命名不同。"
+  },
+  "对话分配 (Chat Assignment)": {
+   "aliases": [
+    "对话分配",
+    "对话分配规则",
+    "Chat Assignment",
+    "Conversation Routing",
+    "Conversation Assignment"
+   ],
+   "substr": [
+    "conversation routing",
+    "route conversations",
+    "chat assignment",
+    "对话分配"
+   ],
+   "rationale": "把进入的对话按规则分配到坐席(团队/优先级/语言)。"
+  },
+  "REST API 开放接口": {
+   "aliases": [
+    "REST API",
+    "API",
+    "Open API",
+    "RESTful API"
+   ],
+   "rationale": "公开 REST 接口供开发者集成。"
+  },
+  "Webhook 事件推送": {
+   "aliases": [
+    "Webhook 双向",
+    "Webhook 事件",
+    "Webhook",
+    "Webhook Events",
+    "Webhook 事件回调",
+    "Events API",
+    "Webhook Callbacks",
+    "新消息/状态变更推送"
+   ],
+   "rationale": "新消息/状态变更等事件实时推送到开发者服务器。"
+  },
+  "电商集成 (E-commerce)": {
+   "aliases": [
+    "Shopify 集成",
+    "Shopify 一键连接",
+    "Shopify Inbox",
+    "Shopify 深度",
+    "WooCommerce",
+    "WooCommerce 连接",
+    "WooCommerce 集成",
+    "E-commerce Integration",
+    "Magento Integration"
+   ],
+   "rationale": "对接电商平台同步订单/库存/客户。Shopify/WooCommerce/Magento 三大主流。"
+  },
+  "HubSpot CRM 集成": {
+   "aliases": [
+    "HubSpot 集成",
+    "HubSpot 连接",
+    "HubSpot CRM Integration"
+   ],
+   "rationale": "对接 HubSpot 同步 contacts/deals/通讯记录。"
+  },
+  "Zapier 自动化集成": {
+   "aliases": [
+    "Zapier 集成",
+    "Zapier 连接",
+    "Zapier/Make",
+    "Zapier Integration",
+    "Make.com 集成",
+    "Make Integration"
+   ],
+   "rationale": "通过 Zapier/Make.com 连接 5000+ SaaS 工具做自动化。"
+  },
+  "Mailchimp 集成": {
+   "aliases": [
+    "Mailchimp",
+    "Mailchimp 集成",
+    "Mailchimp Integration"
+   ],
+   "rationale": "对接 Mailchimp 做邮件营销协同。"
+  },
+  "Instagram 多渠道接入": {
+   "aliases": [
+    "Instagram DM",
+    "Instagram 集成",
+    "Instagram Integration"
+   ],
+   "rationale": "把 Instagram Direct Message 接入统一收件箱。"
+  },
+  "Facebook Messenger 接入": {
+   "aliases": [
+    "Facebook Messenger",
+    "Messenger",
+    "FB Messenger",
+    "Facebook Messenger Integration"
+   ],
+   "rationale": "对接 Meta 的 Facebook Messenger 多渠道能力。"
+  },
+  "Telegram 接入": {
+   "aliases": [
+    "Telegram",
+    "Telegram Bot",
+    "Telegram Integration"
+   ],
+   "rationale": "对接 Telegram 多渠道能力。"
+  },
+  "WhatsApp Business API": {
+   "aliases": [
+    "WhatsApp Business API",
+    "WhatsApp Business Platform",
+    "WhatsApp Business",
+    "WhatsApp",
+    "WhatsApp API"
+   ],
+   "rationale": "Meta 官方 WhatsApp Business API 直连。"
+  },
+  "Email API": {
+   "aliases": [
+    "Email API",
+    "SendGrid Email",
+    "Transactional Email",
+    "SMTP API",
+    "Email Service"
+   ],
+   "rationale": "事务性 + 营销邮件 API(SendGrid 等)。"
+  },
+  "SMS API": {
+   "aliases": [
+    "Programmable Messaging",
+    "SMS/MMS/RCS",
+    "SMS API",
+    "Programmable SMS",
+    "Messaging API"
+   ],
+   "rationale": "短信/MMS/RCS 统一消息 API。"
+  },
+  "CDP 客户数据平台": {
+   "aliases": [
+    "Segment CDP",
+    "People CDP",
+    "Personas 身份解析",
+    "Identity Resolution",
+    "CDP",
+    "Customer Data Platform"
+   ],
+   "rationale": "跨渠道客户数据平台,统一用户身份与画像。"
+  },
+  "可视化拖拽流程编辑器": {
+   "aliases": [
+    "可视化拖拽流程",
+    "拖拽流程编辑器",
+    "Visual Flow Builder",
+    "Drag-and-Drop Workflow",
+    "Flow Builder"
+   ],
+   "rationale": "零代码拖拽式工作流编辑。"
+  },
+  "行业模板库 (Workflow Templates)": {
+   "aliases": [
+    "模板市场",
+    "工作流模板库",
+    "Workflow Templates",
+    "Template Library",
+    "Template Marketplace"
+   ],
+   "rationale": "预制行业流程模板让用户快速上手。"
+  },
+  "内部备注 (Internal Notes)": {
+   "aliases": [
+    "内部备注",
+    "Internal Notes",
+    "Internal Chat",
+    "@mention",
+    "Team Chat"
+   ],
+   "rationale": "团队成员私下沟通,客户不可见。"
+  },
+  "AI 转人工升级": {
+   "aliases": [
+    "AI 转人工",
+    "AI 智能路由",
+    "Human Handoff",
+    "Agent Handoff",
+    "Escalation to Human"
+   ],
+   "rationale": "AI 检测到复杂问题后自动升级到人工客服。"
+  },
+  "知识库训练 (Knowledge Base Training)": {
+   "aliases": [
+    "AI 知识库训练",
+    "Lyro 知识库训练",
+    "Knowledge Base",
+    "FAQ Training",
+    "Document Training"
+   ],
+   "rationale": "上传文档/FAQ 让 AI 自动学习。"
+  },
+  "多渠道接入 (Omnichannel Aggregation)": {
+   "aliases": [
+    "多渠道接入",
+    "8 渠道统一",
+    "Omnichannel",
+    "Multi-channel Inbox",
+    "Channel API",
+    "Channels API",
+    "渠道聚合"
+   ],
+   "substr": [
+    "omnichannel",
+    "multi-channel",
+    "multichannel",
+    "centralize chats",
+    "unifies them",
+    "渠道统一"
+   ],
+   "rationale": "统一接入 WhatsApp/SMS/Email/Voice/Messenger 等多渠道。"
+  },
+  "数据导出 (Data Export)": {
+   "aliases": [
+    "数据导出",
+    "Data Export",
+    "导出",
+    "CSV/Excel 导出",
+    "Insights Export",
+    "Message Export",
+    "Conversation Export",
+    "对话记录导出",
+    "分析数据导出"
+   ],
+   "rationale": "联系人/对话/分析数据批量导出 — 企业合规与迁移必备。"
+  },
+  "权限与团队管理 (RBAC)": {
+   "aliases": [
+    "权限与角色管理",
+    "权限与团队管理",
+    "RBAC",
+    "Role-Based Access",
+    "团队协作",
+    "角色权限",
+    "Team Permissions",
+    "Workspace 隔离",
+    "Sub-account",
+    "IAM",
+    "团队成员角色",
+    "Operator 角色权限"
+   ],
+   "rationale": "多角色多坐席团队协作必备。RBAC + 工作空间隔离。"
+  },
+  "审计日志 (Audit Logs)": {
+   "aliases": [
+    "审计日志",
+    "Audit Logs",
+    "操作日志",
+    "Audit Trail",
+    "Compliance Logs",
+    "API 调用记录"
+   ],
+   "rationale": "SOC2/HIPAA/ISO27001 等合规审计必需。"
+  },
+  "批量群发与营销活动 (Broadcast & Campaigns)": {
+   "aliases": [
+    "Broadcast",
+    "Broadcasts",
+    "Broadcast Messages",
+    "Bulk Messaging",
+    "营销活动",
+    "群发",
+    "广播"
+   ],
+   "substr": [
+    "broadcast",
+    "bulk messaging",
+    "bulk sends",
+    "campaign",
+    "群发",
+    "广播",
+    "营销活动"
+   ],
+   "rationale": "向批量客户/受众发送营销消息 —— 广播/群发/营销活动是同一能力的不同叫法。"
+  },
+  "消息模板 (Message Templates)": {
+   "aliases": [
+    "Message Templates",
+    "Template Messages",
+    "模板消息",
+    "消息模板"
+   ],
+   "substr": [
+    "message template",
+    "template message",
+    "模板消息",
+    "消息模板"
+   ],
+   "rationale": "预审批的消息模板(如 WhatsApp Template Message)批量触达。"
+  },
+  "联系人管理 (Contact Management)": {
+   "aliases": [
+    "Contact Management",
+    "Contacts",
+    "联系人管理",
+    "客户管理"
+   ],
+   "substr": [
+    "contact management",
+    "contacts and contact",
+    "联系人管理",
+    "客户管理"
+   ],
+   "rationale": "联系人/客户资料的增删改查与分组管理。"
+  },
+  "客户分群 (Segmentation)": {
+   "aliases": [
+    "Segmentation",
+    "Customer Segmentation",
+    "Audience Segmentation",
+    "客户分群"
+   ],
+   "substr": [
+    "segmentation",
+    "客户分群",
+    "受众分群"
+   ],
+   "rationale": "按标签/行为把联系人切分为受众群,定向触达。"
+  },
+  "AI 对话机器人 (AI Chatbot)": {
+   "aliases": [
+    "AI Chatbot",
+    "AI Chatbots",
+    "AI Bot",
+    "AI Bots",
+    "聊天机器人"
+   ],
+   "substr": [
+    "chatbot",
+    "chat bot",
+    "ai-powered bot",
+    "ai bot",
+    "聊天机器人"
+   ],
+   "rationale": "AI 机器人自动应答/筛选线索/处理常见问题。"
+  },
+  "自动化工作流 (Automation Workflow)": {
+   "aliases": [
+    "Automation Workflow",
+    "Marketing Automation",
+    "Customer Journeys",
+    "自动化工作流",
+    "客户旅程"
+   ],
+   "substr": [
+    "automation",
+    "automated customer journey",
+    "customer journey",
+    "journey builder",
+    "workflow",
+    "自动化",
+    "工作流"
+   ],
+   "rationale": "触发器+动作的自动化流程(营销自动化/客户旅程/工作流同源)。"
+  },
+  "数据分析 (Analytics)": {
+   "aliases": [
+    "Analytics",
+    "Conversation Analytics",
+    "Data Insights",
+    "数据分析",
+    "数据洞察"
+   ],
+   "substr": [
+    "analytics",
+    "insights",
+    "数据分析",
+    "数据洞察"
+   ],
+   "rationale": "对话/营销/转化数据的报表与洞察。"
+  },
+  "IDE 插件 (IDE Plugin)": {
+   "aliases": [
+    "IDE Plugin",
+    "IDE Integration",
+    "VS Code Extension",
+    "IDE 插件"
+   ],
+   "substr": [
+    "vs code",
+    "vscode",
+    "ide plugin",
+    "ide integration",
+    "jetbrains",
+    "visual studio",
+    "cursor"
+   ],
+   "rationale": "在 IDE/编辑器里直接使用(VS Code/Cursor/JetBrains 集成)。"
+  },
+  "AI 代码审查 (AI Code Review)": {
+   "aliases": [
+    "AI Code Review",
+    "Automated Code Review",
+    "Automated AI Review",
+    "AI 代码审查",
+    "自动代码审查"
+   ],
+   "substr": [
+    "ai code review",
+    "automated code review",
+    "code review",
+    "ai review",
+    "代码审查"
+   ],
+   "rationale": "AI 自动审查代码变更(PR diff)并给结论 —— 该品类各家的核心能力。"
+  },
+  "安全扫描 (Security Scanning)": {
+   "aliases": [
+    "Security Scanning",
+    "Vulnerability Scan",
+    "SAST",
+    "安全扫描",
+    "漏洞扫描"
+   ],
+   "substr": [
+    "security scan",
+    "vulnerab*",
+    "sast",
+    "secrets",
+    "安全扫描",
+    "漏洞扫描"
+   ],
+   "rationale": "代码安全扫描(漏洞/密钥泄漏/SAST/依赖风险)。"
+  },
+  "代码托管与项目集成 (Git Hosting Integration)": {
+   "aliases": [
+    "GitHub Integration",
+    "GitLab Integration",
+    "代码托管集成"
+   ],
+   "substr": [
+    "github",
+    "gitlab",
+    "bitbucket",
+    "jira",
+    "linear",
+    "代码托管集成"
+   ],
+   "rationale": "对接代码托管/issue 跟踪平台(GitHub/GitLab/Jira/Linear)。"
+  },
+  "私有化部署 (Self-Hosting & On-Premise)": {
+   "aliases": [
+    "Self-Hosting",
+    "Self-Hosted",
+    "On-Premise",
+    "Air-gapped",
+    "私有化部署"
+   ],
+   "substr": [
+    "self-host",
+    "self host",
+    "on-premise",
+    "on-prem",
+    "air-gapped",
+    "air gapped",
+    "single-tenant",
+    "私有化部署"
+   ],
+   "rationale": "自营部署(云内/本地/隔离网),数据不出企业边界。"
+  }
+ }
+}

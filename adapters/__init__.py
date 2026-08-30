@@ -538,6 +538,12 @@ def truncate_md(
     【中段】—— 头(40K)尾(10K)截断后 5 价全丢:合并视图无价、证据库
     无价、jina 引擎级截断无价 → 交叉验证随机失败。带 keep_rx 时匹配
     ±context 字符窗口强制保留,预算按窗口数均分,超量窗口诚实标注丢弃。
+
+    头窗自适应(2026-08-30 复盘):固定 2K 头窗在「价格少而聚簇」的
+    长定价页上浪费窗口预算 —— 2 价 111K 页输出仅 32K(比无 keep_rx 的
+    50K 还少 18K),套餐功能矩阵/FAQ 等非价格上下文被砍,Step 3 可读
+    素材骤减。改为:窗口实际用掉的预算之外,剩余回流给头窗(上限为
+    无 keep_rx 路径的头量),与头窗重叠的窗口段裁掉不重复占预算。
     """
     if not md or len(md) <= max_chars:
         return md
@@ -545,7 +551,7 @@ def truncate_md(
         head = max_chars - tail_chars
         return md[:head] + "\n\n[... 中间内容已截断 ...]\n\n" + md[-tail_chars:]
 
-    # ── 保窗截断:头 stub + 关键窗口(重叠合并) + 尾 ──
+    # ── 保窗截断:自适应头 + 关键窗口(重叠合并) + 尾 ──
     matches = list(keep_rx.finditer(md))
     if not matches:
         head = max_chars - tail_chars
@@ -571,7 +577,26 @@ def truncate_md(
             spans.append((s, e))
         kept += 1
 
-    parts = [md[:head_stub], "\n\n[... 截断:以下为关键内容保窗 ...]\n\n"]
+    # 头窗自适应:窗口没花掉的预算回流给头(留 128/窗口的分隔符余量)。
+    # 头放大又会吞掉与其重叠的窗口(内容已在头里,裁掉不重复占预算),
+    # 裁掉的预算可再回流 —— 迭代到稳定(头单调增、窗口单调缩,数轮收敛)。
+    head_actual = head_stub
+    for _ in range(4):
+        spans_eff = [(max(s, head_actual), e) for s, e in spans if e > head_actual]
+        used_eff = sum(e - s for s, e in spans_eff)
+        head_next = max(
+            head_stub,
+            min(
+                max_chars - tail_chars - used_eff - 128 * max(len(spans_eff), 1),
+                max_chars - tail_chars,
+            ),
+        )
+        if head_next <= head_actual:
+            break
+        head_actual = head_next
+    spans = [(max(s, head_actual), e) for s, e in spans if e > head_actual]
+
+    parts = [md[:head_actual], "\n\n[... 截断:以下为关键内容保窗 ...]\n\n"]
     prev_end = None
     for s, e in spans:
         if prev_end is not None:

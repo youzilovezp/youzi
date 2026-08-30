@@ -219,12 +219,14 @@ def _websearch_resolve(name: str) -> Optional[Dict]:
             host = urlparse(url).netloc.lower().replace("www.", "")
             if not host or not url.startswith("http"):
                 continue
-            # 采纳条件:可注册域标签(或子域)含产品名 token —— 防搜索
-            # 结果张冠李戴;再排除评测站/媒体/应用市场域
+            # 采纳条件:产品名 token 是可注册域标签(或子域)的完整分段 ——
+            # 子串匹配会让 "hub" 采纳 hubspot.com/"zone" 采纳 timezone.io,
+            # 整个竞品的证据从此来自错误站点。分段精确匹配(2026-08-30 修复)。
             reg = ".".join(host.split(".")[-2:]) if "." in host else host
             label = reg.split(".")[0]
             sub = host.split(".")[0] if "." in host else ""
-            if token not in (label + " " + sub).lower():
+            segs = re.split(r"[^a-z0-9]+", (label + " " + sub).lower())
+            if token not in segs:
                 continue
             if any(
                 x in host

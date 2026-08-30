@@ -301,3 +301,121 @@ def test_g7_fires_on_strength_anchored_at_root():
     assert any("strengths" in v["field"] for v in rep.violations), (
         "功能语义锚域名根必须 hard"
     )
+
+
+# ═══════════ G8 结构契约(第 17 轮):两类真实事故的渲染前拦截 ═══════════
+
+
+def _g8_rep(analysis):
+    rep = Report()
+    gates.g8_structure_contract(analysis, {"fetched": {}}, {}, rep)
+    return rep
+
+
+def test_g8_fires_on_invalid_billing_period():
+    """事故实录:billing_period="一次性" → 档位从定价卡消失。"""
+    a = {
+        "competitors": [
+            {
+                "name": "X",
+                "url": "https://x.io",
+                "pricing_tiers": [
+                    {"name": "入门", "price": "₹999", "billing_period": "一次性"}
+                ],
+            }
+        ],
+        "opportunities": [],
+        "gaps": [],
+    }
+    rep = _g8_rep(a)
+    assert any(v["gate"] == "G8" and "非法周期" in v["detail"] for v in rep.violations)
+
+
+def test_g8_fires_on_string_instead_of_list():
+    """事故实录:target_users 传字符串 → 模板逐字符渲染成碎片。"""
+    a = {
+        "competitors": [],
+        "opportunities": [
+            {
+                "title": "T",
+                "target_users": "跨境电商卖家",
+                "differentiation": "d",
+                "validation": "v",
+                "disrupt_score": 8,
+            }
+        ],
+        "gaps": [],
+    }
+    rep = _g8_rep(a)
+    fields = [v["field"] for v in rep.violations]
+    assert any("target_users" in f for f in fields), "字符串当数组必须 hard"
+    assert any("differentiation" in f for f in fields), "单数键必须 hard"
+    assert any("validation" in f for f in fields)
+
+
+def test_g8_warns_on_legacy_gaps_and_low_unified_coverage():
+    a = {
+        "competitors": [
+            {
+                "name": "X",
+                "url": "https://x.io",
+                "feature_catalog": {
+                    "X": [
+                        {"name": "自造功能甲", "category": "c", "source": ""},
+                        {"name": "自造功能乙", "category": "c", "source": ""},
+                    ]
+                },
+            }
+        ],
+        "opportunities": [],
+        "gaps": [{"title": "t", "detail": "d"}],
+        "comparison_matrix": {},
+        "feature_overlap": {},
+    }
+    rep = _g8_rep(a)
+    warns = [w["detail"] for w in rep.warnings]
+    assert any("旧形态" in w for w in warns)
+    assert any("统一功能名覆盖率" in w for w in warns)
+
+
+def test_g8_passes_on_contract_compliant():
+    a = {
+        "competitors": [
+            {
+                "name": "X",
+                "url": "https://x.io",
+                "pricing_tiers": [
+                    {"name": "Free", "price": "$0", "billing_period": "—"},
+                    {"name": "Pro", "price": "$39", "billing_period": "/mo"},
+                    {"name": "Pro", "price": "$468", "billing_period": "/yr"},
+                ],
+                "feature_catalog": {
+                    "X": [
+                        {
+                            "name": "团队共享收件箱",
+                            "category": "收件箱与协作",
+                            "source": "",
+                        }
+                    ]
+                },
+            }
+        ],
+        "opportunities": [
+            {
+                "title": "T",
+                "pitch": "p",
+                "moat": "m",
+                "evidence_urls": ["https://x.io"],
+                "target_users": ["a"],
+                "differentiators": ["d"],
+                "validation": ["v"],
+                "disrupt_score": 8,
+            }
+        ],
+        "gaps": [{"gap": "g", "evidence": "e", "severity": "high"}],
+        "comparison_matrix": {"X": {}},
+        "feature_overlap": {"f": ["X"]},
+    }
+    rep = _g8_rep(a)
+    assert not rep.violations, rep.violations
+    assert not rep.warnings, rep.warnings

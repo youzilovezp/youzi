@@ -37,15 +37,18 @@ def _screenshot_to_b64(screenshot_url: str) -> str:
     return ""
 
 
-def _truncate(markdown: str, max_chars: int) -> str:
+def _truncate(markdown: str, max_chars: int, keep_rx=None) -> str:
     """头尾截断(2026-08-30 修复):原先纯头部截断,50K+ 页面的页尾套餐表
     /FAQ 全丢 —— 与 adapters.truncate_md 修复的同类事故,firecrawl 未同步。
+    keep_rx(同日补齐):定价页中段价格保窗 —— dispatch 按签名探测下发,
+    此前 firecrawl 不收该参数被静默跳过,engines.json 里中段价格仍会丢,
+    与 jina/trafilatura 的证据口径不一致(G2 引文回查随机失败)。
     """
-    return truncate_md(markdown, max_chars)
+    return truncate_md(markdown, max_chars, keep_rx=keep_rx)
 
 
 def _scrape_cli(
-    url: str, max_chars: int, screenshot: bool, timeout: float
+    url: str, max_chars: int, screenshot: bool, timeout: float, keep_rx=None
 ) -> Optional[dict]:
     """尝试 firecrawl CLI 通道。成功返回结果 dict;任何失败返回 None,
     由调用方 fall through 到 REST 通道(C5 修复:原实现 CLI 非零退出
@@ -103,14 +106,16 @@ def _scrape_cli(
 
     return {
         "success": True,
-        "markdown": _truncate(markdown, max_chars),
+        "markdown": _truncate(markdown, max_chars, keep_rx=keep_rx),
         "html": "",
         "screenshot": screenshot_b64,
         "error": None,
     }
 
 
-def _scrape_rest(url: str, max_chars: int, screenshot: bool, timeout: float) -> dict:
+def _scrape_rest(
+    url: str, max_chars: int, screenshot: bool, timeout: float, keep_rx=None
+) -> dict:
     """REST API 通道（需 FIRECRAWL_API_KEY）。"""
     api_key = os.environ.get("FIRECRAWL_API_KEY")
     if not api_key:
@@ -149,7 +154,7 @@ def _scrape_rest(url: str, max_chars: int, screenshot: bool, timeout: float) -> 
 
     return {
         "success": True,
-        "markdown": _truncate(markdown, max_chars),
+        "markdown": _truncate(markdown, max_chars, keep_rx=keep_rx),
         "html": "",
         "screenshot": screenshot_b64,
         "error": None,
@@ -161,6 +166,7 @@ def scrape(
     max_chars: int = 50000,
     screenshot: bool = False,
     timeout: float = 120.0,
+    keep_rx=None,
 ) -> dict:
     """用 firecrawl 抓取 URL。
 
@@ -185,10 +191,10 @@ def scrape(
         }
     """
     try:
-        result = _scrape_cli(url, max_chars, screenshot, timeout)
+        result = _scrape_cli(url, max_chars, screenshot, timeout, keep_rx=keep_rx)
         if result is not None:
             return result
-        return _scrape_rest(url, max_chars, screenshot, timeout)
+        return _scrape_rest(url, max_chars, screenshot, timeout, keep_rx=keep_rx)
     except Exception as e:
         return {
             "success": False,

@@ -125,7 +125,10 @@ def _price_tokens_per_engine(
     home_as_pricing)时只统计这些页 —— docs/blog 页的 shell 示例($1/$2/
     RS 485)会虚增 engines_with_price,把定价页 0 token 的真实 gap 掩盖
     成 partial。一个定价页都没有时退回全页统计(定价藏在 docs 的竞品
-    —— 如按量计费文档 —— 仍可被发现)。"""
+    —— 如按量计费文档 —— 仍可被发现)。
+    2026-08-30 修复:pricing_urls 按本竞品域名过滤 —— 台账是全竞品共享的,
+    A 家有 /pricing 不该约束 B 家(docs 定价)的统计口径,否则 B 永远
+    不触发全页回退,被误判 gap 烧补爬预算。"""
     domain = urlparse(comp.get("url") or "").netloc.replace("www.", "")
     pricing_urls = set()
     if manifest:
@@ -133,8 +136,12 @@ def _price_tokens_per_engine(
             kinds = set(
                 ent.get("kinds") or ([ent.get("kind")] if ent.get("kind") else [])
             )
-            if "pricing" in kinds:
-                pricing_urls.add(url)
+            if "pricing" not in kinds:
+                continue
+            u = urlparse(url)
+            if domain and domain not in u.netloc.replace("www.", ""):
+                continue  # 他域定价页不约束本竞品的统计
+            pricing_urls.add(url)
     counts: Dict[str, int] = {}
     for url, engines in raw_index.items():
         u = urlparse(url)
@@ -317,25 +324,86 @@ FIELD_MIN = {
     "weaknesses": 1,
     "differentiators": 1,
     "tech_signals": 1,
+    # 2026-08-30 第 20 轮补:用户三次「报告信息不全」反馈的字段全部漏检
+    # —— 完整性靠用户肉眼发现而非工具检查。以下为渲染板块的硬缺口:
+    "feature_catalog": 4,  # §4.2.1 矩阵该家整列空
+    "feature_conclusion_points": 1,  # §2.4 功能结论该家整块消失
 }
+
+
+def _common_feature_gaps(comps: list, ratio: float = 0.75) -> Dict[str, list]:
+    """标配能力疑点:≥ratio 厂商入册而个别家缺失 → {竞品: [缺失能力]}。
+
+    名字归一:先 exact 命中 feature-aliases.json 的 canonical/别名
+    (与 render 矩阵同一单一事实源),未命中保留原名 —— 精度优先,
+    宁可少报不误报(把独家能力错报成标配会诱导硬凑)。
+    """
+    import json as _json
+
+    p = Path(__file__).resolve().parent / "references" / "feature-aliases.json"
+    exact: dict = {}
+    try:
+        for canon, info in (
+            _json.loads(p.read_text(encoding="utf-8")).get("aliases") or {}
+        ).items():
+            exact[canon.strip().lower()] = canon
+            for al in info.get("aliases") or []:
+                exact[al.strip().lower()] = canon
+    except Exception:
+        pass
+
+    def _canon(n: str) -> str:
+        return exact.get((n or "").strip().lower(), n)
+
+    coverage: Dict[str, set] = {}
+    for c in comps:
+        cname = c.get("name", "?")
+        for f in (c.get("feature_catalog") or {}).get(cname, []) or []:
+            n = _canon(f.get("name", "") if isinstance(f, dict) else "")
+            if n:
+                coverage.setdefault(n, set()).add(cname)
+    n_comp = len(comps)
+    if n_comp < 3:
+        return {}
+    out: Dict[str, list] = {}
+    for feat, vendors in coverage.items():
+        if len(vendors) / n_comp < ratio:
+            continue
+        for c in comps:
+            cn = c.get("name", "?")
+            if cn not in vendors:
+                out.setdefault(cn, []).append(feat)
+    return out
 
 
 def audit_field_completeness(comp: dict) -> dict:
     """字段完整度(需要 --analysis;Step 5 用)。"""
     missing, actions = [], []
     for field, minimum in FIELD_MIN.items():
-        n = len(comp.get(field) or [])
+        v = comp.get(field)
+        if field == "feature_catalog":
+            # dict-of-lists:{竞品名: [条目]} —— 计条目数而非键数
+            n = sum(len(feats or []) for feats in (v or {}).values())
+        else:
+            n = len(v or [])
         if n < minimum:
             missing.append(f"{field} {n}/{minimum}")
             actions.append(
                 f"{field} 不足 {minimum} 条 → 回 02-raw 补证据;无证据则如实留空"
             )
-    for f in ("tagline", "pricing"):
+    for f in ("tagline", "pricing", "feature_best_for"):
+        # feature_best_for(第 20 轮补):竞品卡「最适合」标签,缺失即板块降级
         if not (comp.get(f) or "").strip():
             missing.append(f)
     if not (comp.get("user_feedback") or []):
         actions.append(
             "user_feedback 空 → 官网 testimonials 没抓到时用 G2/Reddit/应用市场评论兜底"
+        )
+    if not (comp.get("product_momentum") or []):
+        # §6 时间线为跨竞品聚合板块,单家缺失不 hard,给补采动作
+        actions.append(
+            "product_momentum 空 → 公开 changelog/roadmap(canny 类)或带日期博文,"
+            "title 须逐字可 grep"
         )
     return {
         "status": "ok" if not missing else "partial",
@@ -554,6 +622,21 @@ def run_audit(manifest: dict, raw_dir: Path, analysis: Optional[dict]) -> dict:
             audits[name]["price_votes"] = audit_price_votes(comp, raw_index)
             audits[name]["quote_accuracy"] = audit_quote_accuracy(comp, raw_index)
 
+    # 标配能力疑点(2026-08-31 第 25 轮,用户「权限管理应家家有」巡检思路的
+    # 工具化):某能力 ≥75% 厂商入册而个别家缺失 → 大概率是 Step 3 漏扫
+    # 而非真没有,给复核动作(非硬门禁 —— 无证据时留空,绝不硬凑)。
+    if analysis:
+        for name, gaps in _common_feature_gaps(comps).items():
+            audits[name]["common_feature_gaps"] = {
+                "status": "ok" if not gaps else "partial",
+                "missing_common": gaps,
+                "next_actions": [
+                    f"标配疑点『{g}』多数厂商已入册 → 回 02-raw 按同义关键词"
+                    "复核该能力;确无证据则留空(勿硬凑)"
+                    for g in gaps
+                ],
+            }
+
     # 汇总
     next_actions: List[dict] = []
     unresolved_gaps = []
@@ -599,11 +682,16 @@ def _print_report(result: dict):
         pr = a.get("pricing_depth") or {}
         extra = ""
         if pr:
-            extra = (
-                f" [月付:{'Y' if pr.get('monthly') else 'N'}"
-                f" 年付:{'Y' if pr.get('annual') else 'N'}"
-                f" priced:{pr.get('priced_tiers')}]"
-            )
+            # 月/年配对与 priced_tiers 是 Step 5(带 --analysis)的派生指标;
+            # Step 2.5 模式下恒 N/0,显示占位说明防误读(2026-08-30)
+            if not result.get("has_analysis"):
+                extra = " [tier 结构:待 Step 3 提取]"
+            else:
+                extra = (
+                    f" [月付:{'Y' if pr.get('monthly') else 'N'}"
+                    f" 年付:{'Y' if pr.get('annual') else 'N'}"
+                    f" priced:{pr.get('priced_tiers')}]"
+                )
         print(f"  {name:12s} {extra}")
         print(f"               {' · '.join(bits)}")
         for dim, res in a.items():
