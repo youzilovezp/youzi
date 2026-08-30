@@ -227,7 +227,7 @@ def _derive_inspiration_points(competitors):
             "API-first + 开发者文档中心,让技术买家成为内部推动者",
         ),
         # ── 产品实践型(2026-08-30 补:此前只有 GTM 型 hints,产品功能型
-        # strengths 全被过滤 → §2.2 整节空转"缺失信息"。功能优势同样有
+        # strengths 全被过滤 → §6.2 整节空转"缺失信息"。功能优势同样有
         # 「可借鉴的 做法」,不只认证/融资/渠道才算实践) ──
         (
             r"llms\.txt|openapi|机器可读|api.*文档|sdk",
@@ -266,10 +266,10 @@ def _derive_inspiration_points(competitors):
             point = s.get("point", "")
             if not point:
                 continue
-            # 硬性溯源需求(2026-08-30):§2.2 每一处必须可溯源 ——
+            # 硬性溯源需求(2026-08-30):§6.2 每一处必须可溯源 ——
             # 无来源锚点的条目不渲染(比"标注未锚定"更强:拿不出
             # 证据就不进报告)。Meetbot 类只有根域/定价页可锚的
-            # 竞品,§2.2 如实空置并显示待收集提示。
+            # 竞品,§6.2 如实空置并显示待收集提示。
             # _ref = normalize 已注册;source = 直调场景未注册但已锚定
             if not (s.get("_ref") or s.get("source")):
                 continue
@@ -306,7 +306,7 @@ def _derive_opportunity_points(competitors):
             point = w.get("point", "")
             if not point:
                 continue
-            # 硬性溯源:与 §2.2 同规 —— 无锚点(且非矩阵推导补位)不渲染
+            # 硬性溯源:与 §6.2 同规 —— 无锚点(且非矩阵推导补位)不渲染
             if not (w.get("_ref") or w.get("source")):
                 continue
             angle = _classify_angle(point)
@@ -433,7 +433,7 @@ def _derive_opportunity_points(competitors):
 
 
 def _build_feature_conclusions(competitors):
-    """§2.4 各家功能结论:从 feature_catalog 推导每家功能画像。
+    """§6.4 各家功能结论:从 feature_catalog 推导每家功能画像。
 
     三要素全部数据驱动(不做厂商能力判定,只描述公开材料):
       - 覆盖度:该家具备多少「行业常见能力」(≥60% 家 catalog 命中)
@@ -531,7 +531,7 @@ def _group_inspiration_by_competitor(inspiration_points, competitors):
     """按竞品重排 inspiration_points。
 
     输出: {comp_name: [{angle, good, evidence, inspiration, _ref}, ...]}
-    —— 让 §2.4 可以按厂商查阅,不混在角度分类里。
+    —— 让 §6.4 可以按厂商查阅,不混在角度分类里。
     """
     result: dict = {c["name"]: [] for c in competitors}
     for angle, items in inspiration_points.items():
@@ -570,7 +570,7 @@ def _group_opportunity_by_competitor(opportunity_points, competitors):
     return result
 
 
-# 功能名中英对照词表(5.2.1/5.2.2 行名双语化)—— 翻译是本地化,不是
+# 功能名中英对照词表(4.2.1/4.2.2 行名双语化)—— 翻译是本地化,不是
 # 事实断言;只对词表命中的英文功能名追加中文,未命中保持原文(不硬译)。
 _FEATURE_ZH = [
     ("team inbox", "团队收件箱"),
@@ -779,7 +779,7 @@ def _derive_user_positioning(c):
         # 历史缺陷:这里曾硬编码 region="全球" —— 数据里没有就如实写未采集,不猜
         "region": c.get("region") or "未采集",
         # scale 由 stage 推断;stage 缺失("—"/空)时不再兜底"中大型企业"
-        # (真实事故:三家全是占位 stage,§3.2 规模列全是"中大型企业" = 伪事实)
+        # (真实事故:三家全是占位 stage,§2.2 规模列全是"中大型企业" = 伪事实)
         "scale": (
             "中小企业"
             if stage in ("早期", "成长期")
@@ -788,7 +788,7 @@ def _derive_user_positioning(c):
             else "—"
         ),
         "key_market": stage if stage and stage != "—" else "—",
-        "founded": founded,  # 加 founded 字段,§3.2 显示
+        "founded": founded,  # 加 founded 字段,§2.2 显示
     }
 
 
@@ -1306,7 +1306,7 @@ def _group_competitors_by_stage(competitors):
 
 
 # ─────────────────────────────────────────────────────────
-# Canonical 功能集(行业标准) — 用于 § 5.2.1/5.2.2 权威矩阵
+# Canonical 功能集(行业标准) — 用于 § 4.2.1/4.2.2 权威矩阵
 #
 # 区别于 _DEFAULT_FEATURE_ALIASES(把同义功能合并),
 # canonical 是「这家赛道应该具备的能力清单」,每行代表一个标准能力,
@@ -2739,7 +2739,7 @@ def _fuzzy_single_ok(inter) -> bool:
 
 
 def _build_feature_comparison_matrix(competitors, feature_aliases=None):
-    """构造 § 5.2 的厂商对比矩阵。
+    """构造 § 4.2 的厂商对比矩阵。
 
     Args:
         competitors: 竞品列表(每个含 feature_catalog)
@@ -2932,7 +2932,7 @@ def _build_feature_comparison_matrix(competitors, feature_aliases=None):
 
 
 def _build_canonical_matrix(competitors, canonical_features):
-    """构造 § 5.2.1/5.2.2 的「权威」功能对比矩阵。
+    """构造 § 4.2.1/4.2.2 的「权威」功能对比矩阵。
 
     与 _build_feature_comparison_matrix 的关键区别:
       - **行 = canonical 功能(行业标准)**(不是厂商原始功能)
@@ -3375,7 +3375,7 @@ def _find_unique_features(competitors, feature_aliases=None):
 
 
 def _derive_data_growth(competitors):
-    """§6 数据增长:真实迭代信号优先,占位 momentum 分不产出伪结论。
+    """§5 数据增长:真实迭代信号优先,占位 momentum 分不产出伪结论。
 
     数据源优先级:
       1. c.product_momentum(博客/更新页带日期的功能发布行,爬虫层
@@ -3531,7 +3531,7 @@ def _render_sources_html(sources_by_kind):
 
 
 def _render_canonical_section_html(canonical_matrix, source_index=None):
-    """预渲染 § 5.2.1/5.2.2 (基于 canonical 功能集) 的 HTML。
+    """预渲染 § 4.2.1/4.2.2 (基于 canonical 功能集) 的 HTML。
 
     关键设计:
       - **每行都有中文释义** + 行业意义说明 —— 用户一眼看懂这是什么
@@ -3599,9 +3599,9 @@ def _render_canonical_section_html(canonical_matrix, source_index=None):
         "</div>"
     )
 
-    # ───── § 5.2.1 厂商功能对比矩阵 ─────
+    # ───── § 4.2.1 厂商功能对比矩阵 ─────
     out.append(
-        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵 · 基于行业标准</h4>'
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 4.2.1 厂商功能对比矩阵 · 基于行业标准</h4>'
         '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.7;">'
         f"<strong>行 = {canonical_total} 个行业标准功能</strong>({len(cats)} 个类别);"
         f"<strong>列 = {n_vendors} 家竞品</strong>。"
@@ -3810,7 +3810,7 @@ def _render_canonical_section_html(canonical_matrix, source_index=None):
             importance = f.get("importance", "")
             importance_badge = ""
             if importance:
-                # P0/P1/P2 → 明文(与 5.2.1 矩阵同一翻译规则)
+                # P0/P1/P2 → 明文(与 4.2.1 矩阵同一翻译规则)
                 imp_label = (
                     importance.replace("P0", "核心能力", 1)
                     .replace("P1", "重要能力", 1)
@@ -3930,9 +3930,9 @@ def _render_section5_2_html(matrix, unique_features):
     )
     out.append("</div>")
 
-    # 主对比矩阵 — 5.2.1 标题列窄(180px)、功能列详细、通俗解释
+    # 主对比矩阵 — 4.2.1 标题列窄(180px)、功能列详细、通俗解释
     out.append(
-        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 5.2.1 厂商功能对比矩阵</h4>'
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">📊 4.2.1 厂商功能对比矩阵</h4>'
         '<p style="color: var(--fg-mute); font-size: 0.85rem; margin: 0 0 1rem; line-height: 1.7;">'
         "<strong>行 = 功能</strong>(共 "
         f"{sum(c['total_features'] for c in cats)}"
@@ -4116,7 +4116,7 @@ def _render_section5_2_html(matrix, unique_features):
 
 
 def _render_unique_features_panel(unique_features):
-    """§ 5.2.3 各家独家功能面板 —— canonical 模式与 fallback 模式共用。
+    """§ 4.2.3 各家独家功能面板 —— canonical 模式与 fallback 模式共用。
 
     Args:
         unique_features: dict, {vendor_name: [unique_feature, ...]}
@@ -4126,7 +4126,7 @@ def _render_unique_features_panel(unique_features):
     """
     out = []
     out.append(
-        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 5.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点(每条带 owner + [N] 内部证据 + ↗ 原文 + 通俗讲解)</span></h4>'
+        '<h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--accent); margin: 1.5rem 0 0.5rem;">⭐ 4.2.3 各家独家功能 <span style="font-size:0.7rem; color:var(--fg-mute); font-weight:400; margin-left:0.5rem;">其他家都没有的独家卖点(每条带 owner + [N] 内部证据 + ↗ 原文 + 通俗讲解)</span></h4>'
         '<p style="font-size:0.78rem; color:var(--fg-mute); margin-bottom:1rem; line-height:1.6;">'
         '每条独家功能都标记 <code>owner</code> 厂商 + <span class="ref">N</span> 内部证据编号 + ↗ 原文 URL。</p>'
     )
@@ -4763,7 +4763,7 @@ def normalize(data: dict) -> dict:
     # ===== 派生：飞书模板所需字段 =====
     data["inspiration_points"] = _derive_inspiration_points(data["competitors"])
     data["opportunity_points"] = _derive_opportunity_points(data["competitors"])
-    # §2.4 各家功能结论(数据驱动:覆盖度/独家/未提及)
+    # §6.4 各家功能结论(数据驱动:覆盖度/独家/未提及)
     data["feature_conclusions"] = _build_feature_conclusions(data["competitors"])
     # 同时按竞品分组,供 §2.4 / §2.5 按厂商查阅
     data["inspiration_by_competitor"] = _group_inspiration_by_competitor(
@@ -4868,7 +4868,7 @@ def normalize(data: dict) -> dict:
                         source_index_for_render[src] = _add_source(
                             src, "feature", f"{cn} · 矩阵判定依据", cn
                         )
-        # 仍跑一遍旧逻辑以保留 5.2.3 独家功能面板的兼容性
+        # 仍跑一遍旧逻辑以保留 4.2.3 独家功能面板的兼容性
         data["feature_comparison_matrix"] = _build_feature_comparison_matrix(
             data["competitors"], aliases
         )
@@ -5324,14 +5324,14 @@ def normalize(data: dict) -> dict:
     # TOC 列表（按章节顺序，与 templates/report.html 的 section ID 对齐）
     data["toc_items"] = [
         {"id": "background", "title": "背景与目标"},
-        {"id": "conclusion", "title": "结论与建议"},
         {"id": "positioning", "title": "产品定位分析"},
         {"id": "business", "title": "商业策略分析"},
         {"id": "product-design", "title": "产品设计分析"},
         {"id": "data-growth", "title": "产品数据分析"},
+        {"id": "conclusion", "title": "结论与建议"},
         {"id": "user-feedback", "title": "用户反馈分析"},
         {"id": "other-competitors", "title": "其他竞品资料库"},
-        {"id": "sources", "title": "来源与参考资料"},
+        # sources 由模板固定追加(带计数徽章),不重复列
     ]
 
     return data
@@ -5410,7 +5410,17 @@ def self_check(data, html_str):
             == len(data.get("sources") or []),
         ),
         (
-            "§5.2.1 功能矩阵非空(行 ≥ 1)",
+            "目录(toc)顺序与正文章节一致",
+            (
+                lambda toc_ids, html_ids: [i for i in toc_ids if i in html_ids]
+                == [i for i in html_ids if i in toc_ids]
+            )(
+                [t.get("id") for t in data.get("toc_items") or []],
+                [m.group(1) for m in re.finditer(r'<section id="([a-z-]+)"', html_str)],
+            ),
+        ),
+        (
+            "§4.2.1 功能矩阵非空(行 ≥ 1)",
             sum(
                 len(cat.get("features", []))
                 for cat in (data.get("feature_comparison_matrix") or {}).get(
@@ -5424,7 +5434,7 @@ def self_check(data, html_str):
             "{&#39;" not in html_str and "['" not in html_str and "{'" not in html_str,
         ),
         (
-            "§2.2 启发点全部可溯源(硬性需求:无未锚定条目)",
+            "§6.2 启发点全部可溯源(硬性需求:无未锚定条目)",
             all(
                 it.get("_ref")
                 for group in (data.get("inspiration_by_competitor") or {}).values()
@@ -5432,7 +5442,7 @@ def self_check(data, html_str):
             ),
         ),
         (
-            "§2.4 功能结论逐句可溯源(硬性需求:_ref 或显式矩阵推导标记)",
+            "§6.4 功能结论逐句可溯源(硬性需求:_ref 或显式矩阵推导标记)",
             all(
                 cp.get("_ref") or cp.get("matrix_derived")
                 for fc in data.get("feature_conclusions") or []
@@ -5462,7 +5472,7 @@ def self_check(data, html_str):
     )
     if matrix_rows == 0:
         print(
-            "  ⚠ §5.2.1 功能矩阵 0 行 —— feature_catalog 与 core_features 均为空,"
+            "  ⚠ §4.2.1 功能矩阵 0 行 —— feature_catalog 与 core_features 均为空,"
             "补 feature_catalog[{竞品名}] = [{name, category, source}](见 references/analysis-framework.md)"
         )
     if len(data["opportunities"]) < 3:

@@ -99,7 +99,7 @@ def test_core_features_fallback_synthesizes_catalog():
     ]
     rc, out, html = _render(_analysis(comps))
     assert rc == 0, out[-1500:]
-    assert "§5.2.1 功能矩阵非空" in out and "✗" not in out
+    assert "§4.2.1 功能矩阵非空" in out and "✗" not in out
     # 矩阵区应含合成行与分类分组(降级后分类为"其他")
     assert html.count("营销群发") >= 2  # 矩阵行 + 竞品卡片
     assert "团队共享收件箱" in html
@@ -144,5 +144,5 @@ def test_empty_features_hard_fails():
     ]
     rc, out, _ = _render(_analysis(comps))
     assert rc == 2
-    assert "§5.2.1 功能矩阵非空" in out
+    assert "§4.2.1 功能矩阵非空" in out
     assert "feature_catalog 与 core_features 均为空" in out
