@@ -64,11 +64,16 @@ def _comp(name, url, **extra):
 
 
 def _analysis(comps):
-    """满足 self_check 门禁的最小骨架(竞品 ≥ 3 + 至少一条来源)。"""
+    """满足 self_check 门禁的最小骨架(竞品 ≥ 3 + 至少一条来源 + §6.4 判词非空)。"""
     pads = [
         _comp("Pad A", "https://pada.io", pricing_source="https://pada.io/pricing"),
         _comp("Pad B", "https://padb.io", pricing_source="https://padb.io/pricing"),
     ]
+    # 2026-08-31 第 26 轮:§6.4 判词非空门禁 —— 统一注入矩阵推导兜底句
+    for c in list(comps) + pads:
+        c.setdefault(
+            "feature_conclusion_points", [{"text": "兜底。", "matrix_derived": True}]
+        )
     return {
         "topic": "T",
         "competitors": list(comps) + pads,

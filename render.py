@@ -4458,11 +4458,15 @@ def self_check(data, html_str):
             ),
         ),
         (
-            "§6.4 功能结论逐句可溯源(硬性需求:_ref 或显式矩阵推导标记)",
-            all(
-                cp.get("_ref") or cp.get("matrix_derived")
-                for fc in data.get("feature_conclusions") or []
-                for cp in fc.get("conclusion_points") or []
+            "§6.4 功能结论非空 + 逐句可溯源(硬性需求:每家 ≥1 句,_ref 或矩阵推导标记)",
+            bool(data.get("feature_conclusions"))
+            and all(
+                fc.get("conclusion_points")
+                and all(
+                    cp.get("_ref") or cp.get("matrix_derived")
+                    for cp in fc["conclusion_points"]
+                )
+                for fc in data["feature_conclusions"]
             ),
         ),
         (
@@ -4494,6 +4498,19 @@ def self_check(data, html_str):
     if len(data["opportunities"]) < 3:
         print(
             "  ⚠ opportunities < 3 —— 由 LLM Step 3 基于证据生成(见 references/analysis-framework.md),脚本不代劳"
+        )
+    # 2026-08-31 第 26 轮:§6.4 判词空白流出过一次 —— 自检失败时给出
+    # 可直接照抄的修复配方,而不是让使用者反推字段名。
+    _empty_concl = [
+        fc.get("name")
+        for fc in data.get("feature_conclusions") or []
+        if not fc.get("conclusion_points")
+    ]
+    if _empty_concl:
+        print(
+            f"  ⚠ §6.4 判词为空: {', '.join(_empty_concl)} —— 补 "
+            'feature_conclusion_points = [{text, source:"docs/features 子页"} 或 '
+            "{text, matrix_derived:true}](结构见 references/analysis-framework.md)"
         )
     if unresolved > 0:
         print(f"  ⚠ 检测到 {unresolved} 处未解析标签，前 3 行：")

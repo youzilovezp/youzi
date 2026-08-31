@@ -181,7 +181,7 @@ digest 把三类高频坑提前排掉：①改写偏差（引文先经 G2 同款
 2. **quote 必须能在该 source_url 的 02-raw markdown 里逐字找到**（写完后自查一遍 grep）
 3. **证据里没有的内容写「未验证」**，绝不编造、绝不脑补、绝不用训练记忆里的"常识"填充
 4. **定价必须交叉验证**：≥2 个独立引擎看到相同价格 → `pricing_verified: true`；只有 1 个引擎 → `pricing_verified: false`（报告自动显示 ⚠ 未验证徽章）；0 个 → 「未能获取，请核对官网」
-5. strengths / weaknesses / scores / differentiators / tech_signals / gaps / opportunities **全部由你基于证据生成**（脚本不再模板化伪造）—— 每条 strengths/weaknesses 附 `{point, evidence(quote), score, source_url}`；每条 differentiators 附 `{point, quote, source_url}`（dict 结构，与 strengths 同构，G2/G7 会查）
+5. strengths / weaknesses / scores / differentiators / tech_signals / gaps / opportunities **全部由你基于证据生成**（脚本不再模板化伪造）—— 每条 strengths/weaknesses 附 `{point, evidence(quote), score, source_url}`；每条 differentiators 附 `{point, quote, source_url}`（dict 结构，与 strengths 同构，G2/G7 会查）。**evidence 必须是规范包装形态 `官网原文: "<逐字引文>"`**（半角冒号+空格+半角双引号，引文后不放尾注）——G2 的 `_STRENGTH_QUOTE_RX` 与 audit 的回查都按这个形态剥引文，写成「定价页原文：'…'（附注）」会导致 G2 静默跳过、audit 误报 gap；尾注/对比数据写进 point，不写进 evidence
 6. scores 基于证据打分并在报告中可辩护（功能数、集成数、定价结构都是证据）；证据不足的维度给低置信标注
 7. **写 claim**：你从 02-raw 提取/改写的每个字段，同步追加到 `OUT_DIR/claims-manifest.json` 的 `claims` 数组（schema 见 docs/superpowers/specs/2026-08-26-production-quality-loop-design.md §3.1）—— verify.py 会拒收任何没有抓取记录支撑的 source_url 和 grep 不到的 quote
 8. **溯源优先级（G7 强制）**：功能/技术/差异化类字段（core_features / differentiators / tech_signals / feature_catalog）的 source **必须优先锚定 docs/features 具体子页** > about/customers > 首页 > pricing。锚定域名根或 /pricing 路径 → verify 直接 hard fail（唯一豁免：quote 本身是定价陈述，含货币符号+价格数字）。信息只出现在低优先级页面时，优先找更高优先级页面上的对应表述重新锚定；实在抓不到权威锚点的条目**宁可删除也不留低质锚点**
@@ -202,6 +202,7 @@ digest 把三类高频坑提前排掉：①改写偏差（引文先经 G2 同款
 13. `scores` — **6 个维度 1-10 分**（feature_richness / ux / pricing_value / integration / ai_capability / momentum）
 14. `user_feedback` — 客户口碑（`[{quote, source, who}]`，quote=逐字引文；**§7 反馈区第一数据源**，每家 2-4 条，量化数字优先；抓不到 testimonials 时用应用市场评论/Reddit 兜底）
 15. `product_momentum` — 产品迭代信号（`[{title, when, source}]`，**title 必须原文逐字**（G2 回查），when=YYYY-MM-DD 或「未注日期」；公开 changelog/roadmap 优先，如 roadmap.respond.io 类 canny 站点；**§6 产品数据分析的第一数据源**）
+16. `feature_conclusion_points` — **§6.4 各家功能判词，漏写 = 该家判词整块空白（第 26 轮事故）**。结构：`[{text, source}]` 或 `[{text, matrix_derived: true}]`，每家 3-5 句：前几句锚定 docs/features 子页（source 逐条可溯源，G7 同 differentiators 规则），收尾一句用 `matrix_derived: true` 总结该家在 §4.1 矩阵中的覆盖/独家/缺失——矩阵推导句永远可写，**这个字段不存在「如实留空」**。顺手补 `feature_best_for`（一句话「适合谁」）
 
 合并所有竞品后**额外产出**：
 
@@ -249,6 +250,7 @@ python3 <skill-root>/render.py \
 **证据硬门禁（不过 = exit 2，HTML 仍生成但顶部带红色警告横幅）**：
 
 - [ ] `source_count > 0` —— 03-analysis.json 里一个 URL 都没有 = Step 3 没按证据三元组写，**必须重做 Step 3**，不要交付
+- [ ] **§6.4 每家判词非空**（render 硬检查 + audit gap 级）—— `feature_conclusion_points` 空白 = 该家功能结论整块消失（第 26 轮事故）；矩阵推导句可兜底，不存在「留空交付」
 - [ ] 每个竞品 `pricing_verified` 有值（缺失按 `false` 处理 → 报告显示 ⚠ 未验证徽章）
 - [ ] 无 Python repr 泄漏（`['xxx']` / `{'name': ...}` 字面量出现在 HTML = 乱码回归）
 - [ ] 占位符（"待补充"）不得混入启发点/机会点派生板块

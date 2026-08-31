@@ -1,785 +1,806 @@
 {
- "topic": "WhatsApp BSP 赛道(生产验收)",
- "subtitle": "WhatsApp BSP 赛道(生产验收) — 基于 3 家竞品实时爬取的深度分析",
- "date": "2026-08-27",
- "competitors": [
-  {
-   "name": "WATI",
-   "url": "https://www.wati.io",
-   "tagline": "Wati | #1 AI-powered customer engagement platform",
-   "founded": "2020",
-   "founded_quote": "date: \"2023-05-30\"",
-   "stage": "—",
-   "headquarters": "on your interests",
-   "headquarters_quote": "",
-   "team_size": "—",
-   "team_size_quote": "",
-   "funding": "—",
-   "pricing": "Growth · $59 (/mo)",
-   "pricing_verified": true,
-   "pricing_from_cache": true,
-   "pricing_unit": "",
-   "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
-   "pricing_currency": "USD",
-   "pricing_tiers": [
+  "topic": "WhatsApp BSP 赛道(生产验收)",
+  "subtitle": "WhatsApp BSP 赛道(生产验收) — 基于 3 家竞品实时爬取的深度分析",
+  "date": "2026-08-27",
+  "competitors": [
     {
-     "name": "Growth",
-     "price": "$59",
-     "billing_period": "/mo",
-     "features": [],
-     "source_url": "https://www.wati.io/pricing"
-    }
-   ],
-   "pricing_engines": [
-    "playwright",
-    "crawl4ai"
-   ],
-   "pricing_source": "https://www.wati.io/pricing",
-   "pricing_scraped_at": "2026-08-26 00:00 UTC",
-   "pricing_vote_detail": [
-    {
-     "line": "Growth $59/mo",
-     "engines": [
-      "playwright",
-      "crawl4ai"
-     ],
-     "independent_votes": 2
-    }
-   ],
-   "pricing_crawl_note": "本次爬取遇反爬/区域变体页,定价为上次成功抓取(2026-08-26 00:00 UTC)的已验证数据,请以官网为准",
-   "target_users": [
-    "客服中心",
-    "开发者"
-   ],
-   "core_features": [
-    "Contact Info",
-    "Wati for Support",
-    "No Code Chatbots",
-    "Single User Plan",
-    "Manajemen Kontak"
-   ],
-   "feature_catalog": {
-    "WATI": [
-     {
-      "category": "其他",
-      "name": "Wati for Support",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Tecnologia Inteligente para Maior Produtividade",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "消息渠道",
-      "name": "大规模地有效管理WhatsApp消息对话。",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Permita Maior Proximidade Entre Suas Equipes",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Pengalaman pelanggan yang lebih baik",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Caixa de Entrada Compartilhada",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "No Code Chatbots",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Native Integrations",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     },
-     {
-      "category": "其他",
-      "name": "Acquire and engage leads, personalise",
-      "desc": "",
-      "source": "https://www.wati.io/product-overview/"
-     }
-    ]
-   },
-   "strengths": [
-    {
-     "point": "16,000 客户/企业",
-     "evidence": "官网原文: \"目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。\"",
-     "score": 0,
-     "source": "https://www.wati.io/about-us"
-    }
-   ],
-   "weaknesses": [],
-   "differentiators": [],
-   "gtm_evidence": [
-    {
-     "name": "官网双轨获客(自助试用 + 预约演示)",
-     "quote": "Book a Demo Try for Free",
-     "source": "https://www.wati.io"
+      "name": "WATI",
+      "url": "https://www.wati.io",
+      "tagline": "Wati | #1 AI-powered customer engagement platform",
+      "founded": "2020",
+      "founded_quote": "date: \"2023-05-30\"",
+      "stage": "—",
+      "headquarters": "on your interests",
+      "headquarters_quote": "",
+      "team_size": "—",
+      "team_size_quote": "",
+      "funding": "—",
+      "pricing": "Growth · $59 (/mo)",
+      "pricing_verified": true,
+      "pricing_from_cache": true,
+      "pricing_unit": "",
+      "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
+      "pricing_currency": "USD",
+      "pricing_tiers": [
+        {
+          "name": "Growth",
+          "price": "$59",
+          "billing_period": "/mo",
+          "features": [],
+          "source_url": "https://www.wati.io/pricing"
+        }
+      ],
+      "pricing_engines": [
+        "playwright",
+        "crawl4ai"
+      ],
+      "pricing_source": "https://www.wati.io/pricing",
+      "pricing_scraped_at": "2026-08-26 00:00 UTC",
+      "pricing_vote_detail": [
+        {
+          "line": "Growth $59/mo",
+          "engines": [
+            "playwright",
+            "crawl4ai"
+          ],
+          "independent_votes": 2
+        }
+      ],
+      "pricing_crawl_note": "本次爬取遇反爬/区域变体页,定价为上次成功抓取(2026-08-26 00:00 UTC)的已验证数据,请以官网为准",
+      "target_users": [
+        "客服中心",
+        "开发者"
+      ],
+      "core_features": [
+        "Contact Info",
+        "Wati for Support",
+        "No Code Chatbots",
+        "Single User Plan",
+        "Manajemen Kontak"
+      ],
+      "feature_catalog": {
+        "WATI": [
+          {
+            "category": "其他",
+            "name": "Wati for Support",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Tecnologia Inteligente para Maior Produtividade",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "消息渠道",
+            "name": "大规模地有效管理WhatsApp消息对话。",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Permita Maior Proximidade Entre Suas Equipes",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Pengalaman pelanggan yang lebih baik",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Caixa de Entrada Compartilhada",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "No Code Chatbots",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Native Integrations",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          },
+          {
+            "category": "其他",
+            "name": "Acquire and engage leads, personalise",
+            "desc": "",
+            "source": "https://www.wati.io/product-overview/"
+          }
+        ]
+      },
+      "strengths": [
+        {
+          "point": "16,000 客户/企业",
+          "evidence": "官网原文: \"目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。\"",
+          "score": 0,
+          "source": "https://www.wati.io/about-us"
+        }
+      ],
+      "weaknesses": [],
+      "differentiators": [],
+      "gtm_evidence": [
+        {
+          "name": "官网双轨获客(自助试用 + 预约演示)",
+          "quote": "Book a Demo Try for Free",
+          "source": "https://www.wati.io"
+        },
+        {
+          "name": "官网展示合作伙伴/渠道体系",
+          "quote": "Partner with Us",
+          "source": "https://www.wati.io"
+        }
+      ],
+      "moat_evidence": [
+        {
+          "name": "16,000 客户/企业",
+          "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
+          "source": "https://www.wati.io/about-us"
+        }
+      ],
+      "tech_signals": [
+        {
+          "name": "Webhooks(事件推送)",
+          "source": "https://www.wati.io/product-overview/"
+        },
+        {
+          "name": "REST API",
+          "source": "https://www.wati.io/product-overview/"
+        },
+        {
+          "name": "AI / LLM 能力",
+          "source": "https://www.wati.io/product-overview/"
+        },
+        {
+          "name": "合规认证(ISO/SOC2/GDPR)",
+          "source": "https://www.wati.io/product-overview/"
+        }
+      ],
+      "user_feedback": [
+        {
+          "kind": "quote",
+          "text": "I was looking for an easy-to-use and easy-to-set-up personal assistant, and I found Wati. I was able to set up my account in less than 72 hours, which is a huge plus for me. The interface is also very",
+          "source": "https://www.wati.io/case-studies"
+        }
+      ],
+      "product_momentum": [
+        {
+          "title": "WhatsApp教学｜一次学懂15个隐藏WhatsApp功能 WhatsApp一直致力改善用户的聊天…",
+          "when": "",
+          "source": "https://www.wati.io/blog"
+        }
+      ],
+      "scores": {
+        "feature_richness": 5,
+        "ux": 5,
+        "pricing_value": 5,
+        "integration": 5,
+        "ai_capability": 5,
+        "momentum": 5
+      },
+      "score_basis": "insufficient_evidence",
+      "tagline_source": "https://www.wati.io",
+      "founded_source": "https://www.wati.io/about-us",
+      "headquarters_source": "https://www.wati.io",
+      "team_size_source": "",
+      "url_resolution": "builtin",
+      "feature_conclusion_points": [
+        {
+          "text": "WhatsApp 团队收件箱起家，SMB 协作体验成熟。",
+          "matrix_derived": true
+        }
+      ],
+      "feature_best_for": "把 WhatsApp 当增长引擎的 SMB"
     },
     {
-     "name": "官网展示合作伙伴/渠道体系",
-     "quote": "Partner with Us",
-     "source": "https://www.wati.io"
-    }
-   ],
-   "moat_evidence": [
-    {
-     "name": "16,000 客户/企业",
-     "quote": "目前，Wati 已获得来自 190 多个国家、超过 16,000 家企业客户的信赖。从初创公司到大型企业，众多客户选择 Wati 作为其客户互动与销售转化的核心平台。",
-     "source": "https://www.wati.io/about-us"
-    }
-   ],
-   "tech_signals": [
-    {
-     "name": "Webhooks(事件推送)",
-     "source": "https://www.wati.io/product-overview/"
+      "name": "Respond.io",
+      "url": "https://respond.io",
+      "tagline": "Respond.io | #1 AI-Powered Customer Conversation Management Software",
+      "founded": "2019",
+      "founded_quote": "date: \"2026-08-25\"",
+      "stage": "—",
+      "headquarters": "Kuala Lumpur",
+      "headquarters_quote": "",
+      "team_size": "—",
+      "team_size_quote": "",
+      "funding": "—",
+      "pricing": "starter · $79 (/month) | $948 (/yr) / growth · $159 (/month) / advanced · $279 (/month) | $3,348 (/yr)",
+      "pricing_verified": true,
+      "pricing_from_cache": false,
+      "pricing_unit": "",
+      "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
+      "pricing_currency": "USD",
+      "pricing_tiers": [
+        {
+          "name": "starter",
+          "price": "$79",
+          "billing_period": "/month",
+          "features": [],
+          "source_url": "https://respond.io/pricing"
+        },
+        {
+          "name": "starter",
+          "price": "$948",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://respond.io/pricing"
+        },
+        {
+          "name": "growth",
+          "price": "$159",
+          "billing_period": "/month",
+          "features": [],
+          "source_url": "https://respond.io/pricing"
+        },
+        {
+          "name": "advanced",
+          "price": "$279",
+          "billing_period": "/month",
+          "features": [],
+          "source_url": "https://respond.io/pricing"
+        },
+        {
+          "name": "advanced",
+          "price": "$3,348",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://respond.io/pricing"
+        }
+      ],
+      "pricing_engines": [
+        "crawl4ai",
+        "playwright"
+      ],
+      "pricing_source": "https://respond.io/pricing",
+      "pricing_scraped_at": "2026-08-26 16:00 UTC",
+      "pricing_vote_detail": [
+        {
+          "line": "starter · $79/month",
+          "raw_line": "$79/month",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "growth · $159/month",
+          "raw_line": "$159/month",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "advanced · $279/month",
+          "raw_line": "$279/month",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "starter · $1,188 / $948/yr (billed yearly) (Big wins for small teams: Manage convers)",
+          "raw_line": "$1,188 $948/yr (billed yearly)",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "advanced · $4,188 / $3,348/yr (billed yearly) (For tech-savvy teams: Scale with advance)",
+          "raw_line": "$4,188 $3,348/yr (billed yearly)",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        }
+      ],
+      "target_users": [
+        "客服中心",
+        "开发者"
+      ],
+      "core_features": [
+        "Retain",
+        "Capture",
+        "Convert",
+        "Mobile App",
+        "Team Inbox"
+      ],
+      "feature_catalog": {
+        "Respond.io": []
+      },
+      "strengths": [
+        {
+          "point": "官网提供自助免费试用入口",
+          "evidence": "官网原文: \"Talk to SalesStart Free Trial\"",
+          "score": 0,
+          "source": "https://respond.io"
+        }
+      ],
+      "weaknesses": [],
+      "differentiators": [],
+      "gtm_evidence": [
+        {
+          "name": "官网提供自助免费试用入口",
+          "quote": "Talk to SalesStart Free Trial",
+          "source": "https://respond.io"
+        },
+        {
+          "name": "官网展示合作伙伴/渠道体系",
+          "quote": "Join a growing network of partners with commissions for referrals",
+          "source": "https://respond.io"
+        },
+        {
+          "name": "官网面向开发者/API 优先定位",
+          "quote": "4. Developer Hub Developer Hub Guides and documentation to help you start working with respond.io",
+          "source": "https://respond.io"
+        }
+      ],
+      "moat_evidence": [
+        {
+          "name": "10k+ 客户/企业",
+          "quote": "10k+ brands trust respond.io",
+          "source": "https://respond.io"
+        },
+        {
+          "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+          "quote": "GDPR CompliantISO 27001",
+          "source": "https://respond.io"
+        }
+      ],
+      "tech_signals": [],
+      "user_feedback": [
+        {
+          "kind": "metric",
+          "text": "How Lamarsa Coffee Used Chat Commerce to Improve Sales by 50%",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "A Malaysian coffee equipment retailer grew sales 50%, increased leads 10x and cut response times 38% while managing conversations across 6 countries via respond.io.",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "A Mitsubishi Motors dealer with 47 branches relied on agents' personal phone numbers for WhatsApp, causing inconsistent service. After implementing respond.io's automation, it has grown revenue by 23%",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "When Lamarsa Coffee was searching for a business messaging solutions provider that could streamline customer communication and shorten its sales cycle with automation, a respond.io customer recommende",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "Conversations are Monitored and Measured for Quality Improvement",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        },
+        {
+          "kind": "quote",
+          "text": "Consolidating all channels on respond.io and adjusting routing and assignment strategies over time have improved first response times by 38% since Lamarsa Coffee began tracking this metric. Resolution",
+          "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
+        }
+      ],
+      "product_momentum": [
+        {
+          "title": "Now that you know how to send promotional messages on respond.io, let's explore how you can use its advanced AI and Auto",
+          "when": "",
+          "source": "https://respond.io/blog/alternatives-messagebird"
+        },
+        {
+          "title": "The Best Solution for Maximum Value",
+          "when": "",
+          "source": "https://respond.io/blog/alternatives-messagebird"
+        }
+      ],
+      "scores": {
+        "feature_richness": 5,
+        "ux": 5,
+        "pricing_value": 5,
+        "integration": 5,
+        "ai_capability": 5,
+        "momentum": 5
+      },
+      "score_basis": "insufficient_evidence",
+      "tagline_source": "https://respond.io",
+      "founded_source": "https://respond.io/about",
+      "headquarters_source": "https://respond.io/about",
+      "team_size_source": "",
+      "url_resolution": "builtin",
+      "feature_conclusion_points": [
+        {
+          "text": "全渠道收件箱定位，覆盖度居前。",
+          "matrix_derived": true
+        }
+      ],
+      "feature_best_for": "高会话量中型 B2C 团队"
     },
     {
-     "name": "REST API",
-     "source": "https://www.wati.io/product-overview/"
-    },
-    {
-     "name": "AI / LLM 能力",
-     "source": "https://www.wati.io/product-overview/"
-    },
-    {
-     "name": "合规认证(ISO/SOC2/GDPR)",
-     "source": "https://www.wati.io/product-overview/"
+      "name": "YCloud",
+      "url": "https://www.ycloud.com",
+      "tagline": "Market, Sell & Support with YCloud",
+      "founded": "—",
+      "founded_quote": "",
+      "stage": "—",
+      "headquarters": "Singapore",
+      "headquarters_quote": "",
+      "team_size": "—",
+      "team_size_quote": "",
+      "funding": "—",
+      "pricing": "Free · $0 (/yr) / Growth · $39 (/mo) | $468 (/yr) / Pro · $89 (/mo) | $1068 (/yr) / Enterprise · $399 (/mo) | $4788 (/yr)",
+      "pricing_verified": true,
+      "pricing_from_cache": false,
+      "pricing_unit": "",
+      "pricing_addon_note": "",
+      "pricing_currency": "USD",
+      "pricing_tiers": [
+        {
+          "name": "Free",
+          "price": "$0",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Growth",
+          "price": "$39",
+          "billing_period": "/mo",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Growth",
+          "price": "$468",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Pro",
+          "price": "$89",
+          "billing_period": "/mo",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Pro",
+          "price": "$1068",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Enterprise",
+          "price": "$399",
+          "billing_period": "/mo",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        },
+        {
+          "name": "Enterprise",
+          "price": "$4788",
+          "billing_period": "/yr",
+          "features": [],
+          "source_url": "https://www.ycloud.com/pricing"
+        }
+      ],
+      "pricing_engines": [
+        "crawl4ai",
+        "playwright"
+      ],
+      "pricing_source": "https://www.ycloud.com/pricing",
+      "pricing_scraped_at": "2026-08-26 16:01 UTC",
+      "pricing_vote_detail": [
+        {
+          "line": "Pro · $89 /mo",
+          "raw_line": "$89 /mo",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "Growth · $39 /mo",
+          "raw_line": "$39 /mo",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "Enterprise · $399 /mo",
+          "raw_line": "$399 /mo",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "Free · Billed $0 /yr (Current plan)",
+          "raw_line": "Billed $0 /yr",
+          "engines": [
+            "crawl4ai",
+            "playwright"
+          ],
+          "independent_votes": 2
+        },
+        {
+          "line": "Pro · Billed $1068 /yr (Upgrade to Pro)",
+          "raw_line": "Billed $1068 /yr",
+          "engines": [
+            "crawl4ai"
+          ],
+          "independent_votes": 1
+        },
+        {
+          "line": "Growth · Billed $468 /yr (Upgrade to Growth)",
+          "raw_line": "Billed $468 /yr",
+          "engines": [
+            "crawl4ai"
+          ],
+          "independent_votes": 1
+        },
+        {
+          "line": "Enterprise · Billed $4788 /yr (Upgrade to Enterprise)",
+          "raw_line": "Billed $4788 /yr",
+          "engines": [
+            "crawl4ai"
+          ],
+          "independent_votes": 1
+        }
+      ],
+      "target_users": [
+        "客服中心",
+        "开发者"
+      ],
+      "core_features": [
+        "Growth Tools",
+        "Generative AI",
+        "Lead Generation",
+        "Chatbot Builder",
+        "Customer Service"
+      ],
+      "feature_catalog": {
+        "YCloud": [
+          {
+            "category": "其他",
+            "name": "Growth Tools",
+            "desc": "",
+            "source": ""
+          }
+        ]
+      },
+      "strengths": [
+        {
+          "point": "官网提供自助免费试用入口",
+          "evidence": "官网原文: \"Try for freeContact sales\"",
+          "score": 0,
+          "source": "https://www.ycloud.com"
+        }
+      ],
+      "weaknesses": [],
+      "differentiators": [],
+      "gtm_evidence": [
+        {
+          "name": "官网提供自助免费试用入口",
+          "quote": "Try for freeContact sales",
+          "source": "https://www.ycloud.com"
+        },
+        {
+          "name": "官网引导联系销售获取报价",
+          "quote": "Contact salesFree Trial",
+          "source": "https://www.ycloud.com"
+        },
+        {
+          "name": "官网展示合作伙伴/渠道体系",
+          "quote": "AffiliateSolution PartnerTech Partner",
+          "source": "https://www.ycloud.com"
+        }
+      ],
+      "moat_evidence": [
+        {
+          "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
+          "quote": "Enterprise-grade technology and security, ISO 27001 certified, with 99.99% uptime handling billions of messages monthly.",
+          "source": "https://www.ycloud.com"
+        },
+        {
+          "name": "Meta 官方合作伙伴/BSP 身份",
+          "quote": "YCloud is a Meta Official BSP",
+          "source": "https://www.ycloud.com"
+        }
+      ],
+      "tech_signals": [],
+      "user_feedback": [],
+      "product_momentum": [
+        {
+          "title": "Team YCloud · Jul 2, 2026",
+          "when": "· Jul 2",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Compare the top 10 WhatsApp API, chatbot and AI agent providers in China by features, pricing, free trials, pros, cons a",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "This article explains how to create Meta Click to WhatsApp Ads (CTWA) workflow with YCloud.",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "This article explains how to create TikTok Click to WhatsApp Ads (CTWA) workflow with YCloud.",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Learn how to set up, create and run Facebook Ads in Meta Ads Manager, track key metrics, and scale campaigns effectively",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Learn how to set up, create and run Click-to-WhatsApp Ads (CTWA) on Facebook and Instagram to generate and convert more ",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        },
+        {
+          "title": "Discover 10 practical CTWA strategies to improve Click to WhatsApp Ads performance, generate quality leads, and drive mo",
+          "when": "",
+          "source": "https://www.ycloud.com/blog"
+        }
+      ],
+      "scores": {
+        "feature_richness": 5,
+        "ux": 5,
+        "pricing_value": 5,
+        "integration": 5,
+        "ai_capability": 5,
+        "momentum": 5
+      },
+      "score_basis": "insufficient_evidence",
+      "tagline_source": "https://www.ycloud.com",
+      "founded_source": "",
+      "headquarters_source": "https://www.ycloud.com/about",
+      "team_size_source": "",
+      "url_resolution": "builtin",
+      "feature_conclusion_points": [
+        {
+          "text": "WhatsApp 纵深 + CDP，性价比路线。",
+          "matrix_derived": true
+        }
+      ],
+      "feature_best_for": "预算敏感的中小出海团队"
     }
-   ],
-   "user_feedback": [
-    {
-     "kind": "quote",
-     "text": "I was looking for an easy-to-use and easy-to-set-up personal assistant, and I found Wati. I was able to set up my account in less than 72 hours, which is a huge plus for me. The interface is also very",
-     "source": "https://www.wati.io/case-studies"
+  ],
+  "feature_aliases": {
+    "Shared Team Inbox": {
+      "aliases": [
+        "Shared Team Inbox"
+      ],
+      "rationale": "自动检测: \"Shared Team Inbox\" 在 2 家出现。",
+      "_auto_detected": true
     }
-   ],
-   "product_momentum": [
-    {
-     "title": "WhatsApp教学｜一次学懂15个隐藏WhatsApp功能 WhatsApp一直致力改善用户的聊天…",
-     "when": "",
-     "source": "https://www.wati.io/blog"
-    }
-   ],
-   "scores": {
-    "feature_richness": 5,
-    "ux": 5,
-    "pricing_value": 5,
-    "integration": 5,
-    "ai_capability": 5,
-    "momentum": 5
-   },
-   "score_basis": "insufficient_evidence",
-   "tagline_source": "https://www.wati.io",
-   "founded_source": "https://www.wati.io/about-us",
-   "headquarters_source": "https://www.wati.io",
-   "team_size_source": "",
-   "url_resolution": "builtin"
   },
-  {
-   "name": "Respond.io",
-   "url": "https://respond.io",
-   "tagline": "Respond.io | #1 AI-Powered Customer Conversation Management Software",
-   "founded": "2019",
-   "founded_quote": "date: \"2026-08-25\"",
-   "stage": "—",
-   "headquarters": "Kuala Lumpur",
-   "headquarters_quote": "",
-   "team_size": "—",
-   "team_size_quote": "",
-   "funding": "—",
-   "pricing": "starter · $79 (/month) | $948 (/yr) / growth · $159 (/month) / advanced · $279 (/month) | $3,348 (/yr)",
-   "pricing_verified": true,
-   "pricing_from_cache": false,
-   "pricing_unit": "",
-   "pricing_addon_note": "套餐含基础用户数,加购用户另计费(见官网)",
-   "pricing_currency": "USD",
-   "pricing_tiers": [
+  "market_segments": [
     {
-     "name": "starter",
-     "price": "$79",
-     "billing_period": "/month",
-     "features": [],
-     "source_url": "https://respond.io/pricing"
-    },
-    {
-     "name": "starter",
-     "price": "$948",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://respond.io/pricing"
-    },
-    {
-     "name": "growth",
-     "price": "$159",
-     "billing_period": "/month",
-     "features": [],
-     "source_url": "https://respond.io/pricing"
-    },
-    {
-     "name": "advanced",
-     "price": "$279",
-     "billing_period": "/month",
-     "features": [],
-     "source_url": "https://respond.io/pricing"
-    },
-    {
-     "name": "advanced",
-     "price": "$3,348",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://respond.io/pricing"
-    }
-   ],
-   "pricing_engines": [
-    "crawl4ai",
-    "playwright"
-   ],
-   "pricing_source": "https://respond.io/pricing",
-   "pricing_scraped_at": "2026-08-26 16:00 UTC",
-   "pricing_vote_detail": [
-    {
-     "line": "starter · $79/month",
-     "raw_line": "$79/month",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "growth · $159/month",
-     "raw_line": "$159/month",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "advanced · $279/month",
-     "raw_line": "$279/month",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "starter · $1,188 / $948/yr (billed yearly) (Big wins for small teams: Manage convers)",
-     "raw_line": "$1,188 $948/yr (billed yearly)",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "advanced · $4,188 / $3,348/yr (billed yearly) (For tech-savvy teams: Scale with advance)",
-     "raw_line": "$4,188 $3,348/yr (billed yearly)",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    }
-   ],
-   "target_users": [
-    "客服中心",
-    "开发者"
-   ],
-   "core_features": [
-    "Retain",
-    "Capture",
-    "Convert",
-    "Mobile App",
-    "Team Inbox"
-   ],
-   "feature_catalog": {
-    "Respond.io": []
-   },
-   "strengths": [
-    {
-     "point": "官网提供自助免费试用入口",
-     "evidence": "官网原文: \"Talk to SalesStart Free Trial\"",
-     "score": 0,
-     "source": "https://respond.io"
-    }
-   ],
-   "weaknesses": [],
-   "differentiators": [],
-   "gtm_evidence": [
-    {
-     "name": "官网提供自助免费试用入口",
-     "quote": "Talk to SalesStart Free Trial",
-     "source": "https://respond.io"
-    },
-    {
-     "name": "官网展示合作伙伴/渠道体系",
-     "quote": "Join a growing network of partners with commissions for referrals",
-     "source": "https://respond.io"
-    },
-    {
-     "name": "官网面向开发者/API 优先定位",
-     "quote": "4. Developer Hub Developer Hub Guides and documentation to help you start working with respond.io",
-     "source": "https://respond.io"
-    }
-   ],
-   "moat_evidence": [
-    {
-     "name": "10k+ 客户/企业",
-     "quote": "10k+ brands trust respond.io",
-     "source": "https://respond.io"
-    },
-    {
-     "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-     "quote": "GDPR CompliantISO 27001",
-     "source": "https://respond.io"
-    }
-   ],
-   "tech_signals": [],
-   "user_feedback": [
-    {
-     "kind": "metric",
-     "text": "How Lamarsa Coffee Used Chat Commerce to Improve Sales by 50%",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    },
-    {
-     "kind": "quote",
-     "text": "A Malaysian coffee equipment retailer grew sales 50%, increased leads 10x and cut response times 38% while managing conversations across 6 countries via respond.io.",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    },
-    {
-     "kind": "quote",
-     "text": "A Mitsubishi Motors dealer with 47 branches relied on agents' personal phone numbers for WhatsApp, causing inconsistent service. After implementing respond.io's automation, it has grown revenue by 23%",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    },
-    {
-     "kind": "quote",
-     "text": "When Lamarsa Coffee was searching for a business messaging solutions provider that could streamline customer communication and shorten its sales cycle with automation, a respond.io customer recommende",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    },
-    {
-     "kind": "quote",
-     "text": "Conversations are Monitored and Measured for Quality Improvement",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    },
-    {
-     "kind": "quote",
-     "text": "Consolidating all channels on respond.io and adjusting routing and assignment strategies over time have improved first response times by 38% since Lamarsa Coffee began tracking this metric. Resolution",
-     "source": "https://respond.io/customers/how-lamarsa-coffee-used-chat-commerce-to-boost-sales-across-6-countries-by-50"
-    }
-   ],
-   "product_momentum": [
-    {
-     "title": "Now that you know how to send promotional messages on respond.io, let's explore how you can use its advanced AI and Auto",
-     "when": "",
-     "source": "https://respond.io/blog/alternatives-messagebird"
-    },
-    {
-     "title": "The Best Solution for Maximum Value",
-     "when": "",
-     "source": "https://respond.io/blog/alternatives-messagebird"
-    }
-   ],
-   "scores": {
-    "feature_richness": 5,
-    "ux": 5,
-    "pricing_value": 5,
-    "integration": 5,
-    "ai_capability": 5,
-    "momentum": 5
-   },
-   "score_basis": "insufficient_evidence",
-   "tagline_source": "https://respond.io",
-   "founded_source": "https://respond.io/about",
-   "headquarters_source": "https://respond.io/about",
-   "team_size_source": "",
-   "url_resolution": "builtin"
-  },
-  {
-   "name": "YCloud",
-   "url": "https://www.ycloud.com",
-   "tagline": "Market, Sell & Support with YCloud",
-   "founded": "—",
-   "founded_quote": "",
-   "stage": "—",
-   "headquarters": "Singapore",
-   "headquarters_quote": "",
-   "team_size": "—",
-   "team_size_quote": "",
-   "funding": "—",
-   "pricing": "Free · $0 (/yr) / Growth · $39 (/mo) | $468 (/yr) / Pro · $89 (/mo) | $1068 (/yr) / Enterprise · $399 (/mo) | $4788 (/yr)",
-   "pricing_verified": true,
-   "pricing_from_cache": false,
-   "pricing_unit": "",
-   "pricing_addon_note": "",
-   "pricing_currency": "USD",
-   "pricing_tiers": [
-    {
-     "name": "Free",
-     "price": "$0",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Growth",
-     "price": "$39",
-     "billing_period": "/mo",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Growth",
-     "price": "$468",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Pro",
-     "price": "$89",
-     "billing_period": "/mo",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Pro",
-     "price": "$1068",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Enterprise",
-     "price": "$399",
-     "billing_period": "/mo",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    },
-    {
-     "name": "Enterprise",
-     "price": "$4788",
-     "billing_period": "/yr",
-     "features": [],
-     "source_url": "https://www.ycloud.com/pricing"
-    }
-   ],
-   "pricing_engines": [
-    "crawl4ai",
-    "playwright"
-   ],
-   "pricing_source": "https://www.ycloud.com/pricing",
-   "pricing_scraped_at": "2026-08-26 16:01 UTC",
-   "pricing_vote_detail": [
-    {
-     "line": "Pro · $89 /mo",
-     "raw_line": "$89 /mo",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "Growth · $39 /mo",
-     "raw_line": "$39 /mo",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "Enterprise · $399 /mo",
-     "raw_line": "$399 /mo",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "Free · Billed $0 /yr (Current plan)",
-     "raw_line": "Billed $0 /yr",
-     "engines": [
-      "crawl4ai",
-      "playwright"
-     ],
-     "independent_votes": 2
-    },
-    {
-     "line": "Pro · Billed $1068 /yr (Upgrade to Pro)",
-     "raw_line": "Billed $1068 /yr",
-     "engines": [
-      "crawl4ai"
-     ],
-     "independent_votes": 1
-    },
-    {
-     "line": "Growth · Billed $468 /yr (Upgrade to Growth)",
-     "raw_line": "Billed $468 /yr",
-     "engines": [
-      "crawl4ai"
-     ],
-     "independent_votes": 1
-    },
-    {
-     "line": "Enterprise · Billed $4788 /yr (Upgrade to Enterprise)",
-     "raw_line": "Billed $4788 /yr",
-     "engines": [
-      "crawl4ai"
-     ],
-     "independent_votes": 1
-    }
-   ],
-   "target_users": [
-    "客服中心",
-    "开发者"
-   ],
-   "core_features": [
-    "Growth Tools",
-    "Generative AI",
-    "Lead Generation",
-    "Chatbot Builder",
-    "Customer Service"
-   ],
-   "feature_catalog": {
-    "YCloud": [
-     {
-      "category": "其他",
-      "name": "Growth Tools",
-      "desc": "",
+      "label": "其他 / 待识别",
+      "desc": "暂未分类",
+      "players": [
+        "WATI",
+        "Respond.io",
+        "YCloud"
+      ],
       "source": ""
-     }
-    ]
-   },
-   "strengths": [
-    {
-     "point": "官网提供自助免费试用入口",
-     "evidence": "官网原文: \"Try for freeContact sales\"",
-     "score": 0,
-     "source": "https://www.ycloud.com"
     }
-   ],
-   "weaknesses": [],
-   "differentiators": [],
-   "gtm_evidence": [
+  ],
+  "gaps": [
     {
-     "name": "官网提供自助免费试用入口",
-     "quote": "Try for freeContact sales",
-     "source": "https://www.ycloud.com"
+      "gap": "多渠道接入 (Omnichannel Aggregation)",
+      "rationale": "多渠道整合是行业标配,缺失说明产品单一渠道",
+      "severity": "medium",
+      "candidates": true,
+      "checked_vendors": [
+        {
+          "name": "WATI",
+          "evidence_url": "https://www.wati.io"
+        },
+        {
+          "name": "Respond.io",
+          "evidence_url": "https://respond.io"
+        },
+        {
+          "name": "YCloud",
+          "evidence_url": "https://www.ycloud.com"
+        }
+      ],
+      "source": ""
     },
     {
-     "name": "官网引导联系销售获取报价",
-     "quote": "Contact salesFree Trial",
-     "source": "https://www.ycloud.com"
+      "gap": "数据导出 (Data Export)",
+      "rationale": "数据可移植性是合规基本要求",
+      "severity": "medium",
+      "candidates": true,
+      "checked_vendors": [
+        {
+          "name": "WATI",
+          "evidence_url": "https://www.wati.io"
+        },
+        {
+          "name": "Respond.io",
+          "evidence_url": "https://respond.io"
+        },
+        {
+          "name": "YCloud",
+          "evidence_url": "https://www.ycloud.com"
+        }
+      ],
+      "source": ""
     },
     {
-     "name": "官网展示合作伙伴/渠道体系",
-     "quote": "AffiliateSolution PartnerTech Partner",
-     "source": "https://www.ycloud.com"
+      "gap": "权限与团队管理 (RBAC)",
+      "rationale": "RBAC 是企业级必备",
+      "severity": "medium",
+      "candidates": true,
+      "checked_vendors": [
+        {
+          "name": "WATI",
+          "evidence_url": "https://www.wati.io"
+        },
+        {
+          "name": "Respond.io",
+          "evidence_url": "https://respond.io"
+        },
+        {
+          "name": "YCloud",
+          "evidence_url": "https://www.ycloud.com"
+        }
+      ],
+      "source": ""
+    },
+    {
+      "gap": "审计日志 (Audit Logs)",
+      "rationale": "审计日志是企业合规必备",
+      "severity": "medium",
+      "candidates": true,
+      "checked_vendors": [
+        {
+          "name": "WATI",
+          "evidence_url": "https://www.wati.io"
+        },
+        {
+          "name": "Respond.io",
+          "evidence_url": "https://respond.io"
+        },
+        {
+          "name": "YCloud",
+          "evidence_url": "https://www.ycloud.com"
+        }
+      ],
+      "source": ""
     }
-   ],
-   "moat_evidence": [
-    {
-     "name": "持有国际合规认证(SOC2/ISO27001/GDPR)",
-     "quote": "Enterprise-grade technology and security, ISO 27001 certified, with 99.99% uptime handling billions of messages monthly.",
-     "source": "https://www.ycloud.com"
-    },
-    {
-     "name": "Meta 官方合作伙伴/BSP 身份",
-     "quote": "YCloud is a Meta Official BSP",
-     "source": "https://www.ycloud.com"
-    }
-   ],
-   "tech_signals": [],
-   "user_feedback": [],
-   "product_momentum": [
-    {
-     "title": "Team YCloud · Jul 2, 2026",
-     "when": "· Jul 2",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "Compare the top 10 WhatsApp API, chatbot and AI agent providers in China by features, pricing, free trials, pros, cons a",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "This article explains how to create Meta Click to WhatsApp Ads (CTWA) workflow with YCloud.",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "This article explains how to create TikTok Click to WhatsApp Ads (CTWA) workflow with YCloud.",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "Learn how to set up, create and run Facebook Ads in Meta Ads Manager, track key metrics, and scale campaigns effectively",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "Learn how to set up, create and run Click-to-WhatsApp Ads (CTWA) on Facebook and Instagram to generate and convert more ",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    },
-    {
-     "title": "Discover 10 practical CTWA strategies to improve Click to WhatsApp Ads performance, generate quality leads, and drive mo",
-     "when": "",
-     "source": "https://www.ycloud.com/blog"
-    }
-   ],
-   "scores": {
-    "feature_richness": 5,
-    "ux": 5,
-    "pricing_value": 5,
-    "integration": 5,
-    "ai_capability": 5,
-    "momentum": 5
-   },
-   "score_basis": "insufficient_evidence",
-   "tagline_source": "https://www.ycloud.com",
-   "founded_source": "",
-   "headquarters_source": "https://www.ycloud.com/about",
-   "team_size_source": "",
-   "url_resolution": "builtin"
-  }
- ],
- "feature_aliases": {
-  "Shared Team Inbox": {
-   "aliases": [
-    "Shared Team Inbox"
-   ],
-   "rationale": "自动检测: \"Shared Team Inbox\" 在 2 家出现。",
-   "_auto_detected": true
-  }
- },
- "market_segments": [
-  {
-   "label": "其他 / 待识别",
-   "desc": "暂未分类",
-   "players": [
-    "WATI",
-    "Respond.io",
-    "YCloud"
-   ],
-   "source": ""
-  }
- ],
- "gaps": [
-  {
-   "gap": "多渠道接入 (Omnichannel Aggregation)",
-   "rationale": "多渠道整合是行业标配,缺失说明产品单一渠道",
-   "severity": "medium",
-   "candidates": true,
-   "checked_vendors": [
-    {
-     "name": "WATI",
-     "evidence_url": "https://www.wati.io"
-    },
-    {
-     "name": "Respond.io",
-     "evidence_url": "https://respond.io"
-    },
-    {
-     "name": "YCloud",
-     "evidence_url": "https://www.ycloud.com"
-    }
-   ],
-   "source": ""
-  },
-  {
-   "gap": "数据导出 (Data Export)",
-   "rationale": "数据可移植性是合规基本要求",
-   "severity": "medium",
-   "candidates": true,
-   "checked_vendors": [
-    {
-     "name": "WATI",
-     "evidence_url": "https://www.wati.io"
-    },
-    {
-     "name": "Respond.io",
-     "evidence_url": "https://respond.io"
-    },
-    {
-     "name": "YCloud",
-     "evidence_url": "https://www.ycloud.com"
-    }
-   ],
-   "source": ""
-  },
-  {
-   "gap": "权限与团队管理 (RBAC)",
-   "rationale": "RBAC 是企业级必备",
-   "severity": "medium",
-   "candidates": true,
-   "checked_vendors": [
-    {
-     "name": "WATI",
-     "evidence_url": "https://www.wati.io"
-    },
-    {
-     "name": "Respond.io",
-     "evidence_url": "https://respond.io"
-    },
-    {
-     "name": "YCloud",
-     "evidence_url": "https://www.ycloud.com"
-    }
-   ],
-   "source": ""
-  },
-  {
-   "gap": "审计日志 (Audit Logs)",
-   "rationale": "审计日志是企业合规必备",
-   "severity": "medium",
-   "candidates": true,
-   "checked_vendors": [
-    {
-     "name": "WATI",
-     "evidence_url": "https://www.wati.io"
-    },
-    {
-     "name": "Respond.io",
-     "evidence_url": "https://respond.io"
-    },
-    {
-     "name": "YCloud",
-     "evidence_url": "https://www.ycloud.com"
-    }
-   ],
-   "source": ""
-  }
- ],
- "opportunities": [],
- "other_competitors": [],
- "executive_summary": "基于 3 家竞品实时爬取:4 条候选市场空白(待 Step 3 复核)。定价 3/3 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
- "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 59 项核心功能。每个功能条目带来源 URL。",
- "goals": [
-  "看清各家功能差异化与共同能力",
-  "识别市场空白（所有竞品都没做好的痛点）",
-  "梳理定价模型与市场分层",
-  "挖掘颠覆性产品机会"
- ]
+  ],
+  "opportunities": [],
+  "other_competitors": [],
+  "executive_summary": "基于 3 家竞品实时爬取:4 条候选市场空白(待 Step 3 复核)。定价 3/3 家经 ≥2 引擎交叉验证,其余标记「未验证」。SWOT/机会清单由 LLM 基于证据补全。",
+  "background": "WhatsApp BSP 赛道(生产验收) 赛道扫描 — 基于 3 家竞品实时爬取。涵盖 59 项核心功能。每个功能条目带来源 URL。",
+  "goals": [
+    "看清各家功能差异化与共同能力",
+    "识别市场空白（所有竞品都没做好的痛点）",
+    "梳理定价模型与市场分层",
+    "挖掘颠覆性产品机会"
+  ]
 }

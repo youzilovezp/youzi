@@ -49,6 +49,9 @@ def _comp(name, feats, catalog=None):
             "ai_capability": 5,
             "momentum": 5,
         },
+        # §6.4 判词非空门禁(2026-08-31 第 26 轮):矩阵推导句兜底,
+        # 门禁本身由 test_report_completeness_2026_08_31.py 独测。
+        "feature_conclusion_points": [{"text": "兜底。", "matrix_derived": True}],
     }
     if catalog is not None:
         c["feature_catalog"] = catalog

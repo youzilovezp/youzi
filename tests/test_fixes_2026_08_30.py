@@ -612,7 +612,9 @@ def test_audit_field_completeness_catches_render_block_gaps():
     assert "feature_catalog" in joined, "矩阵整列空必须检出"
     assert "feature_conclusion_points" in joined, "§2.4 整块消失必须检出"
     assert "feature_best_for" in joined, "竞品卡标签缺失必须检出"
-    assert r["status"] == "partial"
+    # 2026-08-31 第 26 轮:整块消失字段升级 gap(partial 流出过 §6.4 空白交付)
+    assert r["status"] == "gap", "整块消失字段必须驱动修复回路(exit 1)"
+    assert any("不可留空" in a for a in r["next_actions"])
     # momentum 为聚合板块:只给 next_action,不算 missing
     assert any("product_momentum" in a for a in r["next_actions"])
 

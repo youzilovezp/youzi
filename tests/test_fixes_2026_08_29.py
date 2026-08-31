@@ -920,7 +920,8 @@ def test_self_check_requires_traceable_conclusions():
     assert "无未锚定条目" in _run(bad) and "✗" in _run(bad)
     out_good = _run(good)
     assert "✓ §6.2 启发点全部可溯源" in out_good
-    assert "✓ §6.4 功能结论逐句可溯源" in out_good
+    # 2026-08-31 第 26 轮:§6.4 检查升级为「非空 + 逐句可溯源」
+    assert "✓ §6.4 功能结论非空 + 逐句可溯源" in out_good
 
 
 def test_g2_checks_tech_signal_and_catalog_quotes():

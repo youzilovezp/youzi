@@ -330,6 +330,12 @@ FIELD_MIN = {
     "feature_conclusion_points": 1,  # §2.4 功能结论该家整块消失
 }
 
+# 缺失 = 报告整块消失的字段(2026-08-31 第 26 轮:用户第 4 次「报告缺内容」)。
+# 这些字段为空时 status 必须是 gap(exit 1 驱动修复回路)—— 历史上统一给
+# partial,被当成「可交付的瑕疵」放过,§6.4 判词空白就这么流出了。
+# 降级类缺失(tagline/feature_best_for 等,板块缩小但不消失)仍为 partial。
+_FIELD_BLOCKERS = {"feature_catalog", "feature_conclusion_points"}
+
 
 def _common_feature_gaps(comps: list, ratio: float = 0.75) -> Dict[str, list]:
     """标配能力疑点:≥ratio 厂商入册而个别家缺失 → {竞品: [缺失能力]}。
@@ -388,9 +394,16 @@ def audit_field_completeness(comp: dict) -> dict:
             n = len(v or [])
         if n < minimum:
             missing.append(f"{field} {n}/{minimum}")
-            actions.append(
-                f"{field} 不足 {minimum} 条 → 回 02-raw 补证据;无证据则如实留空"
-            )
+            if field in _FIELD_BLOCKERS:
+                # 整块消失字段:矩阵推导句可兜底,永远不允许留空交付
+                actions.append(
+                    f"{field} 不足 {minimum} 条 → 回 Step 3 补写"
+                    "(判词可用 {text, matrix_derived:true} 矩阵推导句兜底,不可留空)"
+                )
+            else:
+                actions.append(
+                    f"{field} 不足 {minimum} 条 → 回 02-raw 补证据;无证据则如实留空"
+                )
     for f in ("tagline", "pricing", "feature_best_for"):
         # feature_best_for(第 20 轮补):竞品卡「最适合」标签,缺失即板块降级
         if not (comp.get(f) or "").strip():
@@ -406,7 +419,16 @@ def audit_field_completeness(comp: dict) -> dict:
             "title 须逐字可 grep"
         )
     return {
-        "status": "ok" if not missing else "partial",
+        "status": (
+            "ok"
+            if not missing
+            # 渲染板块整块消失 → gap;其余(数量不足/降级字段)→ partial
+            else (
+                "gap"
+                if any(m.split(" ", 1)[0] in _FIELD_BLOCKERS for m in missing)
+                else "partial"
+            )
+        ),
         "missing": missing,
         "next_actions": actions,
     }

@@ -58,8 +58,13 @@ def _minimal_comp(name, tiers, currency="USD"):
 
 
 def _analysis(comps):
-    # render.py self_check 门禁(不可降阈值):竞品 ≥ 3 + source_count > 0,
-    # 单竞品最小数据 exit 2 → 补 2 个带 pricing_source 的最小填充竞品。
+    # render.py self_check 门禁(不可降阈值):竞品 ≥ 3 + source_count > 0
+    # + §6.4 每家判词非空(2026-08-31 第 26 轮)—— 被测竞品缺判词时注入
+    # 矩阵推导兜底句(判词门禁本身由 test_report_completeness_2026_08_31.py 独测)。
+    for c in comps:
+        c.setdefault(
+            "feature_conclusion_points", [{"text": "兜底。", "matrix_derived": True}]
+        )
     # Pad B 走 pricing_plans(新数据契约字段)携带空 custom_note 的定制档,
     # 覆盖「Custom 档无备注 → 模板兜底"联系销售报价"」的 V2 语义。
     pads = [
@@ -70,6 +75,9 @@ def _analysis(comps):
             "pricing": "$9/月起",
             "pricing_currency": "USD",
             "pricing_source": "https://pada.io/pricing",
+            "feature_conclusion_points": [
+                {"text": "矩阵推导句兜底。", "matrix_derived": True}
+            ],
             "pricing_tiers": [
                 {
                     "name": "Solo",
@@ -99,6 +107,9 @@ def _analysis(comps):
             "pricing": "—",
             "pricing_currency": "USD",
             "pricing_source": "https://padb.io/pricing",
+            "feature_conclusion_points": [
+                {"text": "矩阵推导句兜底。", "matrix_derived": True}
+            ],
             "pricing_plans": [
                 {
                     "name": "Enterprise",

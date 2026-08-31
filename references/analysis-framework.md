@@ -44,7 +44,7 @@
   "strengths": [
     {
       "point": "块编辑器极灵活，几乎可以搭建任何工作流",
-      "evidence": "官网主页原文：'Turn any thought into a beautiful page. Notion docs adapt to how you think.'",
+      "evidence": "官网原文: \"Turn any thought into a beautiful page. Notion docs adapt to how you think.\"",
       "score": 9,
       "source": "https://notion.so"
     }
@@ -52,7 +52,7 @@
   "weaknesses": [
     {
       "point": "离线能力弱，网速慢时体验差",
-      "evidence": "G2 评价原文（需真的读过该页）：'slow offline'",
+      "evidence": "官网原文: \"slow offline\"",
       "score": 3,
       "source": "https://g2.com/products/notion/reviews"
     }
@@ -75,12 +75,31 @@
     "integration": 9,
     "ai_capability": 7,
     "momentum": 8
-  }
+  },
+  "feature_conclusion_points": [
+    {
+      "text": "块编辑器 + 数据库二合一，工作流搭建能力五家最强。",
+      "source": "https://notion.so/help/what-is-a-block"
+    },
+    {
+      "text": "按 §4.1 矩阵推导：离线能力是它相对 Obsidian 的唯一未披露项。",
+      "matrix_derived": true
+    }
+  ],
+  "feature_best_for": "要一个工具替代文档+表格+wiki 的中小团队"
 }
 ```
 
 **注意 evidence 字段的写法**：引文必须是你**真的在 02-raw 里读到的句子**。
 写 "G2 评价：xxx" 之前，必须真的爬过那个 G2 页面 —— 否则整条删掉，写「未收集到」。
+**evidence 的规范包装形态是 `官网原文: "<逐字引文>"`**（半角冒号+空格+半角双引号，引文后不放任何尾注）—— 这是 G2 `_STRENGTH_QUOTE_RX` 与 audit 回查共同的剥壳契约；写成「定价页原文：'…'（附注）」会让 G2 静默跳过、audit 误报 quote_accuracy gap。对比数据/附注写进 point。
+
+**feature_conclusion_points 提取要求（§6.4 各家功能判词，2026-08-31 第 26 轮补）**：
+
+- 结构 `[{text, source}]` 或 `[{text, matrix_derived: true}]`，每家 **3-5 句，不可留空**（空白 = §6.4 该家整块消失；render 硬检查 + audit gap 级拦截）
+- 前 2-4 句锚定 docs/features 具体子页（G7 规则同 differentiators：quote/text 语义须被该页承载）；收尾 1 句用 `matrix_derived: true` 总结该家在 §4.1 矩阵中的覆盖度/独家/缺失
+- **矩阵推导句永远可写**（矩阵本身逐格带来源），所以这个字段不存在「如实留空」的合法形态
+- 顺手补 `feature_best_for`：一句话「适合谁」，渲染在竞品卡「最适合」标签与 §6.4
 
 **core_features 提取要求**：必须扫该竞品的 **docs 证据页**（claims-manifest 台账里 kind=docs 的 URL 对应 02-raw 段落），每家 ≥ 12 条、每条 ≤ 12 字 —— 不得只抄 pricing 页的套餐功能清单（那是商业包装，不是功能证据）。
 
